@@ -178,6 +178,27 @@ export async function POST(request: Request) {
           level: 'info',
           data: { userId: session.user.id }
         });
+      } else {
+        // Пользователь найден по email, обновим userId в сессии для создания чата
+        const foundUser = users[0];
+        if (foundUser.id !== session.user.id) {
+          console.log(`User found with email but different ID, using existing ID: ${foundUser.id} instead of ${session.user.id}`);
+          
+          // Логируем, что мы используем другой ID
+          Sentry.addBreadcrumb({
+            category: 'auth',
+            message: 'Using existing user ID from database',
+            level: 'info',
+            data: { 
+              sessionUserId: session.user.id,
+              databaseUserId: foundUser.id,
+              email: session.user.email
+            }
+          });
+          
+          // Используем ID из базы данных для создания чата
+          session.user.id = foundUser.id;
+        }
       }
     } catch (userError) {
       console.error('Failed to ensure user exists:', userError);

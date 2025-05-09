@@ -181,17 +181,42 @@ export const {
         // Дополнительная синхронизация пользователя OAuth с каждым запросом сессии
         if (token.email && token.type === 'regular') {
           try {
-            // Используем улучшенную версию с повторными попытками
-            await syncAuth0User(token.id, token.email);
+            // Проверяем, существует ли пользователь с этим email
+            const users = await getUser(token.email);
+            
+            if (users.length > 0) {
+              // Если пользователь найден по email, но имеет другой ID,
+              // используем ID из базы данных вместо ID из Auth0
+              const existingUser = users[0];
+              if (existingUser.id !== token.id) {
+                console.log(`Found user with email ${token.email} in database with different ID. Using database ID: ${existingUser.id}`);
+                session.user.id = existingUser.id;
+                // Не меняем token.id, так как это может вызвать проблемы с Auth0
+              }
+            } else {
+              // Если пользователь не найден по email, создаем его
+              try {
+                // Используем улучшенную версию с повторными попытками
+                await syncAuth0User(token.id, token.email);
+              } catch (syncError) {
+                console.error('Error syncing Auth0 user during session check:', syncError);
+                Sentry.captureException(syncError, {
+                  tags: { 
+                    error_type: 'auth0_db_sync',
+                    phase: 'session_callback'
+                  },
+                  extra: { 
+                    tokenId: token.id,
+                    tokenEmail: token.email 
+                  }
+                });
+              }
+            }
           } catch (error) {
-            console.error(
-              'Error syncing Auth0 user during session check:',
-              error,
-            );
-            // Логируем ошибку в Sentry
+            console.error('Error during user check in session callback:', error);
             Sentry.captureException(error, {
               tags: { 
-                error_type: 'auth0_db_sync',
+                error_type: 'session_user_check',
                 phase: 'session_callback'
               },
               extra: { 

@@ -59,7 +59,7 @@ export async function getOrCreateOAuthUser(
   email: string,
 ): Promise<User> {
   try {
-    // First check if user exists with this ID
+    // Сначала проверяем, существует ли пользователь с этим ID
     const [existingUserById] = await db
       .select()
       .from(user)
@@ -69,30 +69,73 @@ export async function getOrCreateOAuthUser(
       return existingUserById;
     }
 
-    // Then check if user exists with this email
+    // Затем проверяем, существует ли пользователь с этим email
     const existingUsers = await getUser(email);
     if (existingUsers.length > 0) {
-      return existingUsers[0];
+      const existingUser = existingUsers[0];
+      
+      // Если пользователь найден по email, возвращаем его, даже если ID отличается
+      console.log(`Found user with email ${email} but different ID (${existingUser.id} vs ${userId}). Using existing user ID.`);
+      return existingUser;
     }
 
-    // If user not found, create a new one
-    const [newUser] = await db
-      .insert(user)
-      .values({
-        id: userId,
-        email,
-        password: null, // OAuth users don't have a password
-      })
-      .returning();
-
-    if (!newUser) {
-      throw new Error('Failed to create OAuth user');
+    // Если пользователь не найден, создаем нового
+    console.log(`User not found, creating new user with ID: ${userId} and email: ${email}`);
+    
+    try {
+      // Используем отдельное соединение для гарантированного создания
+      const createClient = postgres(process.env.POSTGRES_URL!, { max: 1 });
+      const createDb = drizzle(createClient);
+      
+      try {
+        // Создаем пользователя
+        const [newUser] = await createDb
+          .insert(user)
+          .values({
+            id: userId,
+            email,
+            password: null, // OAuth users don't have a password
+          })
+          .returning();
+        
+        if (!newUser) {
+          throw new Error('Failed to create OAuth user: No user returned');
+        }
+        
+        console.log(`Created new OAuth user with ID: ${userId} and email: ${email}`);
+        return newUser;
+      } finally {
+        // Закрываем соединение
+        await createClient.end().catch(e => console.error("Error closing create client:", e));
+      }
+    } catch (createError) {
+      console.error(`Failed to create user with ID ${userId}:`, createError);
+      
+      // Последняя попытка - найти пользователя по ID снова
+      // (возможно, он был создан параллельным запросом)
+      const [lastChanceUser] = await db
+        .select()
+        .from(user)
+        .where(eq(user.id, userId));
+      
+      if (lastChanceUser) {
+        console.log(`Found user with ID ${userId} on second check`);
+        return lastChanceUser;
+      }
+      
+      // Если до сих пор не найден, попробуем найти по email снова и вернуть его
+      const [lastChanceUserByEmail] = await db
+        .select()
+        .from(user)
+        .where(eq(user.email, email));
+      
+      if (lastChanceUserByEmail) {
+        console.log(`Found user by email ${email} with ID ${lastChanceUserByEmail.id}`);
+        return lastChanceUserByEmail;
+      }
+      
+      throw createError;
     }
-
-    console.log(
-      `Created new OAuth user with ID: ${userId} and email: ${email}`,
-    );
-    return newUser;
   } catch (error) {
     console.error('Failed to get or create OAuth user:', error);
     throw error;
