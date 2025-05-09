@@ -11,8 +11,6 @@ import { authConfig } from './auth.config';
 import { DUMMY_PASSWORD } from '@/lib/constants';
 import type { DefaultJWT } from 'next-auth/jwt';
 import { nanoid } from 'nanoid';
-import { useRouter } from 'next/navigation';
-import { useToast } from '@/components/ui/use-toast';
 
 export type UserType = 'guest' | 'regular';
 
