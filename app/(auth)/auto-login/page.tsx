@@ -1,12 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { signIn, useSession } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { LoaderIcon } from '@/components/icons';
 import { Button } from '@/components/ui/button';
 
-export default function AutoLogin() {
+function AutoLoginContent() {
   const { status } = useSession();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -59,5 +59,26 @@ export default function AutoLogin() {
         </p>
       </div>
     </div>
+  );
+}
+
+export default function AutoLogin() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex h-dvh w-screen items-center justify-center bg-background">
+          <div className="flex flex-col items-center gap-4">
+            <div className="animate-spin text-zinc-500 size-12">
+              <LoaderIcon size={48} />
+            </div>
+            <p className="text-lg text-zinc-600 dark:text-zinc-400">
+              Загрузка...
+            </p>
+          </div>
+        </div>
+      }
+    >
+      <AutoLoginContent />
+    </Suspense>
   );
 }

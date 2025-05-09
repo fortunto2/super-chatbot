@@ -2,7 +2,7 @@
 
 import type { Attachment, UIMessage } from 'ai';
 import { useChat } from '@ai-sdk/react';
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import useSWR, { useSWRConfig } from 'swr';
 import { ChatHeader } from '@/components/chat-header';
 import type { Vote } from '@/lib/db/schema';
@@ -19,8 +19,9 @@ import type { Session } from 'next-auth';
 import { useSearchParams } from 'next/navigation';
 import { useChatVisibility } from '@/hooks/use-chat-visibility';
 import { useAutoResume } from '@/hooks/use-auto-resume';
+import { LoaderIcon } from './icons';
 
-export function Chat({
+function ChatContent({
   id,
   initialMessages,
   initialChatModel,
@@ -172,5 +173,36 @@ export function Chat({
         selectedVisibilityType={visibilityType}
       />
     </>
+  );
+}
+
+export function Chat(props: {
+  id: string;
+  initialMessages: Array<UIMessage>;
+  initialChatModel: string;
+  initialVisibilityType: VisibilityType;
+  isReadonly: boolean;
+  session: Session;
+  autoResume: boolean;
+}) {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex flex-col min-w-0 h-dvh bg-background">
+          <div className="flex items-center justify-center h-dvh">
+            <div className="flex flex-col items-center gap-4">
+              <div className="animate-spin text-zinc-500 size-12">
+                <LoaderIcon size={48} />
+              </div>
+              <p className="text-lg text-zinc-600 dark:text-zinc-400">
+                Загрузка чата...
+              </p>
+            </div>
+          </div>
+        </div>
+      }
+    >
+      <ChatContent {...props} />
+    </Suspense>
   );
 }
