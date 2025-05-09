@@ -1,10 +1,18 @@
 import { compare } from 'bcrypt-ts';
 import NextAuth, { type DefaultSession } from 'next-auth';
 import Credentials from 'next-auth/providers/credentials';
-import { createGuestUser, getUser } from '@/lib/db/queries';
+import Auth0Provider from 'next-auth/providers/auth0';
+import {
+  createGuestUser,
+  getUser,
+  getOrCreateOAuthUser,
+} from '@/lib/db/queries';
 import { authConfig } from './auth.config';
 import { DUMMY_PASSWORD } from '@/lib/constants';
 import type { DefaultJWT } from 'next-auth/jwt';
+import { nanoid } from 'nanoid';
+import { useRouter } from 'next/navigation';
+import { useToast } from '@/components/ui/use-toast';
 
 export type UserType = 'guest' | 'regular';
 
@@ -38,6 +46,11 @@ export const {
 } = NextAuth({
   ...authConfig,
   providers: [
+    Auth0Provider({
+      clientId: process.env.AUTH_AUTH0_ID as string,
+      clientSecret: process.env.AUTH_AUTH0_SECRET as string,
+      issuer: process.env.AUTH_AUTH0_ISSUER as string,
+    }),
     Credentials({
       credentials: {},
       async authorize({ email, password }: any) {
@@ -72,10 +85,26 @@ export const {
     }),
   ],
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, account }) {
       if (user) {
         token.id = user.id as string;
         token.type = user.type;
+      }
+
+      if (account && account.provider === 'auth0') {
+        token.type = 'regular';
+
+        if (!token.id) {
+          token.id = nanoid();
+        }
+
+        try {
+          if (token.email) {
+            await getOrCreateOAuthUser(token.id, token.email);
+          }
+        } catch (error) {
+          console.error('Error syncing Auth0 user with database:', error);
+        }
       }
 
       return token;
@@ -84,6 +113,18 @@ export const {
       if (session.user) {
         session.user.id = token.id;
         session.user.type = token.type;
+
+        // Additional synchronization of OAuth user with each session request
+        if (token.email && token.type === 'regular') {
+          try {
+            await getOrCreateOAuthUser(token.id, token.email);
+          } catch (error) {
+            console.error(
+              'Error syncing Auth0 user during session check:',
+              error,
+            );
+          }
+        }
       }
 
       return session;

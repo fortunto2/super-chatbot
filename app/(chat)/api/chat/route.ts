@@ -16,6 +16,7 @@ import {
   getStreamIdsByChatId,
   saveChat,
   saveMessages,
+  getOrCreateOAuthUser,
 } from '@/lib/db/queries';
 import { generateUUID, getTrailingMessageId } from '@/lib/utils';
 import { generateTitleFromUserMessage } from '../../actions';
@@ -39,6 +40,47 @@ import { differenceInSeconds } from 'date-fns';
 export const maxDuration = 60;
 
 let globalStreamContext: ResumableStreamContext | null = null;
+
+/**
+ * Formats error response based on environment
+ * @param error - error object
+ * @param context - error context for easier debugging
+ * @returns Response object with formatted error
+ */
+function formatErrorResponse(error: unknown, context = 'API') {
+  console.error(`Error in ${context}:`, error);
+
+  // In development mode return detailed error information
+  if (!isProductionEnvironment) {
+    const errorMessage =
+      error instanceof Error
+        ? `${error.message}\n\n${error.stack}`
+        : 'Unknown error';
+
+    return new Response(
+      JSON.stringify(
+        {
+          error: `Error in ${context}`,
+          details: errorMessage,
+          timestamp: new Date().toISOString(),
+        },
+        null,
+        2,
+      ),
+      {
+        status: 500,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      },
+    );
+  }
+
+  // In production return generic message
+  return new Response('An error occurred while processing your request!', {
+    status: 500,
+  });
+}
 
 function getStreamContext() {
   if (!globalStreamContext) {
@@ -66,7 +108,29 @@ export async function POST(request: Request) {
   try {
     const json = await request.json();
     requestBody = postRequestBodySchema.parse(json);
-  } catch (_) {
+  } catch (error) {
+    console.error('Invalid request body:', error);
+
+    if (!isProductionEnvironment) {
+      return new Response(
+        JSON.stringify(
+          {
+            error: 'Invalid request data',
+            details: error instanceof Error ? error.message : 'Unknown error',
+            timestamp: new Date().toISOString(),
+          },
+          null,
+          2,
+        ),
+        {
+          status: 400,
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        },
+      );
+    }
+
     return new Response('Invalid request body', { status: 400 });
   }
 
@@ -103,12 +167,50 @@ export async function POST(request: Request) {
         message,
       });
 
-      await saveChat({
-        id,
-        userId: session.user.id,
-        title,
-        visibility: selectedVisibilityType,
-      });
+      try {
+        await saveChat({
+          id,
+          userId: session.user.id,
+          title,
+          visibility: selectedVisibilityType,
+        });
+      } catch (error) {
+        console.error('Failed to save chat:', error);
+
+        // Check if the error is a foreign key constraint violation (missing user)
+        if (
+          error instanceof Error &&
+          error.message.includes('foreign key constraint') &&
+          (error.message.includes('Chat_userId_User_id_fk') ||
+            error.message.includes('Key (userId)'))
+        ) {
+          console.log(`Trying to auto-create user with ID: ${session.user.id}`);
+
+          try {
+            // Try to automatically create user with this ID
+            const email =
+              session.user.email || `auth0-user-${session.user.id}@example.com`;
+
+            await getOrCreateOAuthUser(session.user.id, email);
+
+            // Try to save the chat again after creating the user
+            await saveChat({
+              id,
+              userId: session.user.id,
+              title,
+              visibility: selectedVisibilityType,
+            });
+          } catch (innerError) {
+            console.error(
+              'Failed to auto-create user and save chat:',
+              innerError,
+            );
+            // Continue execution, as we can still try to process the message without saving the chat
+          }
+        } else {
+          // Continue execution for other types of errors
+        }
+      }
     } else {
       if (chat.userId !== session.user.id) {
         return new Response('Forbidden', { status: 403 });
@@ -132,21 +234,118 @@ export async function POST(request: Request) {
       country,
     };
 
-    await saveMessages({
-      messages: [
-        {
-          chatId: id,
-          id: message.id,
-          role: 'user',
-          parts: message.parts,
-          attachments: message.experimental_attachments ?? [],
-          createdAt: new Date(),
-        },
-      ],
-    });
+    try {
+      await saveMessages({
+        messages: [
+          {
+            chatId: id,
+            id: message.id,
+            role: 'user',
+            parts: message.parts,
+            attachments: message.experimental_attachments ?? [],
+            createdAt: new Date(),
+          },
+        ],
+      });
+    } catch (error) {
+      console.error('Failed to save user message:', error);
+
+      // If the error is related to missing chat, try to recreate it
+      if (
+        error instanceof Error &&
+        error.message.includes('foreign key constraint') &&
+        (error.message.includes('Message_v2_chatId_Chat_id_fk') ||
+          error.message.includes('Key (chatId)'))
+      ) {
+        console.log(`Trying to recreate chat with ID: ${id}`);
+
+        try {
+          // Check if user exists, create if not
+          if (session.user.email) {
+            await getOrCreateOAuthUser(session.user.id, session.user.email);
+          }
+
+          // Try to recreate the chat
+          const title = await generateTitleFromUserMessage({
+            message,
+          });
+
+          await saveChat({
+            id,
+            userId: session.user.id,
+            title,
+            visibility: selectedVisibilityType,
+          });
+
+          // Try to save message again
+          await saveMessages({
+            messages: [
+              {
+                chatId: id,
+                id: message.id,
+                role: 'user',
+                parts: message.parts,
+                attachments: message.experimental_attachments ?? [],
+                createdAt: new Date(),
+              },
+            ],
+          });
+        } catch (innerError) {
+          console.error(
+            'Failed to recreate chat and save message:',
+            innerError,
+          );
+          // Continue execution to let the user get a response
+        }
+      }
+      // Continue execution, as we can still try to get a response without saving the message
+    }
 
     const streamId = generateUUID();
-    await createStreamId({ streamId, chatId: id });
+    try {
+      await createStreamId({ streamId, chatId: id });
+    } catch (error) {
+      console.error('Failed to create stream id in database', error);
+
+      // If the error is related to missing chat, try to recreate it
+      if (
+        error instanceof Error &&
+        error.message.includes('foreign key constraint') &&
+        (error.message.includes('Stream_chatId_Chat_id_fk') ||
+          error.message.includes('Key (chatId)'))
+      ) {
+        console.log(`Trying to recreate chat for stream with ID: ${id}`);
+
+        try {
+          // Check if user exists, create if not
+          if (session.user.email) {
+            await getOrCreateOAuthUser(session.user.id, session.user.email);
+          }
+
+          // Try to recreate the chat
+          const title = await generateTitleFromUserMessage({
+            message,
+          });
+
+          await saveChat({
+            id,
+            userId: session.user.id,
+            title,
+            visibility: selectedVisibilityType,
+          });
+
+          // Try to create stream ID again
+          await createStreamId({ streamId, chatId: id });
+        } catch (innerError) {
+          console.error(
+            'Failed to recreate chat and create stream ID:',
+            innerError,
+          );
+          // Continue execution as stream can be created even without DB record
+        }
+      }
+      // Continue execution, as we can proceed without DB record
+    }
 
     const stream = createDataStream({
       execute: (dataStream) => {
@@ -206,8 +405,11 @@ export async function POST(request: Request) {
                     },
                   ],
                 });
-              } catch (_) {
-                console.error('Failed to save chat');
+              } catch (error) {
+                console.error('Failed to save assistant message:', error);
+                if (error instanceof Error) {
+                  console.error(error.stack);
+                }
               }
             }
           },
@@ -237,106 +439,112 @@ export async function POST(request: Request) {
     } else {
       return new Response(stream);
     }
-  } catch (_) {
-    return new Response('An error occurred while processing your request!', {
-      status: 500,
-    });
+  } catch (error) {
+    return formatErrorResponse(error);
   }
 }
 
 export async function GET(request: Request) {
-  const streamContext = getStreamContext();
-  const resumeRequestedAt = new Date();
-
-  if (!streamContext) {
-    return new Response(null, { status: 204 });
-  }
-
-  const { searchParams } = new URL(request.url);
-  const chatId = searchParams.get('chatId');
-
-  if (!chatId) {
-    return new Response('id is required', { status: 400 });
-  }
-
-  const session = await auth();
-
-  if (!session?.user) {
-    return new Response('Unauthorized', { status: 401 });
-  }
-
-  let chat: Chat;
-
   try {
-    chat = await getChatById({ id: chatId });
-  } catch {
-    return new Response('Not found', { status: 404 });
-  }
+    const streamContext = getStreamContext();
+    const resumeRequestedAt = new Date();
 
-  if (!chat) {
-    return new Response('Not found', { status: 404 });
-  }
-
-  if (chat.visibility === 'private' && chat.userId !== session.user.id) {
-    return new Response('Forbidden', { status: 403 });
-  }
-
-  const streamIds = await getStreamIdsByChatId({ chatId });
-
-  if (!streamIds.length) {
-    return new Response('No streams found', { status: 404 });
-  }
-
-  const recentStreamId = streamIds.at(-1);
-
-  if (!recentStreamId) {
-    return new Response('No recent stream found', { status: 404 });
-  }
-
-  const emptyDataStream = createDataStream({
-    execute: () => {},
-  });
-
-  const stream = await streamContext.resumableStream(
-    recentStreamId,
-    () => emptyDataStream,
-  );
-
-  /*
-   * For when the generation is streaming during SSR
-   * but the resumable stream has concluded at this point.
-   */
-  if (!stream) {
-    const messages = await getMessagesByChatId({ id: chatId });
-    const mostRecentMessage = messages.at(-1);
-
-    if (!mostRecentMessage) {
-      return new Response(emptyDataStream, { status: 200 });
+    if (!streamContext) {
+      return new Response(null, { status: 204 });
     }
 
-    if (mostRecentMessage.role !== 'assistant') {
-      return new Response(emptyDataStream, { status: 200 });
+    const { searchParams } = new URL(request.url);
+    const chatId = searchParams.get('chatId');
+
+    if (!chatId) {
+      return new Response('id is required', { status: 400 });
     }
 
-    const messageCreatedAt = new Date(mostRecentMessage.createdAt);
+    const session = await auth();
 
-    if (differenceInSeconds(resumeRequestedAt, messageCreatedAt) > 15) {
-      return new Response(emptyDataStream, { status: 200 });
+    if (!session?.user) {
+      return new Response('Unauthorized', { status: 401 });
     }
 
-    const restoredStream = createDataStream({
-      execute: (buffer) => {
-        buffer.writeData({
-          type: 'append-message',
-          message: JSON.stringify(mostRecentMessage),
-        });
-      },
+    let chat: Chat;
+
+    try {
+      chat = await getChatById({ id: chatId });
+    } catch (error) {
+      return formatErrorResponse(error, 'GET chat/getChatById');
+    }
+
+    if (!chat) {
+      return new Response('Not found', { status: 404 });
+    }
+
+    if (chat.visibility === 'private' && chat.userId !== session.user.id) {
+      return new Response('Forbidden', { status: 403 });
+    }
+
+    const streamIds = await getStreamIdsByChatId({ chatId });
+
+    if (!streamIds.length) {
+      return new Response('No streams found', { status: 404 });
+    }
+
+    const recentStreamId = streamIds.at(-1);
+
+    if (!recentStreamId) {
+      return new Response('No recent stream found', { status: 404 });
+    }
+
+    const emptyDataStream = createDataStream({
+      execute: () => {},
     });
 
-    return new Response(restoredStream, { status: 200 });
-  }
+    const stream = await streamContext.resumableStream(
+      recentStreamId,
+      () => emptyDataStream,
+    );
 
-  return new Response(stream, { status: 200 });
+    /*
+     * For when the generation is streaming during SSR
+     * but the resumable stream has concluded at this point.
+     */
+    if (!stream) {
+      try {
+        const messages = await getMessagesByChatId({ id: chatId });
+        const mostRecentMessage = messages.at(-1);
+
+        if (!mostRecentMessage) {
+          return new Response(emptyDataStream, { status: 200 });
+        }
+
+        if (mostRecentMessage.role !== 'assistant') {
+          return new Response(emptyDataStream, { status: 200 });
+        }
+
+        const messageCreatedAt = new Date(mostRecentMessage.createdAt);
+
+        if (differenceInSeconds(resumeRequestedAt, messageCreatedAt) > 15) {
+          return new Response(emptyDataStream, { status: 200 });
+        }
+
+        const restoredStream = createDataStream({
+          execute: (buffer) => {
+            buffer.writeData({
+              type: 'append-message',
+              message: JSON.stringify(mostRecentMessage),
+            });
+          },
+        });
+
+        return new Response(restoredStream, { status: 200 });
+      } catch (error) {
+        return formatErrorResponse(error, 'GET chat/restoreStream');
+      }
+    }
+
+    return new Response(stream, { status: 200 });
+  } catch (error) {
+    return formatErrorResponse(error, 'GET chat');
+  }
 }
 
 export async function DELETE(request: Request) {
@@ -364,9 +572,6 @@ export async function DELETE(request: Request) {
 
     return Response.json(deletedChat, { status: 200 });
   } catch (error) {
-    console.error(error);
-    return new Response('An error occurred while processing your request!', {
-      status: 500,
-    });
+    return formatErrorResponse(error);
   }
 }

@@ -50,6 +50,55 @@ export async function getUser(email: string): Promise<Array<User>> {
   }
 }
 
+/**
+ * Creates or gets an OAuth user
+ * Used to create accounts for users authenticated through Auth0
+ */
+export async function getOrCreateOAuthUser(
+  userId: string,
+  email: string,
+): Promise<User> {
+  try {
+    // First check if user exists with this ID
+    const [existingUserById] = await db
+      .select()
+      .from(user)
+      .where(eq(user.id, userId));
+
+    if (existingUserById) {
+      return existingUserById;
+    }
+
+    // Then check if user exists with this email
+    const existingUsers = await getUser(email);
+    if (existingUsers.length > 0) {
+      return existingUsers[0];
+    }
+
+    // If user not found, create a new one
+    const [newUser] = await db
+      .insert(user)
+      .values({
+        id: userId,
+        email,
+        password: null, // OAuth users don't have a password
+      })
+      .returning();
+
+    if (!newUser) {
+      throw new Error('Failed to create OAuth user');
+    }
+
+    console.log(
+      `Created new OAuth user with ID: ${userId} and email: ${email}`,
+    );
+    return newUser;
+  } catch (error) {
+    console.error('Failed to get or create OAuth user:', error);
+    throw error;
+  }
+}
+
 export async function createUser(email: string, password: string) {
   const hashedPassword = generateHashedPassword(password);
 
