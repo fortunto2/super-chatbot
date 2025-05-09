@@ -17,6 +17,7 @@ import {
   saveChat,
   saveMessages,
   getOrCreateOAuthUser,
+  getUser,
 } from '@/lib/db/queries';
 import { generateUUID, getTrailingMessageId } from '@/lib/utils';
 import { generateTitleFromUserMessage } from '../../actions';
@@ -36,6 +37,7 @@ import {
 import { after } from 'next/server';
 import type { Chat } from '@/lib/db/schema';
 import { differenceInSeconds } from 'date-fns';
+import * as Sentry from '@sentry/nextjs';
 
 export const maxDuration = 60;
 
@@ -144,7 +146,50 @@ export async function POST(request: Request) {
       return new Response('Unauthorized', { status: 401 });
     }
 
+    // Логируем данные сессии для отладки
+    Sentry.addBreadcrumb({
+      category: 'auth',
+      message: 'Session user info before chat creation',
+      level: 'info',
+      data: {
+        userId: session.user.id,
+        email: session.user.email,
+        type: session.user.type
+      }
+    });
+
     const userType: UserType = session.user.type;
+
+    // Перед созданием чата убедимся, что пользователь существует в БД
+    try {
+      const users = await getUser(session.user.email || '');
+      if (users.length === 0) {
+        // Если поиск по email не дал результатов, принудительно создаем пользователя
+        console.log(`User not found by email, trying to ensure user exists: ${session.user.id}`);
+        await getOrCreateOAuthUser(
+          session.user.id,
+          session.user.email || `user-${session.user.id}@example.com`
+        );
+
+        // Логируем успешное создание пользователя
+        Sentry.addBreadcrumb({
+          category: 'auth',
+          message: 'User created before chat creation',
+          level: 'info',
+          data: { userId: session.user.id }
+        });
+      }
+    } catch (userError) {
+      console.error('Failed to ensure user exists:', userError);
+      Sentry.captureException(userError, {
+        tags: { operation: 'user_check_before_chat' },
+        extra: { 
+          userId: session.user.id,
+          email: session.user.email
+        }
+      });
+      // Продолжаем выполнение, но логируем ошибку
+    }
 
     const messageCount = await getMessageCountByUserId({
       id: session.user.id,
@@ -167,6 +212,7 @@ export async function POST(request: Request) {
         message,
       });
 
+      let savedChat = false;
       try {
         await saveChat({
           id,
@@ -174,45 +220,122 @@ export async function POST(request: Request) {
           title,
           visibility: selectedVisibilityType,
         });
+        savedChat = true;
+        
+        // Логируем успешное создание чата
+        Sentry.addBreadcrumb({
+          category: 'chat',
+          message: `Chat created: ${id}`,
+          level: 'info',
+          data: { 
+            chatId: id,
+            userId: session.user.id,
+            visibility: selectedVisibilityType
+          }
+        });
       } catch (error) {
         console.error('Failed to save chat:', error);
-
-        // Check if the error is a foreign key constraint violation (missing user)
+        
+        // Добавляем проверку на ошибку внешнего ключа
         if (
           error instanceof Error &&
           error.message.includes('foreign key constraint') &&
           (error.message.includes('Chat_userId_User_id_fk') ||
             error.message.includes('Key (userId)'))
         ) {
+          // Логируем событие в Sentry
+          Sentry.captureException(error, {
+            tags: { error_type: 'foreign_key_constraint', entity: 'chat' },
+            extra: { 
+              chatId: id,
+              userId: session.user.id,
+              email: session.user.email || 'unknown'
+            }
+          });
+          
           console.log(`Trying to auto-create user with ID: ${session.user.id}`);
 
           try {
-            // Try to automatically create user with this ID
+            // Пытаемся принудительно создать пользователя и чат
             const email =
               session.user.email || `auth0-user-${session.user.id}@example.com`;
 
-            await getOrCreateOAuthUser(session.user.id, email);
+            const createdUser = await getOrCreateOAuthUser(session.user.id, email);
+            console.log(`User created: ${JSON.stringify(createdUser)}`);
 
-            // Try to save the chat again after creating the user
+            // Повторно пытаемся сохранить чат
             await saveChat({
               id,
               userId: session.user.id,
               title,
               visibility: selectedVisibilityType,
             });
+            savedChat = true;
+            
+            // Логируем успешное восстановление ситуации
+            Sentry.addBreadcrumb({
+              category: 'chat',
+              message: `Chat created after user recovery: ${id}`,
+              level: 'info',
+              data: { chatId: id, userId: session.user.id }
+            });
           } catch (innerError) {
             console.error(
               'Failed to auto-create user and save chat:',
               innerError,
             );
-            // Continue execution, as we can still try to process the message without saving the chat
+            
+            // Логируем ошибку в Sentry
+            Sentry.captureException(innerError, {
+              tags: { error_type: 'failed_chat_recovery', entity: 'user_and_chat' },
+              extra: { 
+                chatId: id,
+                userId: session.user.id,
+                email: session.user.email || 'unknown'
+              }
+            });
+            
+            // В этом случае, если создание чата критично, можно вернуть ошибку клиенту
+            return new Response('Failed to create chat. Please try again later.', {
+              status: 500,
+            });
           }
         } else {
-          // Continue execution for other types of errors
+          // Логируем другие типы ошибок
+          Sentry.captureException(error, {
+            tags: { error_type: 'chat_creation', entity: 'chat' },
+            extra: { 
+              chatId: id,
+              userId: session.user.id
+            }
+          });
+          
+          // Для других ошибок также можно вернуть ошибку клиенту
+          return new Response('Failed to create chat. Please try again later.', {
+            status: 500,
+          });
         }
+      }
+      
+      // Если чат все еще не удалось сохранить, возвращаем ошибку
+      if (!savedChat) {
+        return new Response('Failed to create chat. Please try again later.', {
+          status: 500,
+        });
       }
     } else {
       if (chat.userId !== session.user.id) {
+        // Логируем попытку доступа к чужому чату
+        Sentry.captureMessage(`Unauthorized chat access attempt: ${id}`, {
+          level: 'warning',
+          tags: { error_type: 'unauthorized', entity: 'chat' },
+          extra: { 
+            chatId: id,
+            chatOwnerId: chat.userId,
+            userId: session.user.id
+          }
+        });
+        
         return new Response('Forbidden', { status: 403 });
       }
     }

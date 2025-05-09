@@ -11,6 +11,7 @@ import { authConfig } from './auth.config';
 import { DUMMY_PASSWORD } from '@/lib/constants';
 import type { DefaultJWT } from 'next-auth/jwt';
 import { nanoid } from 'nanoid';
+import * as Sentry from '@sentry/nextjs';
 
 export type UserType = 'guest' | 'regular';
 
@@ -34,6 +35,45 @@ declare module 'next-auth/jwt' {
     id: string;
     type: UserType;
   }
+}
+
+/**
+ * Синхронизирует пользователя Auth0 с БД с надежной обработкой ошибок
+ * Повторяет попытку три раза в случае неудачи
+ */
+async function syncAuth0User(userId: string, email: string | null) {
+  const maxRetries = 3;
+  let lastError = null;
+
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      if (email) {
+        const user = await getOrCreateOAuthUser(userId, email);
+        return user;
+      }
+      return null;
+    } catch (error) {
+      console.error(`Failed to sync Auth0 user (attempt ${attempt + 1}):`, error);
+      lastError = error;
+      
+      // Ждем перед следующей попыткой (нарастающее время ожидания)
+      if (attempt < maxRetries - 1) {
+        await new Promise(resolve => setTimeout(resolve, 100 * Math.pow(2, attempt)));
+      }
+    }
+  }
+
+  // Логируем ошибку в Sentry, если все попытки неудачны
+  Sentry.captureException(lastError, {
+    tags: { error_type: 'auth0_sync_failure' },
+    extra: { 
+      userId,
+      email,
+      attempts: maxRetries
+    }
+  });
+  
+  return null;
 }
 
 export const {
@@ -92,16 +132,42 @@ export const {
       if (account && account.provider === 'auth0') {
         token.type = 'regular';
 
+        // Если ID отсутствует, генерируем его
         if (!token.id) {
           token.id = nanoid();
         }
 
+        // Логируем информацию для отладки
+        Sentry.addBreadcrumb({
+          category: 'auth',
+          message: 'Processing Auth0 account',
+          level: 'info',
+          data: { 
+            tokenId: token.id, 
+            tokenEmail: token.email,
+            tokenName: token.name,
+            provider: account.provider 
+          }
+        });
+
         try {
           if (token.email) {
-            await getOrCreateOAuthUser(token.id, token.email);
+            // Используем улучшенную версию с повторными попытками
+            await syncAuth0User(token.id, token.email);
           }
         } catch (error) {
           console.error('Error syncing Auth0 user with database:', error);
+          // Логируем ошибку в Sentry
+          Sentry.captureException(error, {
+            tags: { 
+              error_type: 'auth0_db_sync',
+              phase: 'jwt_callback'
+            },
+            extra: { 
+              tokenId: token.id,
+              tokenEmail: token.email 
+            }
+          });
         }
       }
 
@@ -112,15 +178,27 @@ export const {
         session.user.id = token.id;
         session.user.type = token.type;
 
-        // Additional synchronization of OAuth user with each session request
+        // Дополнительная синхронизация пользователя OAuth с каждым запросом сессии
         if (token.email && token.type === 'regular') {
           try {
-            await getOrCreateOAuthUser(token.id, token.email);
+            // Используем улучшенную версию с повторными попытками
+            await syncAuth0User(token.id, token.email);
           } catch (error) {
             console.error(
               'Error syncing Auth0 user during session check:',
               error,
             );
+            // Логируем ошибку в Sentry
+            Sentry.captureException(error, {
+              tags: { 
+                error_type: 'auth0_db_sync',
+                phase: 'session_callback'
+              },
+              extra: { 
+                tokenId: token.id,
+                tokenEmail: token.email 
+              }
+            });
           }
         }
       }
