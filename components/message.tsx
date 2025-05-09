@@ -19,6 +19,7 @@ import { MessageEditor } from './message-editor';
 import { DocumentPreview } from './document-preview';
 import { MessageReasoning } from './message-reasoning';
 import type { UseChatHelpers } from '@ai-sdk/react';
+import { MessageReasoningDebug } from './message-reasoning-debug';
 
 const PurePreviewMessage = ({
   chatId,
@@ -87,25 +88,142 @@ const PurePreviewMessage = ({
                 </div>
               )}
 
+            {/* Отладочная информация о сообщении со всеми полями */}
+            {message.role === 'assistant' && (
+              <div className="text-xs text-muted-foreground mb-2 bg-muted p-2 rounded">
+                <details>
+                  <summary>Debug info (expand)</summary>
+                  <pre className="text-xs overflow-auto">
+                    {JSON.stringify(message, null, 2)}
+                  </pre>
+                </details>
+              </div>
+            )}
+
+            {/* Если есть поля reasoning или content с рассуждениями в сообщении */}
+            {message.role === 'assistant' && (
+              message.reasoning || 
+              (message.content && typeof message.content === 'string' && message.content.includes("<think>"))
+            ) && (
+              <MessageReasoningDebug
+                key={`reasoning-direct-${message.id}`}
+                isLoading={isLoading}
+                reasoning={message.reasoning || message.content}
+                message={message}
+              />
+            )}
+
             {message.parts?.map((part, index) => {
               const { type } = part;
               const key = `message-${message.id}-part-${index}`;
 
+              // Отладочное логирование для всех частей сообщения
+              if (message.role === 'assistant') {
+                console.log(`Message part ${index}:`, JSON.stringify({
+                  type, 
+                  partKeys: Object.keys(part),
+                  hasTextDelta: 'textDelta' in part,
+                  hasText: 'text' in part
+                }));
+              }
+
               if (type === 'reasoning') {
+                // В AI SDK 4.2 рассуждения могут находиться в разных полях
+                let reasoningText = '';
+                
+                // Пробуем получить текст рассуждений из поля reasoning
+                if ('reasoning' in part) {
+                  reasoningText = (part as any).reasoning;
+                } 
+                // Пробуем получить из textDelta
+                else if ('textDelta' in part) {
+                  reasoningText = (part as any).textDelta;
+                }
+                // Или из поля text
+                else if ('text' in part) {
+                  reasoningText = (part as any).text;
+                }
+                
                 return (
-                  <MessageReasoning
+                  <MessageReasoningDebug
                     key={key}
                     isLoading={isLoading}
-                    reasoning={part.reasoning}
+                    reasoning={reasoningText}
+                    message={message}
+                  />
+                );
+              }
+
+              // Проверяем, нет ли reasoning в message напрямую
+              if (index === 0 && message.reasoning && typeof message.reasoning === 'string') {
+                return (
+                  <MessageReasoningDebug
+                    key={`reasoning-root`}
+                    isLoading={isLoading}
+                    reasoning={message.reasoning}
+                    message={message}
                   />
                 );
               }
 
               if (type === 'text') {
                 if (mode === 'view') {
+                  // Ищем рассуждения в тексте части сообщения
+                  if (message.role === 'assistant' && part.text) {
+                    const thinkMatch = part.text.match(/<think>(.*?)<\/think>/s);
+                    if (thinkMatch && thinkMatch[1]) {
+                      // Отображаем рассуждения
+                      const reasoningText = thinkMatch[1].trim();
+                      
+                      // Очищаем текст от тегов think для отображения в обычной части
+                      const cleanText = part.text.replace(/<think>.*?<\/think>/s, '').trim();
+                      
+                      // Показываем как рассуждения, так и очищенный текст
+                      return (
+                        <div key={key}>
+                          <MessageReasoningDebug
+                            key={`reasoning-inline-${message.id}-${index}`}
+                            isLoading={isLoading}
+                            reasoning={reasoningText}
+                            message={message}
+                          />
+                          <div className="flex flex-row gap-2 items-start">
+                            {message.role !== 'assistant' && !isReadonly && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    data-testid="message-edit-button"
+                                    variant="ghost"
+                                    className="px-2 h-fit rounded-full text-muted-foreground opacity-0 group-hover/message:opacity-100"
+                                    onClick={() => {
+                                      setMode('edit');
+                                    }}
+                                  >
+                                    <PencilEditIcon />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Edit message</TooltipContent>
+                              </Tooltip>
+                            )}
+
+                            <div
+                              data-testid="message-content"
+                              className={cn('flex flex-col gap-4', {
+                                'bg-primary text-primary-foreground px-3 py-2 rounded-xl':
+                                  message.role !== 'assistant',
+                              })}
+                            >
+                              <Markdown>{sanitizeText(cleanText)}</Markdown>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    }
+                  }
+                  
                   return (
                     <div key={key} className="flex flex-row gap-2 items-start">
-                      {message.role === 'user' && !isReadonly && (
+                      {message.role !== 'assistant' && !isReadonly && (
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <Button
@@ -127,7 +245,7 @@ const PurePreviewMessage = ({
                         data-testid="message-content"
                         className={cn('flex flex-col gap-4', {
                           'bg-primary text-primary-foreground px-3 py-2 rounded-xl':
-                            message.role === 'user',
+                            message.role !== 'assistant',
                         })}
                       >
                         <Markdown>{sanitizeText(part.text)}</Markdown>

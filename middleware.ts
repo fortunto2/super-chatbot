@@ -25,6 +25,11 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // Разрешаем доступ к отладочной странице без аутентификации
+  if (pathname.startsWith('/debug')) {
+    return NextResponse.next();
+  }
+
   // Пропускаем запросы на туннелирование Sentry
   if (pathname.startsWith('/monitoring')) {
     return NextResponse.next();

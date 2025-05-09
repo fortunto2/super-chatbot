@@ -20,6 +20,8 @@ import { useSearchParams } from 'next/navigation';
 import { useChatVisibility } from '@/hooks/use-chat-visibility';
 import { useAutoResume } from '@/hooks/use-auto-resume';
 import { LoaderIcon } from './icons';
+import { cn } from '@/lib/utils';
+import { PreviewMessage, ThinkingMessage } from './message';
 
 function ChatContent({
   id,
@@ -172,6 +174,30 @@ function ChatContent({
         isReadonly={isReadonly}
         selectedVisibilityType={visibilityType}
       />
+
+      <div className="pb-48 pt-4 md:pt-8">
+        {initialMessages?.length ? (
+          <>
+            {messages.map((message) => (
+              <PreviewMessage
+                key={message.id}
+                chatId={id}
+                message={message}
+                vote={votes?.find((vote) => vote.messageId === message.id)}
+                isLoading={status === 'streaming'}
+                setMessages={setMessages}
+                reload={reload}
+                isReadonly={isReadonly}
+                requiresScrollPadding={
+                  message.id === messages[messages.length - 1].id &&
+                  message.role === 'assistant'
+                }
+              />
+            ))}
+            {status === 'streaming' && <ThinkingMessage />}
+          </>
+        ) : null}
+      </div>
     </>
   );
 }

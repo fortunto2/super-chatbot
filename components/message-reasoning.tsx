@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ChevronDownIcon, LoaderIcon } from './icons';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Markdown } from './markdown';
@@ -15,6 +15,14 @@ export function MessageReasoning({
   reasoning,
 }: MessageReasoningProps) {
   const [isExpanded, setIsExpanded] = useState(true);
+  
+  useEffect(() => {
+    console.log('MessageReasoning received:', {
+      hasReasoning: !!reasoning,
+      reasoningLength: reasoning?.length || 0,
+      reasoningSample: reasoning?.substring(0, 30) || '',
+    });
+  }, [reasoning]);
 
   const variants = {
     collapsed: {
@@ -31,6 +39,11 @@ export function MessageReasoning({
     },
   };
 
+  // Проверяем, есть ли содержимое в рассуждениях
+  if (!reasoning || reasoning.trim() === '') {
+    return null;
+  }
+
   return (
     <div className="flex flex-col">
       {isLoading ? (
@@ -42,7 +55,7 @@ export function MessageReasoning({
         </div>
       ) : (
         <div className="flex flex-row gap-2 items-center">
-          <div className="font-medium">Reasoned for a few seconds</div>
+          <div className="font-medium">AI reasoning ({reasoning.length} chars)</div>
           <button
             data-testid="message-reasoning-toggle"
             type="button"
