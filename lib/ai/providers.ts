@@ -1,37 +1,58 @@
-import {
-  customProvider,
-  extractReasoningMiddleware,
-  wrapLanguageModel,
-} from 'ai';
-import { xai } from '@ai-sdk/xai';
-import { isTestEnvironment } from '../constants';
+import { customProvider } from 'ai';
 import {
   artifactModel,
   chatModel,
   reasoningModel,
   titleModel,
 } from './models.test';
+import { createAzure } from '@ai-sdk/azure';
 
-export const myProvider = isTestEnvironment
-  ? customProvider({
-      languageModels: {
-        'chat-model': chatModel,
-        'chat-model-reasoning': reasoningModel,
-        'title-model': titleModel,
-        'artifact-model': artifactModel,
-      },
-    })
-  : customProvider({
-      languageModels: {
-        'chat-model': xai('grok-2-vision-1212'),
-        'chat-model-reasoning': wrapLanguageModel({
-          model: xai('grok-3-mini-beta'),
-          middleware: extractReasoningMiddleware({ tagName: 'think' }),
-        }),
-        'title-model': xai('grok-2-1212'),
-        'artifact-model': xai('grok-2-1212'),
-      },
-      imageModels: {
-        'small-model': xai.image('grok-2-image'),
-      },
-    });
+// Создаем настроенный экземпляр провайдера Azure
+const customAzure = createAzure({
+  // API ключ для Azure OpenAI
+  apiKey: process.env.AZURE_OPENAI_API_KEY,
+  // имя ресурса в Azure
+  resourceName: process.env.AZURE_OPENAI_RESOURCE_NAME,
+  // или используем полный URL в качестве baseURL
+  baseURL:
+    !process.env.AZURE_OPENAI_RESOURCE_NAME && process.env.AZURE_OPENAI_ENDPOINT
+      ? process.env.AZURE_OPENAI_ENDPOINT
+      : undefined,
+  // Версия API, используем переменную окружения или значение по умолчанию
+  apiVersion: process.env.AZURE_OPENAI_API_VERSION || '2024-12-01-preview',
+  // Добавляем дополнительные заголовки
+  headers: {
+    'x-ms-azure-region': process.env.AZURE_OPENAI_REGION || 'eastus2',
+  },
+});
+
+// Создаем модели Azure с разными deployment name
+const mainModel = customAzure(
+  process.env.AZURE_GPT41_DEPLOYMENT_NAME || 'gpt-4.1',
+);
+const reasonModel = customAzure(
+  process.env.AZURE_O4MINI_DEPLOYMENT_NAME || 'o4-mini',
+);
+
+// Создаем базовый провайдер
+const provider = customProvider({
+  languageModels: {
+    'chat-model': chatModel,
+    'chat-model-reasoning': reasonModel,
+    'title-model': chatModel,
+    'artifact-model': chatModel,
+  },
+});
+
+// Расширяем провайдер методом languageModel для обратной совместимости
+const myProvider = provider as any;
+
+// Добавляем метод для получения модели по ID
+myProvider.languageModel = (modelId: string) => {
+  if (modelId === 'chat-model-reasoning') {
+    return reasonModel;
+  }
+  return mainModel;
+};
+
+export { myProvider };
