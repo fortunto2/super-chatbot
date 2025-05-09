@@ -3,7 +3,7 @@ import { getToken } from 'next-auth/jwt';
 import { guestRegex, isDevelopmentEnvironment } from './lib/constants';
 
 export async function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
+  const { pathname, searchParams } = request.nextUrl;
 
   /*
    * Playwright starts the dev server and requires a 200 status to
@@ -17,23 +17,46 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // Проверка на наличие параметра, предотвращающего цикл
+  const hasRedirectParam = searchParams.has('from_redirect');
+
   const token = await getToken({
     req: request,
     secret: process.env.AUTH_SECRET,
     secureCookie: !isDevelopmentEnvironment,
   });
 
+  // Если пользователь переходит на страницу входа, перенаправляем на auto-login
+  if (pathname === '/login') {
+    const url = new URL('/auto-login', request.url);
+    return NextResponse.redirect(url);
+  }
+
   if (!token) {
     const redirectUrl = encodeURIComponent(request.url);
 
-    return NextResponse.redirect(
-      new URL(`/api/auth/guest?redirectUrl=${redirectUrl}`, request.url),
-    );
+    // Для API запросов используем гостевой вход
+    if (pathname.startsWith('/api/')) {
+      return NextResponse.redirect(
+        new URL(`/api/auth/guest?redirectUrl=${redirectUrl}`, request.url),
+      );
+    }
+
+    // Для страницы auto-login, если уже есть параметр from_redirect,
+    // не перенаправляем снова, чтобы избежать циклических редиректов
+    if (pathname === '/auto-login' && hasRedirectParam) {
+      return NextResponse.next();
+    }
+
+    // Для обычных запросов перенаправляем на auto-login с параметром
+    const url = new URL('/auto-login', request.url);
+    url.searchParams.set('from_redirect', 'true');
+    return NextResponse.redirect(url);
   }
 
   const isGuest = guestRegex.test(token?.email ?? '');
 
-  if (token && !isGuest && ['/login', '/register'].includes(pathname)) {
+  if (token && !isGuest && ['/auto-login', '/register'].includes(pathname)) {
     return NextResponse.redirect(new URL('/', request.url));
   }
 
@@ -46,6 +69,7 @@ export const config = {
     '/chat/:id',
     '/api/:path*',
     '/login',
+    '/auto-login',
     '/register',
 
     /*

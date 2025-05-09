@@ -88,22 +88,23 @@ export function SidebarUserNav({ user }: { user: User }) {
                     toast({
                       type: 'error',
                       description:
-                        'Checking authentication status, please try again!',
+                        'Проверка статуса аутентификации, попробуйте еще раз!',
                     });
 
                     return;
                   }
 
                   if (isGuest) {
-                    router.push('/login');
+                    router.push('/auto-login');
                   } else {
                     signOut({
-                      redirectTo: '/',
+                      redirect: true,
+                      callbackUrl: '/auto-login',
                     });
                   }
                 }}
               >
-                {isGuest ? 'Login to your account' : 'Sign out'}
+                {isGuest ? 'Войти в аккаунт' : 'Выйти'}
               </button>
             </DropdownMenuItem>
           </DropdownMenuContent>
