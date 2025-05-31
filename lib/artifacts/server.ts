@@ -44,11 +44,21 @@ export function createDocumentHandler<T extends ArtifactKind>(config: {
   return {
     kind: config.kind,
     onCreateDocument: async (args: CreateDocumentCallbackProps) => {
+      console.log('📄 createDocumentHandler.onCreateDocument called for kind:', config.kind);
+      
       const draftContent = await config.onCreateDocument({
         id: args.id,
         title: args.title,
         dataStream: args.dataStream,
         session: args.session,
+      });
+
+      console.log('📄 Draft content generated:', draftContent);
+
+      // Send the content to the stream so it reaches the client
+      args.dataStream.writeData({
+        type: 'text-delta',
+        content: draftContent,
       });
 
       if (args.session?.user?.id) {
@@ -59,16 +69,28 @@ export function createDocumentHandler<T extends ArtifactKind>(config: {
           kind: config.kind,
           userId: args.session.user.id,
         });
+        
+        console.log('📄 Document saved to database');
       }
 
       return;
     },
     onUpdateDocument: async (args: UpdateDocumentCallbackProps) => {
+      console.log('📄 createDocumentHandler.onUpdateDocument called for kind:', config.kind);
+      
       const draftContent = await config.onUpdateDocument({
         document: args.document,
         description: args.description,
         dataStream: args.dataStream,
         session: args.session,
+      });
+
+      console.log('📄 Updated content generated:', draftContent);
+
+      // Send the updated content to the stream
+      args.dataStream.writeData({
+        type: 'text-delta',
+        content: draftContent,
       });
 
       if (args.session?.user?.id) {
@@ -79,6 +101,8 @@ export function createDocumentHandler<T extends ArtifactKind>(config: {
           kind: config.kind,
           userId: args.session.user.id,
         });
+        
+        console.log('📄 Document updated in database');
       }
 
       return;

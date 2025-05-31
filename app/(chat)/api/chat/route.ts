@@ -38,6 +38,7 @@ import { after } from 'next/server';
 import type { Chat } from '@/lib/db/schema';
 import { differenceInSeconds } from 'date-fns';
 import * as Sentry from '@sentry/nextjs';
+import { configureImageGeneration } from '@/lib/ai/tools/configure-image-generation';
 
 export const maxDuration = 60;
 
@@ -493,6 +494,24 @@ export async function POST(request: Request) {
 
     const stream = createDataStream({
       execute: (dataStream) => {
+        const enhancedDataStream = {
+          ...dataStream,
+          end: () => {},
+          error: (error: Error) => {
+            console.error('Stream error:', error);
+          }
+        };
+
+        const tools = {
+          getWeather,
+          createDocument: createDocument({ session, dataStream: enhancedDataStream }),
+          updateDocument: updateDocument({ session, dataStream: enhancedDataStream }),
+          requestSuggestions: requestSuggestions({
+            session,
+            dataStream: enhancedDataStream,
+          }),
+        };
+
         const result = streamText({
           model: myProvider.languageModel(selectedChatModel),
           system: systemPrompt({ selectedChatModel, requestHints }),
@@ -503,6 +522,7 @@ export async function POST(request: Request) {
               ? []
               : [
                   'getWeather',
+                  'configureImageGeneration',
                   'createDocument',
                   'updateDocument',
                   'requestSuggestions',
@@ -510,31 +530,41 @@ export async function POST(request: Request) {
           experimental_transform: smoothStream({ chunking: 'word' }),
           experimental_generateMessageId: generateUUID,
           tools: {
-            getWeather,
-            createDocument: createDocument({ session, dataStream }),
-            updateDocument: updateDocument({ session, dataStream }),
-            requestSuggestions: requestSuggestions({
-              session,
-              dataStream,
+            ...tools,
+            configureImageGeneration: configureImageGeneration({
+              createDocument: tools.createDocument,
             }),
           },
           onFinish: async ({ response }) => {
             if (session.user?.id) {
               try {
+                const assistantMessages = response.messages.filter(
+                  (message) => message.role === 'assistant'
+                );
+
+                if (assistantMessages.length === 0) {
+                  console.warn('No assistant messages found in response');
+                  return;
+                }
+
                 const assistantId = getTrailingMessageId({
-                  messages: response.messages.filter(
-                    (message) => message.role === 'assistant',
-                  ),
+                  messages: assistantMessages,
                 });
 
                 if (!assistantId) {
-                  throw new Error('No assistant message found!');
+                  console.warn('No assistant message ID found');
+                  return;
                 }
 
                 const [, assistantMessage] = appendResponseMessages({
                   messages: [message],
                   responseMessages: response.messages,
                 });
+
+                if (!assistantMessage) {
+                  console.warn('Failed to append response messages');
+                  return;
+                }
 
                 await saveMessages({
                   messages: [
@@ -719,3 +749,7 @@ export async function DELETE(request: Request) {
     return formatErrorResponse(error);
   }
 }
+
+
+
+

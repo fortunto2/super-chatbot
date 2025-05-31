@@ -5,7 +5,6 @@ import cx from 'classnames';
 import { AnimatePresence, motion } from 'framer-motion';
 import { memo, useState } from 'react';
 import type { Vote } from '@/lib/db/schema';
-import { DocumentToolCall, DocumentToolResult } from './document';
 import { PencilEditIcon, SparklesIcon } from './icons';
 import { Markdown } from './markdown';
 import { MessageActions } from './message-actions';
@@ -16,9 +15,10 @@ import { cn, sanitizeText } from '@/lib/utils';
 import { Button } from './ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
 import { MessageEditor } from './message-editor';
-import { DocumentPreview } from './document-preview';
 import { MessageReasoning } from './message-reasoning';
-import type { UseChatHelpers } from '@ai-sdk/react';
+import { type UseChatHelpers } from '@ai-sdk/react';
+import { MediaSettings } from './artifacts/media-settings';
+import type { ImageGenerationConfig, ImageSettings } from '@/lib/types/media-settings';
 
 const PurePreviewMessage = ({
   chatId,
@@ -29,6 +29,9 @@ const PurePreviewMessage = ({
   reload,
   isReadonly,
   requiresScrollPadding,
+  selectedChatModel,
+  selectedVisibilityType,
+  append,
 }: {
   chatId: string;
   message: UIMessage;
@@ -38,6 +41,9 @@ const PurePreviewMessage = ({
   reload: UseChatHelpers['reload'];
   isReadonly: boolean;
   requiresScrollPadding: boolean;
+  selectedChatModel: string;
+  selectedVisibilityType: 'public' | 'private';
+  append?: UseChatHelpers['append'];
 }) => {
   const [mode, setMode] = useState<'view' | 'edit'>('view');
 
@@ -103,6 +109,30 @@ const PurePreviewMessage = ({
 
               if (type === 'text') {
                 if (mode === 'view') {
+                  // Check if this is a resolution selection message
+                  if (part.text.startsWith('Выбрано разрешение:')) {
+                    const resolutionMatch = part.text.match(/разрешение: (\d+)x(\d+), стиль: (.+?), размер кадра: (.+?), модель: (.+?)(?:, сид: (\d+))?$/);
+                    if (resolutionMatch) {
+                      const [, width, height, style, shotSize, imageModel, seed] = resolutionMatch;
+                      return (
+                        <div key={key} className="flex flex-row gap-2 items-start">
+                          <div
+                            data-testid="message-content"
+                            className="flex flex-col gap-4 bg-primary text-primary-foreground px-3 py-2 rounded-xl"
+                          >
+                            <div className="flex flex-col gap-2">
+                              <p>Выбрано разрешение: {width} × {height}</p>
+                              <p>Стиль: {style}</p>
+                              <p>Размер кадра: {shotSize}</p>
+                              <p>Модель: {imageModel}</p>
+                              {seed && <p>Сид: {seed}</p>}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    }
+                  }
+
                   return (
                     <div key={key} className="flex flex-row gap-2 items-start">
                       {message.role === 'user' && !isReadonly && (
@@ -155,11 +185,10 @@ const PurePreviewMessage = ({
 
               if (type === 'tool-invocation') {
                 const { toolInvocation } = part;
-                const { toolName, toolCallId, state } = toolInvocation;
+                const { toolName, toolCallId, state, args } = toolInvocation;
+                
 
                 if (state === 'call') {
-                  const { args } = toolInvocation;
-
                   return (
                     <div
                       key={toolCallId}
@@ -169,20 +198,6 @@ const PurePreviewMessage = ({
                     >
                       {toolName === 'getWeather' ? (
                         <Weather />
-                      ) : toolName === 'createDocument' ? (
-                        <DocumentPreview isReadonly={isReadonly} args={args} />
-                      ) : toolName === 'updateDocument' ? (
-                        <DocumentToolCall
-                          type="update"
-                          args={args}
-                          isReadonly={isReadonly}
-                        />
-                      ) : toolName === 'requestSuggestions' ? (
-                        <DocumentToolCall
-                          type="request-suggestions"
-                          args={args}
-                          isReadonly={isReadonly}
-                        />
                       ) : null}
                     </div>
                   );
@@ -190,31 +205,30 @@ const PurePreviewMessage = ({
 
                 if (state === 'result') {
                   const { result } = toolInvocation;
+                  
+                  // Handle image generation configuration
+                  if (toolName === 'configureImageGeneration' && result?.type === 'image-generation-settings') {
+                    const config = result as ImageGenerationConfig;
+                    return (
+                      <div key={toolCallId} className="p-4">
+                        <MediaSettings
+                          config={config}
+                          onConfirm={(settings: ImageSettings) => {
+                            console.log('Image settings selected:', settings);
+                          }}
+                          selectedChatModel={selectedChatModel}
+                          selectedVisibilityType={selectedVisibilityType}
+                          append={append}
+                        />
+                      </div>
+                    );
+                  }
 
                   return (
                     <div key={toolCallId}>
                       {toolName === 'getWeather' ? (
                         <Weather weatherAtLocation={result} />
-                      ) : toolName === 'createDocument' ? (
-                        <DocumentPreview
-                          isReadonly={isReadonly}
-                          result={result}
-                        />
-                      ) : toolName === 'updateDocument' ? (
-                        <DocumentToolResult
-                          type="update"
-                          result={result}
-                          isReadonly={isReadonly}
-                        />
-                      ) : toolName === 'requestSuggestions' ? (
-                        <DocumentToolResult
-                          type="request-suggestions"
-                          result={result}
-                          isReadonly={isReadonly}
-                        />
-                      ) : (
-                        <pre>{JSON.stringify(result, null, 2)}</pre>
-                      )}
+                      ) : null}
                     </div>
                   );
                 }

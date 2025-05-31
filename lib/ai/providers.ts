@@ -1,9 +1,6 @@
 import { customProvider } from 'ai';
 import {
-  artifactModel,
   chatModel,
-  reasoningModel,
-  titleModel,
 } from './models.test';
 import { createAzure } from '@ai-sdk/azure';
 

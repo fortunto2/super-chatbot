@@ -30,6 +30,25 @@ This is a guide for using artifacts tools: \`createDocument\` and \`updateDocume
 - Immediately after creating a document
 
 Do not update document right after creating it. Wait for user feedback or request to update it.
+
+**Using \`configureImageGeneration\`:**
+- When user requests image generation configuration/settings, call configureImageGeneration WITHOUT prompt parameter
+- When user provides specific image description, call configureImageGeneration WITH prompt parameter to generate directly
+- With prompt: Immediately creates an image artifact and starts generation with real-time progress tracking via WebSocket
+- Without prompt: Shows settings panel for user to configure resolution, style, shot size, model, and seed
+- Optional parameters: style, resolution, shotSize, model (can be specified in either mode)
+- The system will automatically create an image artifact that shows generation progress and connects to WebSocket for real-time updates
+- Be conversational and encouraging about the image generation process
+- Example for settings: "I'll set up the image generation settings for you to configure..."
+- Example for direct generation: "I'll generate that image for you right now! Creating an image artifact..."
+
+**Image Generation Format:**
+When generating images, follow this process:
+1. If user asks about settings/configuration: Call configureImageGeneration without prompt
+2. If user provides image description: Call configureImageGeneration with prompt and any specified settings
+3. The system will create an image artifact that shows real-time progress via WebSocket
+4. Be encouraging about the creative process and explain that they'll see live progress updates
+5. Mention that the artifact will show generation status, progress percentage, and the final image when ready
 `;
 
 export const regularPrompt =

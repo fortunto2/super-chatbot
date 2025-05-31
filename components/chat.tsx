@@ -63,12 +63,26 @@ function ChatContent({
     experimental_throttle: 100,
     sendExtraMessageFields: true,
     generateId: generateUUID,
-    experimental_prepareRequestBody: (body) => ({
-      id,
-      message: body.messages.at(-1),
-      selectedChatModel: initialChatModel,
-      selectedVisibilityType: visibilityType,
-    }),
+    experimental_prepareRequestBody: (body) => {
+      const lastMessage = body.messages.at(-1);
+      if (!lastMessage || !lastMessage.content || !lastMessage.content.trim()) return null;
+      
+      const messageId = lastMessage.id || generateUUID();
+      
+      return {
+        id: id,
+        message: {
+          id: messageId,
+          createdAt: new Date(),
+          role: 'user',
+          content: lastMessage.content.trim(),
+          parts: lastMessage.parts || [{ type: 'text', text: lastMessage.content.trim() }],
+          experimental_attachments: lastMessage.experimental_attachments || []
+        },
+        selectedChatModel: initialChatModel,
+        selectedVisibilityType: visibilityType,
+      };
+    },
     onFinish: () => {
       mutate(unstable_serialize(getChatHistoryPaginationKey));
     },
@@ -77,6 +91,7 @@ function ChatContent({
         type: 'error',
         description: error.message,
       });
+      console.log(error)
     },
   });
 
@@ -133,6 +148,9 @@ function ChatContent({
           reload={reload}
           isReadonly={isReadonly}
           isArtifactVisible={isArtifactVisible}
+          selectedChatModel={initialChatModel}
+          selectedVisibilityType={visibilityType}
+          append={append}
         />
 
         <form className="flex mx-auto px-4 bg-background pb-4 md:pb-6 gap-2 w-full md:max-w-3xl">
@@ -171,6 +189,7 @@ function ChatContent({
         votes={votes}
         isReadonly={isReadonly}
         selectedVisibilityType={visibilityType}
+        selectedChatModel={initialChatModel}
       />
     </>
   );

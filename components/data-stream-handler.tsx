@@ -5,6 +5,7 @@ import { useEffect, useRef } from 'react';
 import { artifactDefinitions, ArtifactKind } from './artifact';
 import { Suggestion } from '@/lib/db/schema';
 import { initialArtifactData, useArtifact } from '@/hooks/use-artifact';
+import { generateUUID } from '@/lib/utils';
 
 export type DataStreamDelta = {
   type:
@@ -22,7 +23,33 @@ export type DataStreamDelta = {
 };
 
 export function DataStreamHandler({ id }: { id: string }) {
-  const { data: dataStream } = useChat({ id });
+  const { data: dataStream } = useChat({ 
+    id,
+    initialMessages: [],
+    experimental_throttle: 100,
+    sendExtraMessageFields: true,
+    generateId: generateUUID,
+    experimental_prepareRequestBody: (body) => {
+      const lastMessage = body.messages.at(-1);
+      if (!lastMessage || !lastMessage.content || !lastMessage.content.trim()) return null;
+      
+      const messageId = lastMessage.id || generateUUID();
+      
+      return {
+        id: id,
+        message: {
+          id: messageId,
+          createdAt: new Date(),
+          role: 'user',
+          content: lastMessage.content.trim(),
+          parts: lastMessage.parts || [{ type: 'text', text: lastMessage.content.trim() }],
+          experimental_attachments: lastMessage.experimental_attachments || []
+        },
+        selectedChatModel: 'chat-model',
+        selectedVisibilityType: 'private',
+      };
+    }
+  });
   const { artifact, setArtifact, setMetadata } = useArtifact();
   const lastProcessedIndex = useRef(-1);
 

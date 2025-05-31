@@ -12,7 +12,7 @@ import {
 import useSWR, { useSWRConfig } from 'swr';
 import { useDebounceCallback, useWindowSize } from 'usehooks-ts';
 import type { Document, Vote } from '@/lib/db/schema';
-import { fetcher } from '@/lib/utils';
+import { fetcher, generateUUID } from '@/lib/utils';
 import { MultimodalInput } from './multimodal-input';
 import { Toolbar } from './toolbar';
 import { VersionFooter } from './version-footer';
@@ -68,6 +68,7 @@ function PureArtifact({
   votes,
   isReadonly,
   selectedVisibilityType,
+  selectedChatModel,
 }: {
   chatId: string;
   input: string;
@@ -84,6 +85,7 @@ function PureArtifact({
   reload: UseChatHelpers['reload'];
   isReadonly: boolean;
   selectedVisibilityType: VisibilityType;
+  selectedChatModel: string;
 }) {
   const { artifact, setArtifact, metadata, setMetadata } = useArtifact();
 
@@ -253,6 +255,218 @@ function PureArtifact({
       }
     }
   }, [artifact.documentId, artifactDefinition, setMetadata]);
+
+  const [selectedResolution, setSelectedResolution] = useState<string>('1024x1024');
+  const [selectedStyle, setSelectedStyle] = useState<string>('natural');
+  const [selectedShotSize, setSelectedShotSize] = useState<string>('medium-shot');
+  const [resolutions, setResolutions] = useState<any[]>([]);
+  const [styles, setStyles] = useState<any[]>([]);
+  const [shotSizes, setShotSizes] = useState<any[]>([]);
+
+  // useEffect(() => {
+  //   const fetchData = async () => {
+  //     try {
+  //       // Fetch resolutions
+  //       const resolutionResponse = await fetch('/api/chat', {
+  //         method: 'POST',
+  //         headers: { 'Content-Type': 'application/json' },
+  //         body: JSON.stringify({
+  //           id: generateUUID(),
+  //           message: {
+  //             id: generateUUID(),
+  //             createdAt: new Date(),
+  //             role: 'user',
+  //             content: 'resolution',
+  //             parts: [{ type: 'text', text: 'resolution' }]
+  //           },
+  //           selectedChatModel: 'chat-model',
+  //           selectedVisibilityType: 'private',
+  //           type: 'resolution'
+  //         }),
+  //       });
+
+  //       if (resolutionResponse.ok) {
+  //         const reader = resolutionResponse.body?.getReader();
+  //         if (reader) {
+  //           let result = '';
+  //           while (true) {
+  //             const { done, value } = await reader.read();
+  //             if (done) break;
+  //             result += new TextDecoder().decode(value);
+  //           }
+            
+  //           // Parse the SSE data
+  //           const lines = result.split('\n');
+  //           let data: any[] = [];
+  //           for (const line of lines) {
+  //             if (line.startsWith('data:')) {
+  //               try {
+  //                 const jsonData = JSON.parse(line.slice(5));
+  //                 if (jsonData.data) {
+  //                   data = Array.isArray(jsonData.data) ? jsonData.data : [jsonData.data];
+  //                   break;
+  //                 }
+  //               } catch (e) {
+  //                 console.error('Error parsing resolution data line:', e);
+  //               }
+  //             }
+  //           }
+  //           setResolutions(data);
+  //         }
+  //       }
+
+  //       // Fetch styles
+  //       const styleResponse = await fetch('/api/chat', {
+  //         method: 'POST',
+  //         headers: { 'Content-Type': 'application/json' },
+  //         body: JSON.stringify({
+  //           id: generateUUID(),
+  //           message: {
+  //             id: generateUUID(),
+  //             createdAt: new Date(),
+  //             role: 'user',
+  //             content: 'style',
+  //             parts: [{ type: 'text', text: 'style' }]
+  //           },
+  //           selectedChatModel: 'chat-model',
+  //           selectedVisibilityType: 'private',
+  //           type: 'style'
+  //         }),
+  //       });
+
+  //       if (styleResponse.ok) {
+  //         const reader = styleResponse.body?.getReader();
+  //         if (reader) {
+  //           let result = '';
+  //           while (true) {
+  //             const { done, value } = await reader.read();
+  //             if (done) break;
+  //             result += new TextDecoder().decode(value);
+  //           }
+            
+  //           // Parse the SSE data
+  //           const lines = result.split('\n');
+  //           let data: any[] = [];
+  //           for (const line of lines) {
+  //             if (line.startsWith('data:')) {
+  //               try {
+  //                 const jsonData = JSON.parse(line.slice(5));
+  //                 if (jsonData.data) {
+  //                   data = Array.isArray(jsonData.data) ? jsonData.data : [jsonData.data];
+  //                   break;
+  //                 }
+  //               } catch (e) {
+  //                 console.error('Error parsing style data line:', e);
+  //               }
+  //             }
+  //           }
+  //           setStyles(data);
+  //         }
+  //       }
+
+  //       // Fetch shot sizes
+  //       const shotSizeResponse = await fetch('/api/chat', {
+  //         method: 'POST',
+  //         headers: { 'Content-Type': 'application/json' },
+  //         body: JSON.stringify({
+  //           id: generateUUID(),
+  //           message: {
+  //             id: generateUUID(),
+  //             createdAt: new Date(),
+  //             role: 'user',
+  //             content: 'shot-size',
+  //             parts: [{ type: 'text', text: 'shot-size' }]
+  //           },
+  //           selectedChatModel: 'chat-model',
+  //           selectedVisibilityType: 'private',
+  //           type: 'shot-size'
+  //         }),
+  //       });
+
+  //       if (shotSizeResponse.ok) {
+  //         const reader = shotSizeResponse.body?.getReader();
+  //         if (reader) {
+  //           let result = '';
+  //           while (true) {
+  //             const { done, value } = await reader.read();
+  //             if (done) break;
+  //             result += new TextDecoder().decode(value);
+  //           }
+            
+  //           // Parse the SSE data
+  //           const lines = result.split('\n');
+  //           let data: any[] = [];
+  //           for (const line of lines) {
+  //             if (line.startsWith('data:')) {
+  //               try {
+  //                 const jsonData = JSON.parse(line.slice(5));
+  //                 if (jsonData.data) {
+  //                   data = Array.isArray(jsonData.data) ? jsonData.data : [jsonData.data];
+  //                   break;
+  //                 }
+  //               } catch (e) {
+  //                 console.error('Error parsing shot size data line:', e);
+  //               }
+  //             }
+  //           }
+  //           setShotSizes(data);
+  //         }
+  //       }
+  //     } catch (error) {
+  //       console.error('Error fetching data:', error);
+  //     }
+  //   };
+
+  //   fetchData();
+  // }, []);
+
+  const handleResolutionSelect = (resolution: string) => {
+    setSelectedResolution(resolution);
+    const message = {
+      id: generateUUID(),
+      role: 'user',
+      content: `Selected resolution: ${resolution}`,
+      parts: [],
+      createdAt: new Date().toISOString(),
+      data: {
+        type: 'resolution',
+        resolution,
+      },
+    };
+    handleSubmit(new Event('submit'));
+  };
+
+  const handleStyleSelect = (style: string) => {
+    setSelectedStyle(style);
+    const message = {
+      id: generateUUID(),
+      role: 'user',
+      content: `Selected style: ${style}`,
+      parts: [],
+      createdAt: new Date().toISOString(),
+      data: {
+        type: 'style',
+        style,
+      },
+    };
+    handleSubmit(new Event('submit'));
+  };
+
+  const handleShotSizeSelect = (shotSize: string) => {
+    setSelectedShotSize(shotSize);
+    const message = {
+      id: generateUUID(),
+      role: 'user',
+      content: `Selected shot size: ${shotSize}`,
+      parts: [],
+      createdAt: new Date().toISOString(),
+      data: {
+        type: 'shot-size',
+        shotSize,
+      },
+    };
+    handleSubmit(new Event('submit'));
+  };
 
   return (
     <AnimatePresence>

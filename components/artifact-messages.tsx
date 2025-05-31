@@ -61,6 +61,8 @@ function PureArtifactMessages({
           requiresScrollPadding={
             hasSentMessage && index === messages.length - 1
           }
+          selectedChatModel='chat-model'
+          selectedVisibilityType='public'
         />
       ))}
 
