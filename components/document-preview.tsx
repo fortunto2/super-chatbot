@@ -271,14 +271,16 @@ const DocumentContent = ({ document }: { document: Document }) => {
           </div>
         </div>
       ) : document.kind === 'image' ? (
-        <ImageEditor
-          title={document.title}
-          content={document.content ?? ''}
-          isCurrentVersion={true}
-          currentVersionIndex={0}
-          status={artifact.status}
-          isInline={true}
-        />
+        <div className="p-4">
+          <img
+            src={document.content || ''}
+            alt={document.title}
+            className="w-full h-auto rounded-lg border max-h-[200px] object-contain"
+            onError={(e) => {
+              console.error('Image load error in preview:', document.content?.substring(0, 100));
+            }}
+          />
+        </div>
       ) : null}
     </div>
   );

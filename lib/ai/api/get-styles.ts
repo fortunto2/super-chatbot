@@ -22,12 +22,14 @@ export type IResponsePaginated_IStyleRead_ = {
 
 export const getStyles = async () => {
     try {
-      
-      const response = await fetch('https://editor.superduperai.co/api/v1/style', {
+      const url = "https://editor.superduperai.co"
+      // const url = process.env.NEXT_PUBLIC_API_URL ?? "https://editor.superduperai.co"
+      const token = "afda4dc28cf1420db6d3e35a291c2d5f"
+      const response = await fetch(`${url}/api/v1/style`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
-          'Authorization': 'Bearer a5c326b39ac44a82bb31aa1c9436e807'
+          'Authorization': `Bearer ${token}`
         },
       });
   
@@ -38,7 +40,7 @@ export const getStyles = async () => {
         if (response.status === 401) {
           return {
             success: false,
-            error: 'Authentication failed. The API token may be invalid or expired.',
+            error: 'Authentication failed. The API token may be invalid or expired.', token ,
           };
         }
         

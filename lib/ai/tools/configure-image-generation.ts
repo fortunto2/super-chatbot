@@ -154,7 +154,9 @@ export const configureImageGeneration = (params?: CreateImageDocumentParams) => 
       return config;
     }
 
-    console.log('🔧 Prompt provided, creating image document...');
+    console.log('🔧 ✅ PROMPT PROVIDED, CREATING IMAGE DOCUMENT:', prompt);
+    console.log('🔧 ✅ PARAMS OBJECT:', !!params);
+    console.log('🔧 ✅ CREATE DOCUMENT AVAILABLE:', !!params?.createDocument);
 
     // If prompt provided, create document directly
     const selectedResolution = resolution 
@@ -182,35 +184,39 @@ export const configureImageGeneration = (params?: CreateImageDocumentParams) => 
       model: selectedModel,
     });
 
-    console.log('🔧 Artifact params:', artifactParams);
+    // Create a human-readable title instead of JSON
+    const humanReadableTitle = `AI Image: ${prompt.substring(0, 60)}${prompt.length > 60 ? '...' : ''}`;
+
+    console.log('🔧 ✅ ARTIFACT PARAMS PREPARED:', artifactParams.substring(0, 100) + '...');
 
     if (params?.createDocument) {
-      console.log('🔧 Calling createDocument...');
+      console.log('🔧 ✅ CALLING CREATE DOCUMENT WITH KIND: image');
       try {
-        // Call createDocument if available
+        // Call createDocument if available - передаем параметры через content поле
         const result = await params.createDocument.execute({
-          title: artifactParams,
+          title: artifactParams, // Возвращаем JSON для сервера
           kind: 'image'
         });
         
-        console.log('🔧 createDocument result:', result);
+        console.log('🔧 ✅ CREATE DOCUMENT RESULT:', result);
         
         return {
           ...result,
-          message: `I'll generate an image with the prompt: "${prompt}". Image artifact created and generation started.`
+          message: `Я создаю изображение с описанием: "${prompt}". Артефакт создан и генерация началась.`
         };
       } catch (error) {
-        console.error('🔧 createDocument error:', error);
+        console.error('🔧 ❌ CREATE DOCUMENT ERROR:', error);
+        console.error('🔧 ❌ ERROR STACK:', error instanceof Error ? error.stack : 'No stack');
         throw error;
       }
     }
 
-    console.log('🔧 createDocument not available, returning fallback');
+    console.log('🔧 ❌ CREATE DOCUMENT NOT AVAILABLE, RETURNING FALLBACK');
     // Fallback to simple message
     return {
-      message: `I'll generate an image with the prompt: "${prompt}". Please use the createDocument tool to create the image artifact.`,
+      message: `Я создам изображение с описанием: "${prompt}". Однако артефакт не может быть создан - createDocument недоступен.`,
       parameters: {
-        title: artifactParams,
+        title: artifactParams, // Возвращаем JSON для сервера
         kind: 'image'
       }
     };

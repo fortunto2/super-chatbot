@@ -36,14 +36,13 @@ const IMAGE_MODELS: ImageModel[] = [
 export const imageDocumentHandler = createDocumentHandler<'image'>({
   kind: 'image',
   onCreateDocument: async ({ id: chatId, title, dataStream }) => {
-    console.log('🖼️ Image document handler called with:', { chatId, title });
     
     let draftContent = '';
 
     try {
       // Parse the title to extract image generation parameters
       const params = JSON.parse(title);
-      console.log('🖼️ Parsed parameters:', params);
+     
       
       const {
         prompt,
@@ -53,12 +52,14 @@ export const imageDocumentHandler = createDocumentHandler<'image'>({
         shotSize = { id: 'long-shot', label: 'Long Shot' }
       } = params;
 
+     
+
       // Get available styles from API
       let availableStyles: MediaOption[] = [];
       try {
         const response = await getStyles();
         if ("error" in response) {
-          console.error('🖼️ Failed to get styles:', response.error);
+          console.error('🎨 ❌ FAILED TO GET STYLES:', response.error);
         } else {
           availableStyles = response.items.map(style => ({
             id: style.name,
@@ -66,17 +67,16 @@ export const imageDocumentHandler = createDocumentHandler<'image'>({
           }));
         }
       } catch (err) {
-        console.error('🖼️ Error getting styles:', err);
+        console.error('🎨 ❌ ERROR GETTING STYLES:', err);
       }
 
-      console.log('🖼️ Starting image generation for chat:', chatId);
-
+      
       // Start image generation
       const result = await generateImage(style, resolution, prompt, model, shotSize, chatId);
-      console.log('🖼️ Generate image result:', result);
 
+    
       if (!result.success) {
-        console.error('🖼️ Image generation failed:', result.error);
+       
         draftContent = JSON.stringify({
           status: 'failed',
           error: result.error,
@@ -85,8 +85,6 @@ export const imageDocumentHandler = createDocumentHandler<'image'>({
         
         return draftContent;
       }
-
-      console.log('🖼️ Image generation started successfully:', result);
 
       // Create content with project info and available options for WebSocket tracking
       draftContent = JSON.stringify({
@@ -108,10 +106,12 @@ export const imageDocumentHandler = createDocumentHandler<'image'>({
         message: 'Image generation started, connecting to WebSocket...'
       });
 
-      console.log('🖼️ Returning draft content:', draftContent);
+     
 
     } catch (error: any) {
-      console.error('🖼️ Image generation error:', error);
+      console.error('🎨 ❌ IMAGE GENERATION ERROR:', error);
+      console.error('🎨 ❌ ERROR MESSAGE:', error?.message);
+      console.error('🎨 ❌ ERROR STACK:', error?.stack);
 
       draftContent = JSON.stringify({
         status: 'failed',
@@ -139,8 +139,6 @@ export const imageDocumentHandler = createDocumentHandler<'image'>({
         shotSize = { id: 'long-shot', label: 'Long Shot' }
       } = params;
 
-      console.log('Updating image generation for chat:', chatId);
-
       // Start new image generation
       const result = await generateImage(style, resolution, prompt, model, shotSize, chatId);
 
@@ -153,8 +151,6 @@ export const imageDocumentHandler = createDocumentHandler<'image'>({
         });
       }
 
-      console.log('Image generation update successful:', result);
-
       // Update content with new project info
       draftContent = JSON.stringify({
         status: 'pending',
@@ -164,7 +160,11 @@ export const imageDocumentHandler = createDocumentHandler<'image'>({
           style,
           resolution,
           model,
-          shotSize
+          shotSize,
+          availableResolutions: RESOLUTIONS,
+          availableStyles: [],
+          availableShotSizes: SHOT_SIZES,
+          availableModels: IMAGE_MODELS,
         },
         timestamp: Date.now(),
         message: 'Updated image generation started, connecting to WebSocket...'

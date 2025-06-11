@@ -46,6 +46,8 @@ interface ArtifactContent<M = any> {
   isLoading: boolean;
   metadata: M;
   setMetadata: Dispatch<SetStateAction<M>>;
+  append?: UseChatHelpers['append'];
+  setArtifact?: Dispatch<SetStateAction<UIArtifact>>;
 }
 
 interface InitializeParameters<M = any> {

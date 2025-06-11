@@ -2,69 +2,244 @@ import { Artifact } from '@/components/create-artifact';
 import { CopyIcon, RedoIcon, UndoIcon } from '@/components/icons';
 import { ImageEditor } from '@/components/image-editor';
 import { toast } from 'sonner';
+import { memo, useMemo, useCallback } from 'react';
 
 // Wrapper component that handles the artifact content for ImageEditor
-function ImageArtifactWrapper(props: any) {
-  const { content } = props;
+const ImageArtifactWrapper = memo(function ImageArtifactWrapper(props: any) {
+  const { content, setArtifact, ...otherProps } = props;
   
-  console.log('🖼️ ImageArtifactWrapper rendered with content:', content);
+  console.log('🎨 ImageArtifactWrapper called with:', {
+    content: content?.substring(0, 200) + '...',
+    contentType: typeof content,
+    hasSetArtifact: !!setArtifact,
+    otherProps: Object.keys(otherProps)
+  });
   
-  try {
-    // Try to parse as JSON for new format
-    const parsedContent = JSON.parse(content);
+  // Memoize parsed content to avoid re-parsing on every render
+  const parsedContent = useMemo(() => {
+    if (!content || typeof content !== 'string') {
+      console.log('🎨 No content or invalid content type');
+      return null;
+    }
     
-    console.log('🖼️ Parsed content:', parsedContent);
+    try {
+      const parsed = JSON.parse(content);
+      console.log('🎨 Successfully parsed content:', {
+        status: parsed.status,
+        projectId: parsed.projectId,
+        hasSettings: !!parsed.settings,
+        prompt: parsed.prompt
+      });
+      return parsed;
+    } catch (error) {
+      console.log('🎨 Failed to parse content as JSON, treating as legacy format:', error);
+      return null;
+    }
+  }, [content]);
+
+  // Memoize initial state to prevent recreating object on every render
+  const initialState = useMemo(() => {
+    if (!parsedContent) return undefined;
     
-    // For new format, pass settings to ImageEditor
-    if (parsedContent.settings && parsedContent.projectId) {
+    return {
+      status: parsedContent.status,
+      prompt: parsedContent.prompt,
+      projectId: parsedContent.projectId,
+      timestamp: parsedContent.timestamp,
+      message: parsedContent.message,
+      imageUrl: parsedContent.imageUrl,
+    };
+  }, [parsedContent]);
+
+  // Memoize settings to prevent recreating object on every render
+  const defaultSettings = useMemo(() => {
+    if (!parsedContent?.settings) return undefined;
+    
+    return {
+      resolution: parsedContent.settings.resolution,
+      style: parsedContent.settings.style,
+      shotSize: parsedContent.settings.shotSize,
+      model: parsedContent.settings.model,
+      seed: parsedContent.settings.seed,
+    };
+  }, [parsedContent?.settings]);
+
+  // Memoize the stable setArtifact callback
+  const memoizedSetArtifact = useCallback((fn: (prev: any) => any) => {
+    if (setArtifact) {
+      setArtifact(fn);
+    }
+  }, [setArtifact]);
+
+  // Memoize ImageEditor props to prevent unnecessary rerenders
+  const imageEditorProps = useMemo(() => ({
+    chatId: parsedContent?.projectId,
+    availableResolutions: otherProps.availableResolutions || [],
+    availableStyles: otherProps.availableStyles || [],
+    availableShotSizes: otherProps.availableShotSizes || [],
+    availableModels: otherProps.availableModels || [],
+    defaultSettings,
+    append: otherProps.append,
+    initialState,
+    setArtifact: memoizedSetArtifact,
+  }), [
+    parsedContent?.projectId,
+    otherProps.availableResolutions,
+    otherProps.availableStyles,
+    otherProps.availableShotSizes,
+    otherProps.availableModels,
+    otherProps.append,
+    defaultSettings,
+    initialState,
+    memoizedSetArtifact,
+  ]);
+
+  // Handle different content types
+  if (!content) {
+    return <div>No image content available</div>;
+  }
+
+  // If we have valid parsed content, render ImageEditor
+  if (parsedContent) {
+    console.log('🎨 Rendering ImageEditor with memoized props');
+    
+    // If image is completed and we have imageUrl, show the final image
+    if (parsedContent.status === 'completed' && parsedContent.imageUrl) {
       return (
-        <ImageEditor
-          chatId={parsedContent.projectId}
-          availableResolutions={parsedContent.settings.availableResolutions || []}
-          availableStyles={parsedContent.settings.availableStyles || []}
-          availableShotSizes={parsedContent.settings.availableShotSizes || []}
-          availableModels={parsedContent.settings.availableModels || []}
-          defaultSettings={parsedContent.settings}
-        />
+        <div className="space-y-4 pl-2">
+          <div className="flex items-center gap-2">
+            <h3 className="text-lg font-semibold">Generated Image</h3>
+            <button
+              onClick={async () => {
+                try {
+                  // Copy image URL to clipboard
+                  await navigator.clipboard.writeText(parsedContent.imageUrl);
+                  toast.success('Image URL copied to clipboard');
+                } catch (error) {
+                  toast.error('Failed to copy image URL');
+                }
+              }}
+              className="p-1 hover:bg-gray-100 rounded"
+              title="Copy image URL"
+            >
+              <CopyIcon size={16} />
+            </button>
+          </div>
+          <div className="relative">
+            <img
+              src={parsedContent.imageUrl}
+              alt={`Generated image: ${parsedContent.prompt || 'AI generated'}`}
+              className="w-full h-auto rounded-lg border object-contain"
+              style={{ maxHeight: '70vh' }}
+              onError={(e) => {
+                console.error('🎨 Image load error:', parsedContent.imageUrl);
+              }}
+            />
+          </div>
+                     {parsedContent.prompt && (
+             <div className="text-sm text-muted-foreground text-center italic">
+               &ldquo;{parsedContent.prompt}&rdquo;
+             </div>
+           )}
+        </div>
       );
     }
     
-    // Fallback for simpler JSON format with projectId
-    if (parsedContent.projectId) {
-      return <ImageEditor chatId={parsedContent.projectId} />;
-    }
-    
-    // Fallback for simpler JSON format without projectId
-    return <ImageEditor />;
-    
-  } catch (error) {
-    console.log('🖼️ Failed to parse as JSON, treating as base64:', error);
-    
-    // Legacy base64 format - create a simple display
-    return (
-      <div className="flex flex-col items-center justify-center p-8">
-        <div className="relative max-w-full max-h-[70vh] overflow-hidden rounded-lg border">
-          <img
-            src={`data:image/png;base64,${content}`}
-            alt="Generated image"
-            className="max-w-full max-h-full object-contain"
-            style={{ maxWidth: '100%', height: 'auto' }}
-          />
-        </div>
-      </div>
-    );
+    // Otherwise render ImageEditor for ongoing generation
+    return <ImageEditor {...imageEditorProps} />;
   }
+
+  // Handle legacy base64 image format
+  let imageUrl: string;
+  if (content.startsWith('data:image/')) {
+    imageUrl = content;
+  } else if (content.startsWith('/9j/') || content.startsWith('iVBORw0KGgo') || content.startsWith('UklGR')) {
+    imageUrl = `data:image/png;base64,${content}`;
+  } else {
+    try {
+      // Try to extract base64 from various formats
+      const base64Match = content.match(/data:image\/[^;]+;base64,([^"]+)/);
+      if (base64Match) {
+        imageUrl = content;
+      } else {
+        imageUrl = `data:image/png;base64,${content}`;
+      }
+    } catch (error) {
+      console.error('🎨 Error processing image content:', error);
+      return <div>Error loading image</div>;
+    }
+  }
+
+  console.log('🎨 Rendering legacy base64 format');
+  
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2">
+        <h3 className="text-lg font-semibold">Generated Image</h3>
+        <button
+          onClick={async () => {
+            try {
+              await navigator.clipboard.writeText(imageUrl);
+              toast.success('Image URL copied to clipboard');
+            } catch (error) {
+              toast.error('Failed to copy image URL');
+            }
+          }}
+          className="p-1 hover:bg-gray-100 rounded"
+          title="Copy image URL"
+        >
+          <CopyIcon size={16} />
+        </button>
+      </div>
+      <div className="relative">
+        <img
+          src={imageUrl}
+          alt="Generated image"
+          className="w-full h-auto rounded-lg border"
+          style={{ maxHeight: '70vh' }}
+          onError={(e) => {
+            console.error('🎨 Image load error:', imageUrl.substring(0, 100));
+          }}
+        />
+      </div>
+    </div>
+  );
+}, (prevProps, nextProps) => {
+  // Custom comparison function for memo to prevent unnecessary rerenders
+  // Only compare essential props that affect rendering
+  const contentChanged = prevProps.content !== nextProps.content;
+  const setArtifactChanged = prevProps.setArtifact !== nextProps.setArtifact;
+  const appendChanged = prevProps.append !== nextProps.append;
+  
+  if (contentChanged || setArtifactChanged || appendChanged) {
+    console.log('🎨 ImageArtifactWrapper memo: props changed', {
+      contentChanged,
+      setArtifactChanged, 
+      appendChanged
+    });
+    return false; // Re-render
+  }
+  
+  return true; // Skip re-render
+});
+
+export default function ArtifactContentImage(props: any) {
+  return <ImageArtifactWrapper {...props} />;
 }
 
 export const imageArtifact = new Artifact({
   kind: 'image',
   description: 'Useful for image generation with real-time progress tracking',
   onStreamPart: ({ streamPart, setArtifact }) => {
-    console.log('🖼️ Image artifact onStreamPart:', streamPart);
+    console.log('📡 Image artifact stream part received:', {
+      type: streamPart.type,
+      contentLength: streamPart.content?.toString().length,
+      contentPreview: streamPart.content?.toString().substring(0, 100)
+    });
     
     // Handle text-delta with JSON content from server
     if (streamPart.type === 'text-delta') {
-      console.log('🖼️ Setting artifact content from text-delta:', streamPart.content);
+      console.log('📡 Handling text-delta for image artifact');
       setArtifact((draftArtifact) => ({
         ...draftArtifact,
         content: streamPart.content as string,
@@ -75,12 +250,57 @@ export const imageArtifact = new Artifact({
     
     // Handle legacy image-delta for backward compatibility
     if (streamPart.type === 'image-delta') {
+      console.log('📡 Handling image-delta for image artifact');
       setArtifact((draftArtifact) => ({
         ...draftArtifact,
         content: streamPart.content as string,
         isVisible: true,
         status: 'streaming',
       }));
+    }
+
+    // Handle finish event to complete generation
+    if (streamPart.type === 'finish') {
+      console.log('📡 Image generation completed, updating final status');
+      setArtifact((draftArtifact) => {
+        try {
+          // Try to parse content and add completion status
+          const parsedContent = JSON.parse(draftArtifact.content || '{}');
+          
+          // If the parsed content has imageUrl, mark as completed with imageUrl
+          if (parsedContent.imageUrl || parsedContent.status === 'completed') {
+            const updatedContent = {
+              ...parsedContent,
+              status: 'completed'
+            };
+            
+            console.log('📡 Setting final completed content:', {
+              status: updatedContent.status,
+              hasImageUrl: !!updatedContent.imageUrl,
+              imageUrlPreview: updatedContent.imageUrl?.substring(0, 50)
+            });
+            
+            return {
+              ...draftArtifact,
+              content: JSON.stringify(updatedContent),
+              status: 'idle',
+            };
+          }
+          
+          // Fallback: keep current content but mark as completed
+          return {
+            ...draftArtifact,
+            status: 'idle',
+          };
+        } catch (error) {
+          console.error('📡 Error parsing content on finish:', error);
+          // For legacy base64 content, just mark as completed
+          return {
+            ...draftArtifact,
+            status: 'idle',
+          };
+        }
+      });
     }
   },
   content: ImageArtifactWrapper,

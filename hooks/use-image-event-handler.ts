@@ -16,14 +16,52 @@ export const useImageEventHandler = (
   onStateUpdate: ImageStateUpdater
 ): ImageEventHandler => {
   return useCallback((eventData: ImageWSMessage) => {
-    console.log('Processing image websocket event:', eventData);
-
     // Only process events for our project
     if (eventData.projectId && eventData.projectId !== projectId) {
       return;
     }
-
     switch (eventData.type) {
+      case 'subscribe':
+        // Handle subscription confirmation
+        break;
+
+      case 'file':
+        // Handle completed image files
+        if (eventData.object) {
+          console.log(eventData)
+          const fileObject = eventData.object;
+          // Check if it's an image type
+          if (fileObject.type === 'image' && fileObject.url) {
+            onStateUpdate({
+              status: 'completed',
+              imageUrl: fileObject.url,
+              progress: 100,
+            });
+          }
+        }
+        // Also handle case where file data is directly in eventData
+        else if (eventData.url) {
+          onStateUpdate({
+            status: 'completed',
+            imageUrl: eventData.url,
+            progress: 100,
+          });
+        }
+        break;
+
+      case 'image':
+        // Handle direct image objects
+        console.log(eventData)
+        if (eventData.url) {
+          console.log(eventData)
+          onStateUpdate({
+            status: 'completed',
+            imageUrl: eventData.url,
+            progress: 100,
+          });
+        }
+        break;
+
       case 'status_update':
         onStateUpdate({
           status: eventData.status as ImageGenerationState['status'] || 'processing',
@@ -72,7 +110,6 @@ export const useImageEventHandler = (
         break;
       
       default:
-        console.log('Unknown image websocket message type:', eventData.type);
         // Try to extract useful info from unknown messages
         if (eventData.status) {
           onStateUpdate({

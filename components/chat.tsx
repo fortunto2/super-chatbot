@@ -29,6 +29,7 @@ function ChatContent({
   isReadonly,
   session,
   autoResume,
+  onDataStream,
 }: {
   id: string;
   initialMessages: Array<UIMessage>;
@@ -37,6 +38,7 @@ function ChatContent({
   isReadonly: boolean;
   session: Session;
   autoResume: boolean;
+  onDataStream?: (dataStream: any[]) => void;
 }) {
   const { mutate } = useSWRConfig();
 
@@ -119,6 +121,14 @@ function ChatContent({
 
   const [attachments, setAttachments] = useState<Array<Attachment>>([]);
   const isArtifactVisible = useArtifactSelector((state) => state.isVisible);
+
+  // Notify parent about dataStream changes for artifacts
+  useEffect(() => {
+    if (data && onDataStream) {
+      console.log('📡 Chat: Notifying parent about dataStream changes:', data.length);
+      onDataStream(data);
+    }
+  }, [data, onDataStream]);
 
   useAutoResume({
     autoResume,
@@ -203,6 +213,7 @@ export function Chat(props: {
   isReadonly: boolean;
   session: Session;
   autoResume: boolean;
+  onDataStream?: (dataStream: any[]) => void;
 }) {
   return (
     <Suspense

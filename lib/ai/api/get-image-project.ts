@@ -1,48 +1,23 @@
-import { ImageModel, MediaOption, MediaResolution } from "@/lib/types/media-settings";
 
 export interface ImageGenerationResult {
-  success: boolean;
-  projectId?: string;
-  message?: string;
-  error?: string;
-  files?: any[];
-  url?: string;
+    success: boolean;
+    project?: any
+    error?: string
 }
 
-export const generateImage = async (
-  style: MediaOption, 
-  resolution: MediaResolution, 
-  prompt: string, 
-  model: ImageModel, 
-  shotSize: MediaOption,
+export const getProject = async (
   chatId: string
 ): Promise<ImageGenerationResult> => {
     try {
       const token = "afda4dc28cf1420db6d3e35a291c2d5f"
-      const response = await fetch('https://editor.superduperai.co/api/v1/project/image', {
-        method: "POST",
+      const response = await fetch('https://editor.superduperai.co/api/v1/project', {
+        method: "GET",
         headers: {
           "Content-Type": "application/json",
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
           projectId: chatId,
-          type: "image",
-          template_name: null,
-          config: {
-            prompt,
-            width: resolution.width,
-            height: resolution.height,
-            aspecRatio: resolution.aspectRatio,
-            qualityType: resolution.qualityType,
-            shot_size: shotSize.label,
-            seed: `${Math.floor(Math.random() * 1000000000000)}`,
-            generation_config_name: "comfyui/flux",
-            batch_size: 3,
-            style_name: style.id,
-            entity_ids: [],
-            references: []
-          }
         }),
       });
   
@@ -72,10 +47,7 @@ export const generateImage = async (
   
       return {
         success: true,
-        projectId: result.id || chatId,
-        message: `Image generation started successfully! Project ID: ${result.id || chatId}`,
-        files: result.files || [],
-        url: result.url || null,
+        project: result
       };
   
     } catch (error: any) {

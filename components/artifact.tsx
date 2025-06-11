@@ -8,6 +8,7 @@ import {
   useCallback,
   useEffect,
   useState,
+  useRef,
 } from 'react';
 import useSWR, { useSWRConfig } from 'swr';
 import { useDebounceCallback, useWindowSize } from 'usehooks-ts';
@@ -52,6 +53,22 @@ export interface UIArtifact {
   };
 }
 
+// Function to convert JSON title to human-readable format
+function getDisplayTitle(title: string, kind: ArtifactKind): string {
+  if (kind === 'image') {
+    try {
+      const params = JSON.parse(title);
+      if (params.prompt) {
+        return `AI Image: ${params.prompt.substring(0, 60)}${params.prompt.length > 60 ? '...' : ''}`;
+      }
+    } catch {
+      // If not JSON, return as is
+      return title;
+    }
+  }
+  return title;
+}
+
 function PureArtifact({
   chatId,
   input,
@@ -89,6 +106,27 @@ function PureArtifact({
 }) {
   const { artifact, setArtifact, metadata, setMetadata } = useArtifact();
 
+  // Only log in development and with throttling to avoid spam
+  const logIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const lastLogTimeRef = useRef<number>(0);
+  
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      const now = Date.now();
+      if (now - lastLogTimeRef.current > 1000) { // Throttle to once per second
+        console.log('🎨 Artifact component rendered with:', {
+          documentId: artifact.documentId,
+          kind: artifact.kind,
+          isVisible: artifact.isVisible,
+          status: artifact.status,
+          hasContent: !!artifact.content,
+          contentLength: artifact.content?.length || 0
+        });
+        lastLogTimeRef.current = now;
+      }
+    }
+  });
+
   const {
     data: documents,
     isLoading: isDocumentsFetching,
@@ -106,6 +144,10 @@ function PureArtifact({
 
   const { open: isSidebarOpen } = useSidebar();
 
+  // Memoize effect dependencies to prevent unnecessary reruns
+  const documentsLength = documents?.length || 0;
+  const lastDocumentId = documents?.at(-1)?.id;
+  
   useEffect(() => {
     if (documents && documents.length > 0) {
       const mostRecentDocument = documents.at(-1);
@@ -119,10 +161,15 @@ function PureArtifact({
         }));
       }
     }
-  }, [documents, setArtifact]);
+  }, [documentsLength, lastDocumentId, setArtifact]);
 
+  // Memoize mutateDocuments call to prevent unnecessary API calls
+  const stableArtifactStatus = useRef(artifact.status);
   useEffect(() => {
-    mutateDocuments();
+    if (stableArtifactStatus.current !== artifact.status) {
+      stableArtifactStatus.current = artifact.status;
+      mutateDocuments();
+    }
   }, [artifact.status, mutateDocuments]);
 
   const { mutate } = useSWRConfig();
@@ -631,7 +678,7 @@ function PureArtifact({
                 <ArtifactCloseButton />
 
                 <div className="flex flex-col">
-                  <div className="font-medium">{artifact.title}</div>
+                  <div className="font-medium">{getDisplayTitle(artifact.title, artifact.kind)}</div>
 
                   {isContentDirty ? (
                     <div className="text-sm text-muted-foreground">
@@ -665,25 +712,40 @@ function PureArtifact({
             </div>
 
             <div className="dark:bg-muted bg-background h-full overflow-y-scroll !max-w-full items-center">
-              <artifactDefinition.content
-                title={artifact.title}
-                content={
-                  isCurrentVersion
-                    ? artifact.content
-                    : getDocumentContentById(currentVersionIndex)
-                }
-                mode={mode}
-                status={artifact.status}
-                currentVersionIndex={currentVersionIndex}
-                suggestions={[]}
-                onSaveContent={saveContent}
-                isInline={false}
-                isCurrentVersion={isCurrentVersion}
-                getDocumentContentById={getDocumentContentById}
-                isLoading={isDocumentsFetching && !artifact.content}
-                metadata={metadata}
-                setMetadata={setMetadata}
-              />
+              {(() => {
+                console.log('🎨 About to render artifact content:', {
+                  artifactDefinition: !!artifactDefinition,
+                  kind: artifact.kind,
+                  title: artifact.title,
+                  contentLength: artifact.content?.length || 0,
+                  isCurrentVersion,
+                  status: artifact.status
+                });
+                
+                return (
+                  <artifactDefinition.content
+                    title={artifact.title}
+                    content={
+                      isCurrentVersion
+                        ? artifact.content
+                        : getDocumentContentById(currentVersionIndex)
+                    }
+                    mode={mode}
+                    status={artifact.status}
+                    currentVersionIndex={currentVersionIndex}
+                    suggestions={[]}
+                    onSaveContent={saveContent}
+                    isInline={false}
+                    isCurrentVersion={isCurrentVersion}
+                    getDocumentContentById={getDocumentContentById}
+                    isLoading={isDocumentsFetching && !artifact.content}
+                    metadata={metadata}
+                    setMetadata={setMetadata}
+                    append={append}
+                    setArtifact={setArtifact}
+                  />
+                );
+              })()}
 
               <AnimatePresence>
                 {isCurrentVersion && (
@@ -717,12 +779,24 @@ function PureArtifact({
 }
 
 export const Artifact = memo(PureArtifact, (prevProps, nextProps) => {
+  // Only re-render if critical props change
   if (prevProps.status !== nextProps.status) return false;
-  if (!equal(prevProps.votes, nextProps.votes)) return false;
   if (prevProps.input !== nextProps.input) return false;
-  if (!equal(prevProps.messages, nextProps.messages.length)) return false;
-  if (prevProps.selectedVisibilityType !== nextProps.selectedVisibilityType)
-    return false;
+  if (prevProps.selectedVisibilityType !== nextProps.selectedVisibilityType) return false;
+  if (prevProps.chatId !== nextProps.chatId) return false;
+  
+  // Check votes length instead of deep equality for performance
+  const prevVotesLength = prevProps.votes?.length || 0;
+  const nextVotesLength = nextProps.votes?.length || 0;
+  if (prevVotesLength !== nextVotesLength) return false;
+  
+  // Check messages length instead of deep equality for performance
+  if (prevProps.messages.length !== nextProps.messages.length) return false;
+  
+  // Check if the last message ID changed (more efficient than deep comparison)
+  const prevLastMessage = prevProps.messages.at(-1);
+  const nextLastMessage = nextProps.messages.at(-1);
+  if (prevLastMessage?.id !== nextLastMessage?.id) return false;
 
   return true;
 });
