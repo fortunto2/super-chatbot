@@ -713,15 +713,6 @@ function PureArtifact({
 
             <div className="dark:bg-muted bg-background h-full overflow-y-scroll !max-w-full items-center">
               {(() => {
-                console.log('🎨 About to render artifact content:', {
-                  artifactDefinition: !!artifactDefinition,
-                  kind: artifact.kind,
-                  title: artifact.title,
-                  contentLength: artifact.content?.length || 0,
-                  isCurrentVersion,
-                  status: artifact.status
-                });
-                
                 return (
                   <artifactDefinition.content
                     title={artifact.title}
@@ -742,6 +733,7 @@ function PureArtifact({
                     metadata={metadata}
                     setMetadata={setMetadata}
                     append={append}
+                    setMessages={setMessages}
                     setArtifact={setArtifact}
                   />
                 );

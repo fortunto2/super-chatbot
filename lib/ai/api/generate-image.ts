@@ -38,7 +38,7 @@ export const generateImage = async (
             shot_size: shotSize.label,
             seed: `${Math.floor(Math.random() * 1000000000000)}`,
             generation_config_name: "comfyui/flux",
-            batch_size: 3,
+            batch_size: 1,
             style_name: style.id,
             entity_ids: [],
             references: []

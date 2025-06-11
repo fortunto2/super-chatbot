@@ -47,6 +47,7 @@ interface ArtifactContent<M = any> {
   metadata: M;
   setMetadata: Dispatch<SetStateAction<M>>;
   append?: UseChatHelpers['append'];
+  setMessages?: UseChatHelpers['setMessages'];
   setArtifact?: Dispatch<SetStateAction<UIArtifact>>;
 }
 

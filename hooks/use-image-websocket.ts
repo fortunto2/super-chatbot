@@ -32,7 +32,6 @@ export const useImageWebsocket = ({ projectId, eventHandlers, enabled = true }: 
     }
 
     if (!enabled || !projectId || eventHandlers.length === 0) {
-      console.log('❌ WebSocket disabled or missing projectId/handlers:', { enabled, projectId: !!projectId, handlersCount: eventHandlers.length });
       setIsConnected(false);
       setConnectionAttempts(0);
       return;
@@ -43,18 +42,12 @@ export const useImageWebsocket = ({ projectId, eventHandlers, enabled = true }: 
 
     const attemptConnection = (attempt: number = 1) => {
       if (!mountedRef.current) {
-        console.log('❌ Component unmounted, aborting connection');
         return;
       }
-      
-      console.log(`🔌 WebSocket connection attempt ${attempt}/${maxAttempts} for project:`, projectId);
-      console.log('🔌 Store debug info:', imageWebsocketStore.getDebugInfo());
       
       // Use environment variable or fallback to default
       const baseUrl = process.env.NEXT_PUBLIC_WS_URL || 'https://editor.superduperai.co';
       const url = `${baseUrl.replace('https://', 'wss://')}/api/v1/ws/project.${projectId}`;
-      
-      console.log('🔌 Attempting WebSocket connection to:', url);
       
       // Remove previous connection handler if exists
       if (connectionHandlerRef.current) {
@@ -65,7 +58,6 @@ export const useImageWebsocket = ({ projectId, eventHandlers, enabled = true }: 
       const connectionHandler = (connected: boolean) => {
         if (!mountedRef.current) return; // Don't update state if unmounted
         
-        console.log('🔌 Connection state changed:', connected, 'attempt:', attempt);
         setIsConnected(connected);
         
         // If connected successfully, reset attempts
@@ -73,19 +65,16 @@ export const useImageWebsocket = ({ projectId, eventHandlers, enabled = true }: 
           setConnectionAttempts(0);
         } else {
           // Connection failed or lost
-          console.log(`❌ WebSocket connection attempt ${attempt} failed`);
           setConnectionAttempts(attempt);
           
           // Try again if we haven't reached max attempts
           if (attempt < maxAttempts) {
             const delay = Math.pow(2, attempt) * 1000; // Exponential backoff: 2s, 4s, 8s
-            console.log(`🔄 Retrying WebSocket connection in ${delay}ms...`);
             
             retryTimeoutRef.current = setTimeout(() => {
               attemptConnection(attempt + 1);
             }, delay);
           } else {
-            console.log(`💥 WebSocket connection failed after ${maxAttempts} attempts. Working without real-time updates.`);
             setIsConnected(false);
           }
         }
@@ -103,8 +92,6 @@ export const useImageWebsocket = ({ projectId, eventHandlers, enabled = true }: 
     attemptConnection(1);
 
     return () => {
-      console.log('🔌 Cleaning up WebSocket connection for project:', projectId);
-      
       // Clear retry timeout
       if (retryTimeoutRef.current) {
         clearTimeout(retryTimeoutRef.current);
@@ -124,7 +111,6 @@ export const useImageWebsocket = ({ projectId, eventHandlers, enabled = true }: 
   // Force cleanup on unmount
   useEffect(() => {
     return () => {
-      console.log('🧹 Force cleanup on unmount');
       mountedRef.current = false;
       
       if (retryTimeoutRef.current) {

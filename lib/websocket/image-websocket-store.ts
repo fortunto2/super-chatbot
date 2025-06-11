@@ -25,6 +25,7 @@ class ImageWebsocketStore {
   private currentUrl: string | null = null;
   private isConnecting = false;
   private connectionTimeout: NodeJS.Timeout | null = null;
+  private disconnectTimeout: NodeJS.Timeout | null = null;
   private lastConnectionAttempt = 0;
   private connectionDebounceMs = 100; // Prevent rapid successive connections
   
@@ -59,21 +60,38 @@ class ImageWebsocketStore {
     }
   }
 
-  removeHandlers(handlers: ImageEventHandler[]) {
-    console.log('➖ Removing handlers:', handlers.length);
+  removeHandlers(handlersToRemove: ImageEventHandler[]) {
+    console.log('➖ Removing handlers:', handlersToRemove.length);
     console.log('➖ Current handlers before:', this.handlers.length);
-    this.handlers = this.handlers.filter((h) => !handlers.includes(h));
+    
+    handlersToRemove.forEach(handler => {
+      const index = this.handlers.indexOf(handler);
+      if (index > -1) {
+        this.handlers.splice(index, 1);
+      }
+    });
+    
     console.log('➖ Current handlers after:', this.handlers.length);
     
-    // Close connection if no handlers remain (with small delay to prevent flapping)
+    // Only schedule disconnect if no handlers remain and we're not in React Strict Mode double effect
     if (this.handlers.length === 0) {
-      console.log('🔌 No handlers left, scheduling disconnect in 500ms');
-      setTimeout(() => {
+      console.log('🔌 No handlers left, scheduling disconnect in 1000ms (increased for React Strict Mode)');
+      
+      // Clear any existing disconnect timeout
+      if (this.disconnectTimeout) {
+        clearTimeout(this.disconnectTimeout);
+      }
+      
+      // Schedule disconnect with longer delay for React Strict Mode
+      this.disconnectTimeout = setTimeout(() => {
+        // Double-check that we still have no handlers before disconnecting
         if (this.handlers.length === 0) {
-          console.log('🔌 Still no handlers, closing connection');
+          console.log('🔌 Actually disconnecting after timeout - no handlers remain');
           this.disconnect();
+        } else {
+          console.log('🔌 Disconnect cancelled - handlers were re-added');
         }
-      }, 500);
+      }, 1000); // Increased from 500ms to 1000ms
     }
   }
 
@@ -107,31 +125,35 @@ class ImageWebsocketStore {
 
   // Force cleanup method for React Strict Mode
   forceCleanup() {
-    console.log('🧹 Force cleanup: clearing all handlers and connections');
+    console.log('🧹 Force cleanup initiated');
+    console.log('🧹 Current handlers:', this.handlers.length);
+    console.log('🧹 Connection handlers:', this.connectionHandlers.length);
+    console.log('🧹 Active projects:', Array.from(this.activeProjects));
     
-    // Clear all timeouts
-    if (this.connectionTimeout) {
-      clearTimeout(this.connectionTimeout);
-      this.connectionTimeout = null;
+    // Clear all handlers but be more conservative during development (React Strict Mode)
+    const isDevelopment = process.env.NODE_ENV === 'development';
+    
+    if (isDevelopment && this.handlers.length < 5) {
+      console.log('🧹 Skipping force cleanup in development with few handlers (React Strict Mode)');
+      return;
     }
     
-    // Notify all handlers that connection is lost
-    this.notifyConnectionState(false);
-    
-    // Clear handlers
     this.handlers = [];
     this.connectionHandlers = [];
     this.projectHandlerMap.clear();
     this.activeProjects.clear();
     
-    // Disconnect current connection
-    this.disconnect();
-    
-    // Reset all state
-    this.reconnectAttempts = 0;
-    this.isConnecting = false;
+    if (this.connection && this.connection.readyState === WebSocket.OPEN) {
+      console.log('🧹 Closing WebSocket connection');
+      this.connection.close(1000, 'Force cleanup');
+    }
+    this.connection = null;
     this.currentUrl = null;
-    this.lastConnectionAttempt = 0;
+    this.isConnecting = false;
+    this.reconnectAttempts = 0;
+    
+    this.notifyConnectionState(false);
+    console.log('🧹 Force cleanup completed');
   }
 
   // Clean up handlers for specific project
@@ -173,6 +195,12 @@ class ImageWebsocketStore {
     if (this.connectionTimeout) {
       clearTimeout(this.connectionTimeout);
       this.connectionTimeout = null;
+    }
+    
+    // Clear disconnect timeout
+    if (this.disconnectTimeout) {
+      clearTimeout(this.disconnectTimeout);
+      this.disconnectTimeout = null;
     }
     
     if (this.connection) {
