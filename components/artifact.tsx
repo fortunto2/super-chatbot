@@ -114,14 +114,7 @@ function PureArtifact({
     if (process.env.NODE_ENV === 'development') {
       const now = Date.now();
       if (now - lastLogTimeRef.current > 1000) { // Throttle to once per second
-        console.log('🎨 Artifact component rendered with:', {
-          documentId: artifact.documentId,
-          kind: artifact.kind,
-          isVisible: artifact.isVisible,
-          status: artifact.status,
-          hasContent: !!artifact.content,
-          contentLength: artifact.content?.length || 0
-        });
+          // Artifact component rendered
         lastLogTimeRef.current = now;
       }
     }

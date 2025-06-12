@@ -57,28 +57,14 @@ export function useArtifact() {
 
   const artifact = useMemo(() => {
     const result = localArtifact || initialArtifactData;
-    logWithThrottle('🎨 useArtifact: artifact state changed:', {
-      documentId: result.documentId,
-      kind: result.kind,
-      isVisible: result.isVisible,
-      status: result.status,
-      hasContent: !!result.content,
-      contentLength: result.content?.length || 0
-    });
+    // Artifact state changed silently
     return result;
   }, [localArtifact]);
 
   const setArtifact = useCallback(
     (updaterFn: UIArtifact | ((currentArtifact: UIArtifact) => UIArtifact)) => {
-      logWithThrottle('🎨 useArtifact: setArtifact called with updater:', typeof updaterFn);
       setLocalArtifact((currentArtifact) => {
         const artifactToUpdate = currentArtifact || initialArtifactData;
-        logWithThrottle('🎨 useArtifact: current artifact before update:', {
-          documentId: artifactToUpdate.documentId,
-          kind: artifactToUpdate.kind,
-          isVisible: artifactToUpdate.isVisible,
-          status: artifactToUpdate.status
-        });
 
         let newArtifact: UIArtifact;
         if (typeof updaterFn === 'function') {
@@ -86,15 +72,6 @@ export function useArtifact() {
         } else {
           newArtifact = updaterFn;
         }
-        
-        logWithThrottle('🎨 useArtifact: artifact after update:', {
-          documentId: newArtifact.documentId,
-          kind: newArtifact.kind,
-          isVisible: newArtifact.isVisible,
-          status: newArtifact.status,
-          hasContent: !!newArtifact.content,
-          contentLength: newArtifact.content?.length || 0
-        });
 
         return newArtifact;
       });

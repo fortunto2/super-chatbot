@@ -24,17 +24,11 @@ const ImageArtifactWrapper = memo(function ImageArtifactWrapper(props: any) {
     
     try {
       const parsed = JSON.parse(content);
-      console.log('🎨 ImageArtifactWrapper: Parsed content updated:', {
-        status: parsed.status,
-        projectId: parsed.projectId,
-        requestId: parsed.requestId,
-        hasImageUrl: !!parsed.imageUrl,
-        imageUrl: parsed.imageUrl?.substring(0, 100) + '...' || 'none'
-      });
+      // Parsed content updated
       return parsed;
     } catch (error) {
       // Only log if content looks like it should be JSON (starts with { or [)
-      console.log('🎨 ImageArtifactWrapper: Failed to parse content as JSON, length:', content.length);
+      // Failed to parse content as JSON
       return null;
     }
   }, [content]);
@@ -53,7 +47,7 @@ const ImageArtifactWrapper = memo(function ImageArtifactWrapper(props: any) {
       imageUrl: parsedContent.imageUrl, // Pass imageUrl from completed state
     };
     
-    console.log('🎨 ImageArtifactWrapper: Created initial state:', state);
+    // Created initial state
     return state;
   }, [parsedContent]);
 
@@ -65,25 +59,21 @@ const ImageArtifactWrapper = memo(function ImageArtifactWrapper(props: any) {
   // Debug WebSocket connection status
   useEffect(() => {
     if (parsedContent?.projectId && artifactWebSocket.isConnected) {
-      console.log('🔌 ImageArtifactWrapper: WebSocket connected for artifact:', {
-        projectId: artifactWebSocket.currentProjectId,
-        requestId: artifactWebSocket.currentRequestId,
-        artifactStatus: parsedContent.status
-      });
+      // WebSocket connected for artifact
     }
   }, [artifactWebSocket.isConnected, artifactWebSocket.currentProjectId, parsedContent?.projectId, parsedContent?.status]);
 
   // Auto-notify chat WebSocket about new projectId when artifact is created (fallback)
   useEffect(() => {
     if (parsedContent?.projectId) {
-      console.log('🔄 ImageArtifactWrapper: Notifying chat WebSocket about projectId:', parsedContent.projectId);
+      // Notifying chat WebSocket about projectId
       
       // Use the global notifyNewProject function exposed by console helpers
       const globalWindow = window as any;
       if (globalWindow.notifyNewProject) {
         globalWindow.notifyNewProject(parsedContent.projectId);
       } else {
-        console.warn('⚠️ notifyNewProject not available on window object');
+        // notifyNewProject not available
       }
     }
   }, [parsedContent?.projectId]);
@@ -233,11 +223,7 @@ const ImageArtifactWrapper = memo(function ImageArtifactWrapper(props: any) {
     changes.availableShotSizes ||
     changes.availableModels;
   
-  if (shouldRerender) {
-    console.log('🔄 ImageArtifactWrapper re-rendering due to changes:', 
-      Object.entries(changes).filter(([_, changed]) => changed).map(([key]) => key)
-    );
-  }
+  // Check if should re-render
   
   return !shouldRerender; // Return false to re-render, true to skip
 });

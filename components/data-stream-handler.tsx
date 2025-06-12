@@ -35,8 +35,7 @@ function PureDataStreamHandler({ id, dataStream }: { id: string; dataStream?: an
     }
   };
 
-  logWithThrottle('📡 DataStreamHandler initialized for id:', id);
-  logWithThrottle('📡 External dataStream provided:', { hasStream: !!dataStream, length: dataStream?.length || 0 });
+  // DataStreamHandler initialized silently
   
   const { artifact, setArtifact, setMetadata } = useArtifact();
   const lastProcessedIndex = useRef(-1);
@@ -55,19 +54,12 @@ function PureDataStreamHandler({ id, dataStream }: { id: string; dataStream?: an
     // Prevent concurrent processing
     if (isProcessing.current) return;
     
-    logWithThrottle('📡 DataStream changed:', {
-      hasDataStream: !!dataStream,
-      dataStreamLength,
-      lastProcessedIndex: lastProcessedIndex.current
-    });
-    
     if (!dataStream?.length || lastProcessedIndex.current >= dataStream.length - 1) return;
 
     isProcessing.current = true;
 
     try {
       const newDeltas = dataStream.slice(lastProcessedIndex.current + 1);
-      logWithThrottle('📡 Processing new deltas:', newDeltas.length);
       
       if (newDeltas.length === 0) {
         isProcessing.current = false;
@@ -81,16 +73,8 @@ function PureDataStreamHandler({ id, dataStream }: { id: string; dataStream?: an
         (def) => def.kind === stableArtifactKind.current,
       );
 
-      logWithThrottle('📡 Found artifact definition:', { found: !!artifactDefinition, kind: stableArtifactKind.current });
-
       (newDeltas as DataStreamDelta[]).forEach((delta: DataStreamDelta) => {
-        logWithThrottle('📡 Processing delta:', { 
-          type: delta.type, 
-          content: typeof delta.content === 'string' ? delta.content.substring(0, 100) + '...' : delta.content 
-        });
-
         if (artifactDefinition?.onStreamPart) {
-          logWithThrottle('📡 Calling onStreamPart for artifact definition');
           artifactDefinition.onStreamPart({
             streamPart: delta,
             setArtifact,
@@ -99,14 +83,12 @@ function PureDataStreamHandler({ id, dataStream }: { id: string; dataStream?: an
         }
 
         setArtifact((draftArtifact) => {
-          logWithThrottle('📡 Setting artifact with delta type:', delta.type);
           if (!draftArtifact) {
             return { ...initialArtifactData, status: 'streaming' };
           }
 
           switch (delta.type) {
             case 'id':
-              logWithThrottle('📡 Setting artifact id:', delta.content);
               return {
                 ...draftArtifact,
                 documentId: delta.content as string,
@@ -114,7 +96,6 @@ function PureDataStreamHandler({ id, dataStream }: { id: string; dataStream?: an
               };
 
             case 'title':
-              logWithThrottle('📡 Setting artifact title:', delta.content);
               return {
                 ...draftArtifact,
                 title: delta.content as string,
@@ -122,7 +103,6 @@ function PureDataStreamHandler({ id, dataStream }: { id: string; dataStream?: an
               };
 
             case 'kind':
-              logWithThrottle('📡 Setting artifact kind:', delta.content);
               return {
                 ...draftArtifact,
                 kind: delta.content as ArtifactKind,
@@ -130,7 +110,6 @@ function PureDataStreamHandler({ id, dataStream }: { id: string; dataStream?: an
               };
 
             case 'clear':
-              logWithThrottle('📡 Clearing artifact content');
               return {
                 ...draftArtifact,
                 content: '',
@@ -138,14 +117,12 @@ function PureDataStreamHandler({ id, dataStream }: { id: string; dataStream?: an
               };
 
             case 'finish':
-              logWithThrottle('📡 Finishing artifact');
               return {
                 ...draftArtifact,
                 status: 'idle',
               };
 
             default:
-              logWithThrottle('📡 Unknown delta type:', delta.type);
               return draftArtifact;
           }
         });

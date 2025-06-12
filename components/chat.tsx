@@ -127,7 +127,7 @@ function ChatContent({
   // Notify parent about dataStream changes for artifacts
   useEffect(() => {
     if (data && onDataStream) {
-      console.log('📡 Chat: Notifying parent about dataStream changes:', data.length);
+      // Notifying parent about dataStream changes
       onDataStream(data);
     }
   }, [data, onDataStream]);
@@ -170,7 +170,7 @@ function ChatContent({
           lastImageUrl: globalWindow.chatWebSocketInstance.lastImageUrl // Preserve existing URL
         });
         
-        console.log('🔧 Chat WebSocket instance stored for debugging');
+        // Debugging instance stored silently
       }
     }
   }, [chatImageWebSocket, messages]);
