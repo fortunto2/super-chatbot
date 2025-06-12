@@ -19,6 +19,8 @@ import type { Session } from 'next-auth';
 import { useSearchParams } from 'next/navigation';
 import { useChatVisibility } from '@/hooks/use-chat-visibility';
 import { useAutoResume } from '@/hooks/use-auto-resume';
+import { useChatImageWebSocket } from '@/hooks/use-chat-image-websocket';
+import { ChatWebSocketCleanup } from '@/lib/utils/chat-websocket-cleanup';
 import { LoaderIcon } from './icons';
 
 function ChatContent({
@@ -137,6 +139,41 @@ function ChatContent({
     data,
     setMessages,
   });
+
+  // Set active chat for cleanup management
+  useEffect(() => {
+    ChatWebSocketCleanup.setActiveChat(id);
+  }, [id]);
+
+  // Global WebSocket connection for image generation
+  const chatImageWebSocket = useChatImageWebSocket({
+    chatId: id,
+    messages,
+    setMessages,
+    enabled: !isReadonly, // Only enable for non-readonly chats
+  });
+
+  // Register WebSocket instance for debugging
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const globalWindow = window as any;
+      if (globalWindow.setChatWebSocketInstance) {
+        // Create a persistent storage object that maintains lastImageUrl
+        if (!globalWindow.chatWebSocketInstance) {
+          globalWindow.chatWebSocketInstance = {};
+        }
+        
+        // Update with current WebSocket data while preserving lastImageUrl
+        Object.assign(globalWindow.chatWebSocketInstance, {
+          ...chatImageWebSocket,
+          messages,
+          lastImageUrl: globalWindow.chatWebSocketInstance.lastImageUrl // Preserve existing URL
+        });
+        
+        console.log('🔧 Chat WebSocket instance stored for debugging');
+      }
+    }
+  }, [chatImageWebSocket, messages]);
 
   return (
     <>

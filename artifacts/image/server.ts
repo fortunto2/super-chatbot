@@ -90,6 +90,7 @@ export const imageDocumentHandler = createDocumentHandler<'image'>({
       draftContent = JSON.stringify({
         status: 'pending',
         projectId: result.projectId || chatId,
+        requestId: result.requestId,
         prompt: prompt,
         settings: {
           style,
@@ -155,6 +156,7 @@ export const imageDocumentHandler = createDocumentHandler<'image'>({
       draftContent = JSON.stringify({
         status: 'pending',
         projectId: result.projectId || chatId,
+        requestId: result.requestId,
         prompt: prompt,
         settings: {
           style,

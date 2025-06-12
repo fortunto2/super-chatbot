@@ -3,10 +3,16 @@ import { ImageModel, MediaOption, MediaResolution } from "@/lib/types/media-sett
 export interface ImageGenerationResult {
   success: boolean;
   projectId?: string;
+  requestId?: string;
   message?: string;
   error?: string;
   files?: any[];
   url?: string;
+}
+
+// Generate unique request ID
+function generateRequestId(): string {
+  return `img_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 }
 
 export const generateImage = async (
@@ -18,15 +24,21 @@ export const generateImage = async (
   chatId: string
 ): Promise<ImageGenerationResult> => {
     try {
+      const requestId = generateRequestId();
       const token = "afda4dc28cf1420db6d3e35a291c2d5f"
+      
+      console.log(`🎨 Starting image generation with requestId: ${requestId}, chatId: ${chatId}`);
+      
       const response = await fetch('https://editor.superduperai.co/api/v1/project/image', {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${token}`,
+          'X-Request-ID': requestId // Add request ID to headers
         },
         body: JSON.stringify({
           projectId: chatId,
+          requestId: requestId, // Include in body as well
           type: "image",
           template_name: null,
           config: {
@@ -54,6 +66,7 @@ export const generateImage = async (
         if (response.status === 401) {
           return {
             success: false,
+            requestId,
             error: 'Authentication failed. The API token may be invalid or expired.',
           };
         }
@@ -61,6 +74,7 @@ export const generateImage = async (
         if (response.status === 500) {
           return {
             success: false,
+            requestId,
             error: 'Server error occurred. Please try again later or contact support.',
           };
         }
@@ -69,11 +83,25 @@ export const generateImage = async (
       }
   
       const result = await response.json();
+      
+      console.log(`🎨 Image generation API response for requestId ${requestId}:`, result);
+      
+      const finalProjectId = result.id || chatId;
+      
+      // Notify chat WebSocket about new project ID if different from chatId
+      if (finalProjectId !== chatId && typeof window !== 'undefined') {
+        console.log(`🎨 New projectId detected: ${finalProjectId}, notifying chat WebSocket`);
+        const globalWindow = window as any;
+        if (globalWindow.notifyNewProject) {
+          globalWindow.notifyNewProject(finalProjectId);
+        }
+      }
   
       return {
         success: true,
-        projectId: result.id || chatId,
-        message: `Image generation started successfully! Project ID: ${result.id || chatId}`,
+        projectId: finalProjectId,
+        requestId,
+        message: `Image generation started successfully! Project ID: ${finalProjectId}, Request ID: ${requestId}`,
         files: result.files || [],
         url: result.url || null,
       };

@@ -7,7 +7,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { CopyIcon } from '@/components/icons';
 import { useImageGeneration } from '@/hooks/use-image-generation';
 import { useImageEffects } from '@/hooks/use-image-effects';
-import { imageWebsocketStore } from '@/lib/websocket/image-websocket-store';
 import { 
   getStatusIcon, 
   getConnectionIcon, 
@@ -230,9 +229,17 @@ export function ImageEditor({
   const shouldLog = useRef(0);
 
   // ALL HOOKS MUST BE CALLED BEFORE ANY EARLY RETURNS
-  const imageGeneration = useImageGeneration(websocketProjectId);
+  // Disable WebSocket in image generation hook since chat handles it globally
+  const imageGeneration = useImageGeneration(undefined); // Pass undefined to disable WebSocket
   const [prompt, setPrompt] = useState(initialState?.prompt || '');
   const [hasInitialized, setHasInitialized] = useState(false);
+
+  // Track initialState changes to update UI when image arrives
+  useEffect(() => {
+    if (initialState?.imageUrl && initialState.status === 'completed') {
+      console.log('🎨 ImageEditor: Initial state updated with completed image:', initialState.imageUrl);
+    }
+  }, [initialState?.imageUrl, initialState?.status]);
   
   // Use our custom effects hook for better organization
   useImageEffects({
@@ -253,34 +260,28 @@ export function ImageEditor({
   useEffect(() => {
     if (hasInitialized) return;
     
-    // Track initial state if pending/processing
-    if (initialState && (initialState.status === 'pending' || initialState.status === 'processing')) {
-      if (websocketProjectId) {
-        imageGeneration.startTracking(websocketProjectId);
+    // Since WebSocket is handled globally by chat, we only need to set local state
+    if (initialState) {
+      console.log('🎨 ImageEditor: Setting initial state from props:', initialState);
+      
+      // For completed images, we don't need to do anything special
+      // The chat WebSocket will handle updates automatically
+      if (initialState.status === 'completed' && initialState.imageUrl) {
+        console.log('🎨 ImageEditor: Image already completed, using initial state');
       }
     }
     
     setHasInitialized(true);
-  }, [hasInitialized, chatId, websocketProjectId, initialState, imageGeneration.startTracking]);
+  }, [hasInitialized, chatId, initialState]);
 
-  // Force cleanup on unmount - only for real unmount, not React Strict Mode
+  // No WebSocket cleanup needed - handled by chat-level WebSocket
+  // Force cleanup on unmount - only for real unmount, not React Strict Mode  
   useEffect(() => {
     return () => {
-      // Delay cleanup to avoid React Strict Mode double effects
-      const timeoutId = setTimeout(() => {
-        // Only cleanup if the component is actually being unmounted (not just React Strict Mode test)
-        if (!isMountedRef.current && websocketProjectId) {
-          imageWebsocketStore.cleanupProject(websocketProjectId);
-          
-          // Check for too many handlers and force cleanup if needed
-          const debugInfo = imageWebsocketStore.getDebugInfo();
-          if (debugInfo.totalHandlers > 10 || debugInfo.connectionHandlers > 5) {
-            imageWebsocketStore.forceCleanup();
-          }
-        } 
-      }, 1000); // 1 second delay to avoid React Strict Mode issues
+      // No WebSocket cleanup needed since we're not managing WebSocket at this level
+      console.log('🎨 ImageEditor: Component unmounting');
     };
-  }, [websocketProjectId]);
+  }, []);
 
   // Update refs when values change
   useEffect(() => {
@@ -309,22 +310,41 @@ export function ImageEditor({
     );
   }
 
+  // Get global WebSocket connection status
+  const getGlobalConnectionStatus = () => {
+    if (typeof window !== 'undefined') {
+      const globalWindow = window as any;
+      const chatInstance = globalWindow.chatWebSocketInstance;
+      if (chatInstance) {
+        // Check if connected to the specific project
+        if (websocketProjectId && chatInstance.isConnectedToProject) {
+          return chatInstance.isConnectedToProject(websocketProjectId);
+        }
+        // Fallback to general connection status
+        return chatInstance.isConnected || false;
+      }
+    }
+    return false;
+  };
+
+  const globalConnectionStatus = getGlobalConnectionStatus();
+  
   // Use utility functions for better organization
   const statusIcon = getStatusIcon(imageGeneration.isGenerating, imageGeneration.error, imageGeneration.imageUrl);
-  const connectionIcon = getConnectionIcon(imageGeneration.isConnected);
-  const connectionStatus = getConnectionStatus(imageGeneration.isGenerating, imageGeneration.isConnected);
+  const connectionIcon = getConnectionIcon(globalConnectionStatus);
+  const connectionStatus = getConnectionStatus(imageGeneration.isGenerating, globalConnectionStatus);
 
 
   
-  // Simplified debug info
+  // Simplified debug info (no WebSocket store info since it's handled at chat level)
   const debugInfo = {
     chatId,
     websocketProjectId,
     status: imageGeneration.status,
-    isConnected: imageGeneration.isConnected,
+    isConnected: globalConnectionStatus,
     hasImage: !!(imageGeneration.imageUrl || initialState?.imageUrl),
     initialized: hasInitialized,
-    storeInfo: imageWebsocketStore.getDebugInfo()
+    websocketLevel: 'chat-managed' // Indicate WebSocket is managed at chat level
   };
   
   if (Date.now() - shouldLog.current > 2000) {
@@ -347,7 +367,7 @@ export function ImageEditor({
           chatId={chatId}
           websocketProjectId={websocketProjectId}
           status={imageGeneration.status}
-          isConnected={imageGeneration.isConnected}
+          isConnected={globalConnectionStatus}
           connectionAttempts={imageGeneration.connectionAttempts}
           maxAttempts={imageGeneration.maxAttempts}
           hasImage={shouldShowImage(imageGeneration.imageUrl, initialState?.imageUrl)}
@@ -363,6 +383,23 @@ export function ImageEditor({
             </div>
           </div>
         )}
+
+        {/* Debug what we're showing */}
+        {(() => {
+          const showSkeleton = shouldShowSkeleton(initialState, imageGeneration.imageUrl, initialState?.imageUrl);
+          const showImage = shouldShowImage(imageGeneration.imageUrl, initialState?.imageUrl);
+          
+          console.log('🎨 ImageEditor: Display decision:', {
+            showSkeleton,
+            showImage,
+            'initialState?.status': initialState?.status,
+            'initialState?.imageUrl': !!initialState?.imageUrl,
+            'imageGeneration.imageUrl': !!imageGeneration.imageUrl,
+            imageUrlPreview: initialState?.imageUrl?.substring(0, 50) + '...' || 'none'
+          });
+          
+          return null;
+        })()}
 
         {/* Generation skeleton */}
         {shouldShowSkeleton(initialState, imageGeneration.imageUrl, initialState?.imageUrl) && (

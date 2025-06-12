@@ -31,6 +31,10 @@ export function useImageEffects({
   const sentToChat = useRef<Set<string>>(new Set());
   const prevChatIdRef = useRef<string | undefined>(chatId);
 
+  // NOTE: Image sending to chat is now handled by useChatImageWebSocket globally
+  // This effect is disabled to prevent duplicates
+  
+  /*
   // Send image to chat when generation is completed (as assistant message)
   useEffect(() => {
     if (imageUrl && 
@@ -63,6 +67,7 @@ export function useImageEffects({
       ]);
     }
   }, [imageUrl, status, setMessages, prompt, hasInitialized]);
+  */
 
   // Update artifact when image generation is completed
   useEffect(() => {

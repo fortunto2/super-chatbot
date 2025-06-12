@@ -2,7 +2,11 @@ import { Artifact } from '@/components/create-artifact';
 import { CopyIcon, RedoIcon, UndoIcon } from '@/components/icons';
 import { ImageEditor } from '@/components/image-editor';
 import { toast } from 'sonner';
-import { memo, useMemo } from 'react';
+import { memo, useMemo, useEffect } from 'react';
+import { useArtifactWebSocket } from '@/hooks/use-artifact-websocket';
+
+// Import console helpers for debugging (auto-exposes in browser)
+import '@/lib/utils/console-helpers';
 
 // Wrapper component that handles the artifact content for ImageEditor
 const ImageArtifactWrapper = memo(function ImageArtifactWrapper(props: any) {
@@ -20,10 +24,17 @@ const ImageArtifactWrapper = memo(function ImageArtifactWrapper(props: any) {
     
     try {
       const parsed = JSON.parse(content);
+      console.log('🎨 ImageArtifactWrapper: Parsed content updated:', {
+        status: parsed.status,
+        projectId: parsed.projectId,
+        requestId: parsed.requestId,
+        hasImageUrl: !!parsed.imageUrl,
+        imageUrl: parsed.imageUrl?.substring(0, 100) + '...' || 'none'
+      });
       return parsed;
     } catch (error) {
       // Only log if content looks like it should be JSON (starts with { or [)
-      
+      console.log('🎨 ImageArtifactWrapper: Failed to parse content as JSON, length:', content.length);
       return null;
     }
   }, [content]);
@@ -32,15 +43,50 @@ const ImageArtifactWrapper = memo(function ImageArtifactWrapper(props: any) {
   const initialState = useMemo(() => {
     if (!parsedContent) return undefined;
     
-    return {
+    const state = {
       status: parsedContent.status,
       prompt: parsedContent.prompt,
       projectId: parsedContent.projectId,
+      requestId: parsedContent.requestId,
       timestamp: parsedContent.timestamp,
       message: parsedContent.message,
       imageUrl: parsedContent.imageUrl, // Pass imageUrl from completed state
     };
+    
+    console.log('🎨 ImageArtifactWrapper: Created initial state:', state);
+    return state;
   }, [parsedContent]);
+
+  // Connect to WebSocket for real-time updates
+  const artifactWebSocket = useArtifactWebSocket({
+    enabled: !!parsedContent?.projectId && !!parsedContent?.requestId
+  });
+
+  // Debug WebSocket connection status
+  useEffect(() => {
+    if (parsedContent?.projectId && artifactWebSocket.isConnected) {
+      console.log('🔌 ImageArtifactWrapper: WebSocket connected for artifact:', {
+        projectId: artifactWebSocket.currentProjectId,
+        requestId: artifactWebSocket.currentRequestId,
+        artifactStatus: parsedContent.status
+      });
+    }
+  }, [artifactWebSocket.isConnected, artifactWebSocket.currentProjectId, parsedContent?.projectId, parsedContent?.status]);
+
+  // Auto-notify chat WebSocket about new projectId when artifact is created (fallback)
+  useEffect(() => {
+    if (parsedContent?.projectId) {
+      console.log('🔄 ImageArtifactWrapper: Notifying chat WebSocket about projectId:', parsedContent.projectId);
+      
+      // Use the global notifyNewProject function exposed by console helpers
+      const globalWindow = window as any;
+      if (globalWindow.notifyNewProject) {
+        globalWindow.notifyNewProject(parsedContent.projectId);
+      } else {
+        console.warn('⚠️ notifyNewProject not available on window object');
+      }
+    }
+  }, [parsedContent?.projectId]);
 
   // Memoize settings to prevent recreating object on every render
   const defaultSettings = useMemo(() => {
@@ -144,18 +190,56 @@ const ImageArtifactWrapper = memo(function ImageArtifactWrapper(props: any) {
     </div>
   );
 }, (prevProps, nextProps) => {
-  // Custom comparison function for memo to prevent unnecessary rerenders
-  // Only compare essential props that affect rendering
-  const contentChanged = prevProps.content !== nextProps.content;
-  const setArtifactChanged = prevProps.setArtifact !== nextProps.setArtifact;
-  const appendChanged = prevProps.append !== nextProps.append;
-  const setMessagesChanged = prevProps.setMessages !== nextProps.setMessages;
+  // Comprehensive comparison function for memo to prevent image mix-ups
+  const changes = {
+    content: prevProps.content !== nextProps.content,
+    setArtifact: prevProps.setArtifact !== nextProps.setArtifact,
+    append: prevProps.append !== nextProps.append,
+    setMessages: prevProps.setMessages !== nextProps.setMessages,
+    // Check other props that might affect rendering
+    chatId: prevProps.chatId !== nextProps.chatId,
+    availableResolutions: JSON.stringify(prevProps.availableResolutions) !== JSON.stringify(nextProps.availableResolutions),
+    availableStyles: JSON.stringify(prevProps.availableStyles) !== JSON.stringify(nextProps.availableStyles),
+    availableShotSizes: JSON.stringify(prevProps.availableShotSizes) !== JSON.stringify(nextProps.availableShotSizes),
+    availableModels: JSON.stringify(prevProps.availableModels) !== JSON.stringify(nextProps.availableModels),
+  };
   
-  if (contentChanged || setArtifactChanged || appendChanged || setMessagesChanged) {
-    return false; // Re-render
+  // Check if content contains different projectId or requestId
+  let contentChanged = changes.content;
+  if (!contentChanged && prevProps.content && nextProps.content) {
+    try {
+      const prevParsed = JSON.parse(prevProps.content);
+      const nextParsed = JSON.parse(nextProps.content);
+      
+      // Check for critical fields that should trigger re-render
+      contentChanged = 
+        prevParsed.projectId !== nextParsed.projectId ||
+        prevParsed.requestId !== nextParsed.requestId ||
+        prevParsed.imageUrl !== nextParsed.imageUrl ||
+        prevParsed.status !== nextParsed.status;
+    } catch {
+      // If content is not JSON, compare as strings
+      contentChanged = prevProps.content !== nextProps.content;
+    }
   }
   
-  return true; // Skip re-render
+  const shouldRerender = contentChanged || 
+    changes.setArtifact || 
+    changes.append || 
+    changes.setMessages ||
+    changes.chatId ||
+    changes.availableResolutions ||
+    changes.availableStyles ||
+    changes.availableShotSizes ||
+    changes.availableModels;
+  
+  if (shouldRerender) {
+    console.log('🔄 ImageArtifactWrapper re-rendering due to changes:', 
+      Object.entries(changes).filter(([_, changed]) => changed).map(([key]) => key)
+    );
+  }
+  
+  return !shouldRerender; // Return false to re-render, true to skip
 });
 
 export default function ArtifactContentImage(props: any) {

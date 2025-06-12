@@ -32,8 +32,15 @@ export type ITaskRead = {
 };
 
 
-export interface UseImageGenerationState extends ImageGenerationState {
+export interface UseImageGenerationState {
   isGenerating: boolean;
+  progress: number;
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+  error?: string;
+  imageUrl?: string;
+  projectId?: string;
+  requestId?: string;
+  timestamp?: number;
 }
 
 export interface UseImageGenerationActions {
@@ -46,7 +53,7 @@ export interface UseImageGenerationActions {
     chatId: string
   ) => Promise<void>;
   resetState: () => void;
-  startTracking: (projectId: string) => void;
+  startTracking: (projectId: string, requestId?: string) => void;
 }
 
 export interface UseImageGenerationReturn extends UseImageGenerationState, UseImageGenerationActions {
@@ -63,12 +70,14 @@ const initialState: UseImageGenerationState = {
   error: undefined,
   imageUrl: undefined,
   projectId: undefined,
+  requestId: undefined,
 };
 
 export function useImageGeneration(chatId?: string): UseImageGenerationReturn {
   const [state, setState] = useState<UseImageGenerationState>(initialState);
   const stableChatIdRef = useRef<string | undefined>(chatId);
   const [chatIdState, setChatIdState] = useState(chatId);
+  const [currentRequestId, setCurrentRequestId] = useState<string | undefined>();
   const mountedRef = useRef(true);
 
   // Update stable chatId and state only when actually changed
@@ -77,17 +86,20 @@ export function useImageGeneration(chatId?: string): UseImageGenerationReturn {
       const oldChatId = stableChatIdRef.current;
       console.log('🎮 ChatId changed from', oldChatId, 'to', chatId);
       
-      // Clean up old project connections
+      // Clean up old project connections immediately and synchronously
       if (oldChatId) {
-        console.log('🧹 Cleaning up old project:', oldChatId);
-        // Import the store dynamically to avoid circular dependencies
-        import('@/lib/websocket/image-websocket-store').then(({ imageWebsocketStore }) => {
-          imageWebsocketStore.cleanupProject(oldChatId);
-        });
+        console.log('🧹 Cleaning up old project immediately:', oldChatId);
+        // Use the store directly for immediate cleanup
+        const { imageWebsocketStore } = require('@/lib/websocket/image-websocket-store');
+        imageWebsocketStore.cleanupProject(oldChatId);
+        
+        // Also remove any lingering handlers for the old project
+        imageWebsocketStore.removeProjectHandlers(oldChatId, []);
       }
       
       stableChatIdRef.current = chatId;
       setChatIdState(chatId);
+      setCurrentRequestId(undefined); // Reset request ID
       // Reset state only when switching to a different chatId
       if (mountedRef.current) {
         setState(initialState);
@@ -117,14 +129,14 @@ export function useImageGeneration(chatId?: string): UseImageGenerationReturn {
     });
   }, []);
 
-  // Create stable event handler using chatIdState instead of ref
-  const imageEventHandler = useImageEventHandler(chatIdState || '', handleStateUpdate);
+  // Create stable event handler using chatIdState and currentRequestId
+  const imageEventHandler = useImageEventHandler(chatIdState || '', handleStateUpdate, currentRequestId);
   
   // Use stable chatIdState for useMemo to properly trigger recreations
   const eventHandlers = useMemo(() => {
-    console.log('🎮 Creating event handlers array for chatId:', chatIdState);
+    console.log('🎮 Creating event handlers array for chatId:', chatIdState, 'requestId:', currentRequestId);
     return chatIdState ? [imageEventHandler] : [];
-  }, [imageEventHandler, chatIdState]);
+  }, [imageEventHandler, chatIdState, currentRequestId]);
 
   // Create stable WebSocket options with chatIdState dependency
   const websocketOptions = useMemo(() => {
@@ -138,22 +150,43 @@ export function useImageGeneration(chatId?: string): UseImageGenerationReturn {
     };
   }, [chatIdState, eventHandlers]);
 
-  // Add forced cleanup for React Strict Mode
+  // Improved cleanup for React Strict Mode
   useEffect(() => {
     return () => {
-      console.log('🧹 Cleanup useImageGeneration, chatId:', chatIdState);
+      console.log('🧹 Final cleanup useImageGeneration, chatId:', chatIdState);
       mountedRef.current = false;
+      
+      // Immediate cleanup without delays for React Strict Mode
+      if (chatIdState) {
+        const { imageWebsocketStore } = require('@/lib/websocket/image-websocket-store');
+        imageWebsocketStore.cleanupProject(chatIdState);
+        
+        // Check for excessive handlers and force cleanup if needed
+        const debugInfo = imageWebsocketStore.getDebugInfo();
+        if (debugInfo.totalHandlers > 8) {
+          console.log('🧹 Force cleanup due to excessive handlers:', debugInfo.totalHandlers);
+          imageWebsocketStore.forceCleanup();
+        }
+      }
     };
-  }, []);
+  }, [chatIdState]); // Depend on chatIdState for proper cleanup
 
   const { isConnected, connectionAttempts, maxAttempts, disconnect } = useImageWebsocket(websocketOptions);
 
-  console.log('🎮 WebSocket connection status:', { isConnected, connectionAttempts, maxAttempts });
+  // Only log WebSocket status if WebSocket is enabled
+  if (chatIdState) {
+    console.log('🎮 WebSocket connection status:', { isConnected, connectionAttempts, maxAttempts });
+  }
 
-  const startTracking = useCallback((projectId: string) => {
+  const startTracking = useCallback((projectId: string, requestId?: string) => {
     if (!mountedRef.current) return;
     
-    console.log('🎯 Starting tracking for project:', projectId);
+    console.log('🎯 Starting tracking for project:', projectId, 'requestId:', requestId);
+    
+    // Set current request ID for event filtering
+    if (requestId) {
+      setCurrentRequestId(requestId);
+    }
     
     // Set initial tracking state
     setState(prev => ({
@@ -162,7 +195,9 @@ export function useImageGeneration(chatId?: string): UseImageGenerationReturn {
       progress: 0,
       status: 'processing',
       error: undefined,
-      imageUrl: undefined
+      imageUrl: undefined,
+      projectId,
+      requestId
     }));
     
     console.log('🎯 State updated for tracking');
@@ -171,6 +206,7 @@ export function useImageGeneration(chatId?: string): UseImageGenerationReturn {
   const resetState = useCallback(() => {
     if (!mountedRef.current) return;
     console.log('🎯 Resetting image generation state');
+    setCurrentRequestId(undefined);
     setState(initialState);
   }, []);
 
@@ -211,10 +247,16 @@ export function useImageGeneration(chatId?: string): UseImageGenerationReturn {
         return;
       }
 
+      // Set request ID for tracking
+      if (result.requestId) {
+        setCurrentRequestId(result.requestId);
+      }
+
       // Keep the processing state, WebSocket will update it
       setState(prev => ({
         ...prev,
         projectId: result.projectId || chatId,
+        requestId: result.requestId,
         status: 'processing',
       }));
 

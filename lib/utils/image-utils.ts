@@ -83,10 +83,14 @@ export const shouldShowSkeleton = (
   liveImageUrl?: string, 
   initialImageUrl?: string
 ) => {
+  // If we have any image URL, don't show skeleton
+  if (liveImageUrl || initialImageUrl) {
+    return false;
+  }
+  
+  // Show skeleton only if we're actively generating and no image yet
   return initialState && 
-         isGenerating(initialState.status || '') && 
-         !liveImageUrl && 
-         !initialImageUrl;
+         isGenerating(initialState.status || '');
 };
 
 export const shouldShowImage = (liveImageUrl?: string, initialImageUrl?: string) => {

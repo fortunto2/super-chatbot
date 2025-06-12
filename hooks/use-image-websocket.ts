@@ -84,7 +84,7 @@ export const useImageWebsocket = ({ projectId, eventHandlers, enabled = true }: 
       connectionHandlerRef.current = connectionHandler;
       imageWebsocketStore.addConnectionHandler(connectionHandler);
       
-      // Initialize connection
+      // Initialize connection with project-specific handlers
       imageWebsocketStore.initConnection(url, eventHandlers);
     };
 
@@ -103,16 +103,18 @@ export const useImageWebsocket = ({ projectId, eventHandlers, enabled = true }: 
         connectionHandlerRef.current = null;
       }
       
-      imageWebsocketStore.removeHandlers(eventHandlers);
+      // Remove project-specific handlers
+      imageWebsocketStore.removeProjectHandlers(projectId, eventHandlers);
       setConnectionAttempts(0);
     };
   }, [projectId, eventHandlers, enabled]);
 
-  // Force cleanup on unmount
+  // Force cleanup on unmount with immediate execution
   useEffect(() => {
     return () => {
       mountedRef.current = false;
       
+      // Immediate cleanup without timeout
       if (retryTimeoutRef.current) {
         clearTimeout(retryTimeoutRef.current);
       }
@@ -121,7 +123,15 @@ export const useImageWebsocket = ({ projectId, eventHandlers, enabled = true }: 
         imageWebsocketStore.removeConnectionHandler(connectionHandlerRef.current);
       }
       
-      imageWebsocketStore.removeHandlers(eventHandlers);
+      // Clean up project-specific handlers immediately
+      imageWebsocketStore.removeProjectHandlers(projectId, eventHandlers);
+      
+      // Force cleanup if too many handlers accumulated
+      const debugInfo = imageWebsocketStore.getDebugInfo();
+      if (debugInfo.totalHandlers > 5) {
+        console.log('🧹 Force cleanup due to handler accumulation on unmount');
+        imageWebsocketStore.forceCleanup();
+      }
     };
   }, []);
 

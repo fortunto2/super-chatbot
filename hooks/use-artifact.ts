@@ -2,7 +2,7 @@
 
 import useSWR from 'swr';
 import { UIArtifact } from '@/components/artifact';
-import { useCallback, useMemo, useRef } from 'react';
+import { useCallback, useMemo, useRef, useEffect } from 'react';
 
 export const initialArtifactData: UIArtifact = {
   documentId: 'init',
@@ -111,6 +111,18 @@ export function useArtifact() {
         fallbackData: null,
       },
     );
+
+  // Expose artifact globally for debugging
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      (window as any).artifactInstance = {
+        artifact,
+        setArtifact,
+        metadata: localArtifactMetadata,
+        setMetadata: setLocalArtifactMetadata,
+      };
+    }
+  }, [artifact, setArtifact, localArtifactMetadata, setLocalArtifactMetadata]);
 
   return useMemo(
     () => ({
