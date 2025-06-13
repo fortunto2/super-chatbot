@@ -25,16 +25,217 @@ const RESOLUTIONS: MediaResolution[] = [
   { width: 768, height: 1344, label: "768x1344", aspectRatio: "9:16", qualityType: "hd" },
 ];
 
-// const STYLES: MediaOption[] = [
-//   { id: 'natural', label: 'Natural', description: 'Realistic and natural looking images' },
-//   { id: 'vivid', label: 'Vivid', description: 'Vibrant and colorful images' },
-//   { id: 'cinematic', label: 'Cinematic', description: 'Movie-like quality images' },
-//   { id: 'anime', label: 'Anime', description: 'Anime and manga style images' },
-//   { id: 'cartoon', label: 'Cartoon', description: 'Cartoon style images' },
-//   { id: 'sketch', label: 'Sketch', description: 'Hand-drawn sketch style' },
-//   { id: 'painting', label: 'Painting', description: 'Oil painting style' },
-//   { id: 'pixel-art', label: 'Pixel Art', description: 'Retro pixel art style' },
-// ];
+// Resolution aliases for better understanding
+const RESOLUTION_ALIASES: Record<string, string> = {
+  // Common formats
+  "1920x1080": "1920×1080",
+  "1920 x 1080": "1920×1080", 
+  "1920 на 1080": "1920×1080",
+  "1920*1080": "1920×1080",
+  "1920/1080": "1920×1080",
+  "full hd": "1920×1080",
+  "fhd": "1920×1080",
+  "fullhd": "1920×1080",
+  "1080p": "1920×1080",
+  
+  "1024x1024": "1024x1024",
+  "1024 x 1024": "1024x1024",
+  "1024 на 1024": "1024x1024", 
+  "1024*1024": "1024x1024",
+  "square": "1024x1024",
+  "квадрат": "1024x1024",
+  "квадратное": "1024x1024",
+  
+  "1080x1920": "1080×1920",
+  "1080 x 1920": "1080×1920",
+  "1080 на 1920": "1080×1920",
+  "1080*1920": "1080×1920",
+  "вертикальное": "1080×1920",
+  "vertical": "1080×1920",
+  "портретное": "1080×1920",
+  
+  "768x1344": "768x1344",
+  "768 x 1344": "768x1344",
+  "768 на 1344": "768x1344",
+  "768*1344": "768x1344",
+  
+  "1344x768": "1344x768", 
+  "1344 x 768": "1344x768",
+  "1344 на 768": "1344x768",
+  "1344*1344": "1344x768",
+  "горизонтальное": "1344x768",
+  "horizontal": "1344x768",
+  "landscape": "1344x768",
+  "альбомное": "1344x768",
+  
+  "1408x1408": "1408×1408",
+  "1408 x 1408": "1408×1408",
+  "1408 на 1408": "1408×1408",
+  "1408*1408": "1408×1408",
+  "большой квадрат": "1408×1408",
+  "big square": "1408×1408",
+  
+  "1664x1216": "1664x1216",
+  "1664 x 1216": "1664x1216", 
+  "1664 на 1216": "1664x1216",
+  "1664*1216": "1664x1216",
+  
+  "1152x896": "1152x896",
+  "1152 x 896": "1152x896",
+  "1152 на 896": "1152x896", 
+  "1152*896": "1152x896",
+  
+  "1024x1280": "1024x1280",
+  "1024 x 1280": "1024x1280",
+  "1024 на 1280": "1024x1280",
+  "1024*1280": "1024x1280",
+  
+  "1408x1760": "1408×1760",
+  "1408 x 1760": "1408×1760",
+  "1408 на 1760": "1408×1760", 
+  "1408*1760": "1408×1760",
+};
+
+// Shot size aliases for better understanding  
+const SHOT_SIZE_ALIASES: Record<string, string> = {
+  "extreme long shot": "extreme-long-shot",
+  "очень дальний план": "extreme-long-shot",
+  "экстремально дальний план": "extreme-long-shot",
+  "панорама": "extreme-long-shot",
+  "panorama": "extreme-long-shot",
+  
+  "long shot": "long-shot", 
+  "дальний план": "long-shot",
+  "общий план": "long-shot",
+  "wide shot": "long-shot",
+  "full body": "long-shot",
+  "во весь рост": "long-shot",
+  
+  "medium shot": "medium-shot",
+  "средний план": "medium-shot", 
+  "по пояс": "medium-shot",
+  "waist up": "medium-shot",
+  
+  "medium close up": "medium-close-up",
+  "medium close-up": "medium-close-up",
+  "полукрупный план": "medium-close-up",
+  "по грудь": "medium-close-up",
+  "chest up": "medium-close-up",
+  
+  "close up": "close-up",
+  "close-up": "close-up",
+  "крупный план": "close-up",
+  "лицо": "close-up",
+  "face": "close-up",
+  "портретный план": "close-up",
+  
+  "extreme close up": "extreme-close-up", 
+  "extreme close-up": "extreme-close-up",
+  "сверхкрупный план": "extreme-close-up",
+  "макро": "extreme-close-up",
+  "macro": "extreme-close-up",
+  "детальный": "extreme-close-up",
+  
+  "two shot": "two-shot",
+  "two-shot": "two-shot",
+  "двойной план": "two-shot",
+  "два человека": "two-shot",
+  "two people": "two-shot",
+  
+  "detail shot": "detail-shot",
+  "detail-shot": "detail-shot",
+  "детальный план": "detail-shot",
+  "детали": "detail-shot",
+};
+
+// Model aliases
+const MODEL_ALIASES: Record<string, string> = {
+  "flux dev": "flux-dev",
+  "flux-dev": "flux-dev",
+  "dev": "flux-dev",
+  "развитие": "flux-dev",
+  "обычный": "flux-dev",
+  "standard": "flux-dev",
+  
+  "flux pro": "flux-pro",
+  "flux-pro": "flux-pro", 
+  "pro": "flux-pro",
+  "профессиональный": "flux-pro",
+  "лучшее качество": "flux-pro",
+  "высокое качество": "flux-pro",
+  "best quality": "flux-pro",
+  "high quality": "flux-pro",
+  "ultra": "flux-pro",
+};
+
+// Function to find resolution by various formats
+function findResolution(input: string): MediaResolution | null {
+  if (!input) return null;
+  
+  const normalizedInput = input.toLowerCase().trim();
+  
+  // Check aliases first
+  const aliasMatch = RESOLUTION_ALIASES[normalizedInput];
+  if (aliasMatch) {
+    return RESOLUTIONS.find(r => r.label === aliasMatch) || null;
+  }
+  
+  // Try direct label match
+  const directMatch = RESOLUTIONS.find(r => 
+    r.label.toLowerCase() === normalizedInput ||
+    r.label === input
+  );
+  if (directMatch) return directMatch;
+  
+  // Try to parse dimensions manually (1920x1080, 1920*1080, 1920 на 1080, etc.)
+  const dimensionMatch = normalizedInput.match(/(\d+)\s*[x*×на]\s*(\d+)/);
+  if (dimensionMatch) {
+    const width = parseInt(dimensionMatch[1]);
+    const height = parseInt(dimensionMatch[2]);
+    
+    return RESOLUTIONS.find(r => r.width === width && r.height === height) || null;
+  }
+  
+  return null;
+}
+
+// Function to find shot size by alias
+function findShotSize(input: string): string | null {
+  if (!input) return null;
+  
+  const normalizedInput = input.toLowerCase().trim();
+  
+  // Check aliases first
+  const aliasMatch = SHOT_SIZE_ALIASES[normalizedInput];
+  if (aliasMatch) return aliasMatch;
+  
+  // Check direct ID match
+  const directMatch = SHOT_SIZES.find(s => 
+    s.id === normalizedInput ||
+    s.label.toLowerCase() === normalizedInput
+  );
+  
+  return directMatch?.id || null;
+}
+
+// Function to find model by alias
+function findModel(input: string): string | null {
+  if (!input) return null;
+  
+  const normalizedInput = input.toLowerCase().trim();
+  
+  // Check aliases first 
+  const aliasMatch = MODEL_ALIASES[normalizedInput];
+  if (aliasMatch) return aliasMatch;
+  
+  // Check direct ID match
+  const directMatch = IMAGE_MODELS.find(m => 
+    m.id === normalizedInput ||
+    m.label.toLowerCase() === normalizedInput
+  );
+  
+  return directMatch?.id || null;
+}
 
 export enum ShotSizeEnum {
   EXTREME_LONG_SHOT = 'Extreme Long Shot',
@@ -99,20 +300,20 @@ interface CreateImageDocumentParams {
 }
 
 export const configureImageGeneration = (params?: CreateImageDocumentParams) => tool({
-  description: 'Configure image generation settings or generate an image directly if prompt is provided. When prompt is provided, this will create an image artifact that shows generation progress in real-time.',
+  description: 'Configure image generation settings or generate an image directly if prompt is provided. When prompt is provided, this will create an image artifact that shows generation progress in real-time. This tool understands various formats for parameters specified by users.',
   parameters: z.object({
     prompt: z.string().optional().describe('Detailed description of the image to generate. If provided, will immediately create image artifact and start generation'),
-    style: z.string().optional().describe('Style of the image (natural, vivid, cinematic, anime, cartoon, sketch, painting, pixel-art)'),
-    resolution: z.string().optional().describe('Image resolution (e.g., "1024x1024", "1920x1080")'),
-    shotSize: z.string().optional().describe('Shot size for the image (extreme-long-shot, long-shot, medium-shot, medium-close-up, close-up, extreme-close-up, two-shot, detail-shot)'),
-    model: z.string().optional().describe('AI model to use (flux-dev, flux-pro)'),
+    style: z.string().optional().describe('Style of the image. Can be any style name from available styles, accepts both English and Russian names'),
+    resolution: z.string().optional().describe('Image resolution. Accepts various formats: "1920x1080", "1920×1080", "1920 x 1080", "1920 на 1080", "1920*1080", "full hd", "fhd", "1080p", "square", "квадрат", "vertical", "вертикальное", "horizontal", "горизонтальное", etc.'),
+    shotSize: z.string().optional().describe('Shot size/camera angle. Accepts: "close-up"/"крупный план"/"лицо", "medium-shot"/"средний план"/"по пояс", "long-shot"/"дальний план"/"общий план"/"во весь рост", "extreme-close-up"/"сверхкрупный план"/"макро", "portrait"/"портрет", "two-shot"/"двойной план", etc.'),
+    model: z.string().optional().describe('AI model to use. Accepts: "flux-dev"/"dev"/"обычный", "flux-pro"/"pro"/"профессиональный"/"лучшее качество"/"высокое качество"'),
   }),
   execute: async ({ prompt, style, resolution, shotSize, model }) => {
     console.log('🔧 configureImageGeneration called with:', { prompt, style, resolution, shotSize, model });
     console.log('🔧 createDocument available:', !!params?.createDocument);
     
     const defaultResolution = RESOLUTIONS.find(r => r.width === 1024 && r.height === 1024)!;
-    const defaultStyle = {id: "flux_steampunk", label: "Steampunk", description: ""};
+    const defaultStyle: MediaOption = {id: "flux_steampunk", label: "Steampunk", description: "Steampunk style"};
     const defaultShotSize = SHOT_SIZES.find(s => s.id === 'long-shot')!;
     const defaultModel = IMAGE_MODELS.find(m => m.id === 'flux-dev')!;
 
@@ -123,12 +324,11 @@ export const configureImageGeneration = (params?: CreateImageDocumentParams) => 
       if ("error" in response) {
         console.error(response.error);
       } else {
-        styles = response.items.map(style => {
-          return {
+        styles = response.items.map(style => ({
               id: style.name,
               label: style.title ?? style.name,
-          };
-        });
+              description: style.title ?? style.name,
+        }));
       }
     } catch (err) {
       console.log(err);
@@ -158,22 +358,60 @@ export const configureImageGeneration = (params?: CreateImageDocumentParams) => 
     console.log('🔧 ✅ PARAMS OBJECT:', !!params);
     console.log('🔧 ✅ CREATE DOCUMENT AVAILABLE:', !!params?.createDocument);
 
-    // If prompt provided, create document directly
-    const selectedResolution = resolution 
-      ? RESOLUTIONS.find(r => r.label === resolution) || defaultResolution
-      : defaultResolution;
+    // If prompt provided, create document directly with smart parameter parsing
+    let selectedResolution = defaultResolution;
+    if (resolution) {
+      const foundResolution = findResolution(resolution);
+      if (foundResolution) {
+        selectedResolution = foundResolution;
+        console.log('🔧 ✅ RESOLUTION MATCHED:', resolution, '->', selectedResolution.label);
+      } else {
+        console.log('🔧 ⚠️ RESOLUTION NOT FOUND:', resolution, 'using default:', defaultResolution.label);
+      }
+    }
     
-    const selectedStyle = style 
-      ? styles.find(s => s.label === style) || defaultStyle
-      : defaultStyle;
+    let selectedStyle = defaultStyle;
+    if (style) {
+      const foundStyle = styles.find(s => 
+        s.label.toLowerCase().includes(style.toLowerCase()) ||
+        s.id.toLowerCase().includes(style.toLowerCase()) ||
+        style.toLowerCase().includes(s.label.toLowerCase())
+      );
+      if (foundStyle) {
+        selectedStyle = foundStyle;
+        console.log('🔧 ✅ STYLE MATCHED:', style, '->', selectedStyle.label);
+      } else {
+        console.log('🔧 ⚠️ STYLE NOT FOUND:', style, 'using default:', defaultStyle.label);
+      }
+    }
     
-    const selectedShotSize = shotSize 
-      ? SHOT_SIZES.find(s => s.id === shotSize) || defaultShotSize
-      : defaultShotSize;
+    let selectedShotSize = defaultShotSize;
+    if (shotSize) {
+      const foundShotSizeId = findShotSize(shotSize);
+      if (foundShotSizeId) {
+        const foundShotSize = SHOT_SIZES.find(s => s.id === foundShotSizeId);
+        if (foundShotSize) {
+          selectedShotSize = foundShotSize;
+          console.log('🔧 ✅ SHOT SIZE MATCHED:', shotSize, '->', selectedShotSize.label);
+        }
+      } else {
+        console.log('🔧 ⚠️ SHOT SIZE NOT FOUND:', shotSize, 'using default:', defaultShotSize.label);
+      }
+    }
     
-    const selectedModel = model 
-      ? IMAGE_MODELS.find(m => m.id === model) || defaultModel
-      : defaultModel;
+    let selectedModel = defaultModel;
+    if (model) {
+      const foundModelId = findModel(model);
+      if (foundModelId) {
+        const foundModel = IMAGE_MODELS.find(m => m.id === foundModelId);
+        if (foundModel) {
+          selectedModel = foundModel;
+          console.log('🔧 ✅ MODEL MATCHED:', model, '->', selectedModel.label);
+        }
+      } else {
+        console.log('🔧 ⚠️ MODEL NOT FOUND:', model, 'using default:', defaultModel.label);
+      }
+    }
 
     // Create title with all parameters for the document
     const artifactParams = JSON.stringify({
@@ -187,7 +425,13 @@ export const configureImageGeneration = (params?: CreateImageDocumentParams) => 
     // Create a human-readable title instead of JSON
     const humanReadableTitle = `AI Image: ${prompt.substring(0, 60)}${prompt.length > 60 ? '...' : ''}`;
 
-    console.log('🔧 ✅ ARTIFACT PARAMS PREPARED:', artifactParams.substring(0, 100) + '...');
+    console.log('🔧 ✅ ARTIFACT PARAMS PREPARED:', {
+      prompt: prompt.substring(0, 50) + '...',
+      resolution: selectedResolution.label,
+      style: selectedStyle.label,
+      shotSize: selectedShotSize.label,
+      model: selectedModel.label
+    });
 
     if (params?.createDocument) {
       console.log('🔧 ✅ CALLING CREATE DOCUMENT WITH KIND: image');
@@ -200,9 +444,20 @@ export const configureImageGeneration = (params?: CreateImageDocumentParams) => 
         
         console.log('🔧 ✅ CREATE DOCUMENT RESULT:', result);
         
+        // Create user-friendly message about the parameters being used
+        const parametersUsed = [];
+        if (resolution) parametersUsed.push(`разрешение ${selectedResolution.label}`);
+        if (style) parametersUsed.push(`стиль "${selectedStyle.label}"`);
+        if (shotSize) parametersUsed.push(`план "${selectedShotSize.label}"`);
+        if (model) parametersUsed.push(`модель "${selectedModel.label}"`);
+        
+        const parametersMessage = parametersUsed.length > 0 
+          ? ` Использую ${parametersUsed.join(', ')}.`
+          : '';
+        
         return {
           ...result,
-          message: `Я создаю изображение с описанием: "${prompt}". Артефакт создан и генерация началась.`
+          message: `Я создаю изображение с описанием: "${prompt}".${parametersMessage} Артефакт создан и генерация началась.`
         };
       } catch (error) {
         console.error('🔧 ❌ CREATE DOCUMENT ERROR:', error);
