@@ -18,7 +18,6 @@ import { MessageEditor } from './message-editor';
 import { MessageReasoning } from './message-reasoning';
 import { type UseChatHelpers } from '@ai-sdk/react';
 import { MediaSettings } from './artifacts/media-settings';
-import { VideoSettings } from './artifacts/video-settings';
 import type { ImageGenerationConfig, ImageSettings, VideoGenerationConfig, VideoSettings as VideoSettingsType } from '@/lib/types/media-settings';
 import { useArtifact } from '@/hooks/use-artifact';
 
@@ -233,9 +232,9 @@ const PurePreviewMessage = ({
                     const config = result as VideoGenerationConfig;
                     return (
                       <div key={toolCallId} className="p-4">
-                        <VideoSettings
+                        <MediaSettings
                           config={config}
-                          onConfirm={(settings: VideoSettingsType) => {
+                          onConfirm={(settings: ImageSettings | VideoSettingsType) => {
                             console.log('Video settings selected:', settings);
                           }}
                           selectedChatModel={selectedChatModel}

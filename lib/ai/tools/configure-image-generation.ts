@@ -168,6 +168,110 @@ const MODEL_ALIASES: Record<string, string> = {
   "ultra": "flux-pro",
 };
 
+// Style aliases for better understanding
+const STYLE_ALIASES: Record<string, string> = {
+  // Common style terms
+  "реалистичный": "realistic",
+  "реалистичное": "realistic", 
+  "реализм": "realistic",
+  "realistic": "realistic",
+  "natural": "realistic",
+  "натуральный": "realistic",
+  "обычный": "realistic",
+  
+  "яркий": "vivid",
+  "яркое": "vivid",
+  "насыщенный": "vivid",
+  "vivid": "vivid",
+  "colorful": "vivid",
+  "цветной": "vivid",
+  "красочный": "vivid",
+  
+  "кинематографический": "cinematic",
+  "кино": "cinematic",
+  "киношный": "cinematic", 
+  "cinematic": "cinematic",
+  "movie": "cinematic",
+  "film": "cinematic",
+  "фильм": "cinematic",
+  
+  "аниме": "anime",
+  "anime": "anime",
+  "manga": "anime",
+  "манга": "anime",
+  "японский": "anime",
+  "мультяшный": "anime",
+  
+  "мультфильм": "cartoon",
+  "мультик": "cartoon",
+  "cartoon": "cartoon",
+  "animated": "cartoon",
+  "анимация": "cartoon",
+  
+  "эскиз": "sketch",
+  "набросок": "sketch",
+  "sketch": "sketch",
+  "drawing": "sketch",
+  "рисунок": "sketch",
+  "карандаш": "sketch",
+  
+  "живопись": "painting",
+  "картина": "painting",
+  "painting": "painting",
+  "oil": "painting",
+  "масло": "painting",
+  "художественный": "painting",
+  
+  "пиксель": "pixel",
+  "пиксельный": "pixel",
+  "pixel": "pixel",
+  "8-bit": "pixel",
+  "ретро": "pixel",
+  "retro": "pixel",
+  
+  // Specific art styles
+  "стимпанк": "steampunk",
+  "steampunk": "steampunk",
+  "стим": "steampunk",
+  
+  "фэнтези": "fantasy",
+  "fantasy": "fantasy",
+  "магический": "fantasy",
+  "сказочный": "fantasy",
+  
+  "научная фантастика": "sci-fi",
+  "sci-fi": "sci-fi",
+  "фантастика": "sci-fi",
+  "футуристический": "sci-fi",
+  "космический": "sci-fi",
+  
+  "ужас": "horror",
+  "horror": "horror",
+  "страшный": "horror",
+  "темный": "horror",
+  "мрачный": "horror",
+  
+  "минимализм": "minimalist",
+  "минималистический": "minimalist",
+  "minimalist": "minimalist",
+  "простой": "minimalist",
+  "чистый": "minimalist",
+  
+  "абстрактный": "abstract",
+  "abstract": "abstract",
+  "абстракция": "abstract",
+  
+  "портрет": "portrait",
+  "portrait": "portrait",
+  "лицо": "portrait",
+  "человек": "portrait",
+  
+  "пейзаж": "landscape",
+  "landscape": "landscape",
+  "природа": "landscape",
+  "природный": "landscape",
+};
+
 // Function to find resolution by various formats
 function findResolution(input: string): MediaResolution | null {
   if (!input) return null;
@@ -237,6 +341,54 @@ function findModel(input: string): string | null {
   return directMatch?.id || null;
 }
 
+// Function to find style by various formats and aliases
+function findStyle(input: string, availableStyles: MediaOption[]): MediaOption | null {
+  if (!input || !availableStyles.length) return null;
+  
+  const normalizedInput = input.toLowerCase().trim();
+  
+  // 1. Check direct ID match
+  const directIdMatch = availableStyles.find(s => s.id.toLowerCase() === normalizedInput);
+  if (directIdMatch) return directIdMatch;
+  
+  // 2. Check exact label match
+  const exactLabelMatch = availableStyles.find(s => s.label.toLowerCase() === normalizedInput);
+  if (exactLabelMatch) return exactLabelMatch;
+  
+  // 3. Check aliases
+  const aliasMatch = STYLE_ALIASES[normalizedInput];
+  if (aliasMatch) {
+    // Try to find style by alias
+    const styleByAlias = availableStyles.find(s => 
+      s.id.toLowerCase().includes(aliasMatch.toLowerCase()) ||
+      s.label.toLowerCase().includes(aliasMatch.toLowerCase())
+    );
+    if (styleByAlias) return styleByAlias;
+  }
+  
+  // 4. Partial match in label or id
+  const partialMatch = availableStyles.find(s => 
+    s.label.toLowerCase().includes(normalizedInput) ||
+    s.id.toLowerCase().includes(normalizedInput) ||
+    normalizedInput.includes(s.label.toLowerCase()) ||
+    normalizedInput.includes(s.id.toLowerCase())
+  );
+  if (partialMatch) return partialMatch;
+  
+  // 5. Check if input contains style keywords
+  for (const [alias, styleKeyword] of Object.entries(STYLE_ALIASES)) {
+    if (normalizedInput.includes(alias)) {
+      const keywordMatch = availableStyles.find(s => 
+        s.id.toLowerCase().includes(styleKeyword.toLowerCase()) ||
+        s.label.toLowerCase().includes(styleKeyword.toLowerCase())
+      );
+      if (keywordMatch) return keywordMatch;
+    }
+  }
+  
+  return null;
+}
+
 export enum ShotSizeEnum {
   EXTREME_LONG_SHOT = 'Extreme Long Shot',
   LONG_SHOT = 'Long Shot',
@@ -303,7 +455,7 @@ export const configureImageGeneration = (params?: CreateImageDocumentParams) => 
   description: 'Configure image generation settings or generate an image directly if prompt is provided. When prompt is provided, this will create an image artifact that shows generation progress in real-time. This tool understands various formats for parameters specified by users.',
   parameters: z.object({
     prompt: z.string().optional().describe('Detailed description of the image to generate. If provided, will immediately create image artifact and start generation'),
-    style: z.string().optional().describe('Style of the image. Can be any style name from available styles, accepts both English and Russian names'),
+    style: z.string().optional().describe('Style of the image. Supports many formats: "realistic"/"реалистичный", "cinematic"/"кинематографический"/"кино", "anime"/"аниме", "cartoon"/"мультфильм", "sketch"/"эскиз", "painting"/"живопись", "steampunk"/"стимпанк", "fantasy"/"фэнтези", "sci-fi"/"фантастика", "horror"/"ужас", "minimalist"/"минимализм", "abstract"/"абстрактный", "portrait"/"портрет", "landscape"/"пейзаж", and many more available styles'),
     resolution: z.string().optional().describe('Image resolution. Accepts various formats: "1920x1080", "1920×1080", "1920 x 1080", "1920 на 1080", "1920*1080", "full hd", "fhd", "1080p", "square", "квадрат", "vertical", "вертикальное", "horizontal", "горизонтальное", etc.'),
     shotSize: z.string().optional().describe('Shot size/camera angle. Accepts: "close-up"/"крупный план"/"лицо", "medium-shot"/"средний план"/"по пояс", "long-shot"/"дальний план"/"общий план"/"во весь рост", "extreme-close-up"/"сверхкрупный план"/"макро", "portrait"/"портрет", "two-shot"/"двойной план", etc.'),
     model: z.string().optional().describe('AI model to use. Accepts: "flux-dev"/"dev"/"обычный", "flux-pro"/"pro"/"профессиональный"/"лучшее качество"/"высокое качество"'),
@@ -372,16 +524,13 @@ export const configureImageGeneration = (params?: CreateImageDocumentParams) => 
     
     let selectedStyle = defaultStyle;
     if (style) {
-      const foundStyle = styles.find(s => 
-        s.label.toLowerCase().includes(style.toLowerCase()) ||
-        s.id.toLowerCase().includes(style.toLowerCase()) ||
-        style.toLowerCase().includes(s.label.toLowerCase())
-      );
+      const foundStyle = findStyle(style, styles);
       if (foundStyle) {
         selectedStyle = foundStyle;
         console.log('🔧 ✅ STYLE MATCHED:', style, '->', selectedStyle.label);
       } else {
         console.log('🔧 ⚠️ STYLE NOT FOUND:', style, 'using default:', defaultStyle.label);
+        console.log('🔧 📋 Available styles:', styles.map(s => s.label).slice(0, 5).join(', '), '...');
       }
     }
     
