@@ -55,7 +55,7 @@ export function MessageCount({ className }: MessageCountProps) {
       <div className={className}>
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button variant="outline" size="icon" className="h-8 w-8">
+            <Button variant="outline" size="icon" className="size-8">
               <MessageIcon />
             </Button>
           </TooltipTrigger>
@@ -73,7 +73,7 @@ export function MessageCount({ className }: MessageCountProps) {
             <Button
               variant="outline"
               size="icon"
-              className="h-8 w-8 text-red-500"
+              className="size-8 text-red-500"
             >
               <MessageIcon />
             </Button>

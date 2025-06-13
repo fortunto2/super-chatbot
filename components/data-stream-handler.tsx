@@ -130,7 +130,7 @@ function PureDataStreamHandler({ id, dataStream }: { id: string; dataStream?: an
     } finally {
       isProcessing.current = false;
     }
-  }, [dataStreamLength, setArtifact, setMetadata, id]); // Removed artifact from deps to prevent loops
+  }, [dataStream, setArtifact, setMetadata, id]); // Removed artifact from deps to prevent loops
 
   return null;
 }

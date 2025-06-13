@@ -272,6 +272,7 @@ const DocumentContent = ({ document }: { document: Document }) => {
         </div>
       ) : document.kind === 'image' ? (
         <div className="p-4">
+        {/*eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={document.content || ''}
             alt={document.title}
