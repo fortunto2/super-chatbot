@@ -168,108 +168,103 @@ const MODEL_ALIASES: Record<string, string> = {
   "ultra": "flux-pro",
 };
 
-// Style aliases for better understanding
-const STYLE_ALIASES: Record<string, string> = {
-  // Common style terms
-  "реалистичный": "realistic",
-  "реалистичное": "realistic", 
-  "реализм": "realistic",
-  "realistic": "realistic",
-  "natural": "realistic",
-  "натуральный": "realistic",
-  "обычный": "realistic",
+// Style aliases for better understanding - Updated with more comprehensive mapping
+const STYLE_ALIASES: Record<string, string[]> = {
+  // Realistic styles
+  "realistic": ["realistic", "photorealistic", "real", "photo"],
+  "реалистичный": ["realistic", "photorealistic", "real", "photo"],
+  "реалистичное": ["realistic", "photorealistic", "real", "photo"], 
+  "реализм": ["realistic", "photorealistic", "real", "photo"],
+  "натуральный": ["realistic", "natural", "photo"],
+  "обычный": ["realistic", "standard", "default"],
   
-  "яркий": "vivid",
-  "яркое": "vivid",
-  "насыщенный": "vivid",
-  "vivid": "vivid",
-  "colorful": "vivid",
-  "цветной": "vivid",
-  "красочный": "vivid",
+  // Cinematic styles
+  "cinematic": ["cinematic", "movie", "film", "cinema"],
+  "кинематографический": ["cinematic", "movie", "film", "cinema"],
+  "кино": ["cinematic", "movie", "film", "cinema"],
+  "киношный": ["cinematic", "movie", "film", "cinema"], 
+  "фильм": ["cinematic", "movie", "film", "cinema"],
   
-  "кинематографический": "cinematic",
-  "кино": "cinematic",
-  "киношный": "cinematic", 
-  "cinematic": "cinematic",
-  "movie": "cinematic",
-  "film": "cinematic",
-  "фильм": "cinematic",
+  // Anime/Manga styles
+  "anime": ["anime", "manga", "japanese"],
+  "аниме": ["anime", "manga", "japanese"],
+  "манга": ["anime", "manga", "japanese"],
+  "японский": ["anime", "manga", "japanese"],
+  "мультяшный": ["anime", "cartoon", "animated"],
   
-  "аниме": "anime",
-  "anime": "anime",
-  "manga": "anime",
-  "манга": "anime",
-  "японский": "anime",
-  "мультяшный": "anime",
+  // Cartoon styles
+  "cartoon": ["cartoon", "animated", "toon"],
+  "мультфильм": ["cartoon", "animated", "toon"],
+  "мультик": ["cartoon", "animated", "toon"],
+  "анимация": ["cartoon", "animated", "animation"],
   
-  "мультфильм": "cartoon",
-  "мультик": "cartoon",
-  "cartoon": "cartoon",
-  "animated": "cartoon",
-  "анимация": "cartoon",
+  // Art styles
+  "painting": ["painting", "oil", "watercolor", "acrylic"],
+  "живопись": ["painting", "oil", "watercolor", "acrylic"],
+  "картина": ["painting", "oil", "watercolor", "acrylic"],
+  "масло": ["painting", "oil"],
+  "художественный": ["painting", "artistic", "art"],
   
-  "эскиз": "sketch",
-  "набросок": "sketch",
-  "sketch": "sketch",
-  "drawing": "sketch",
-  "рисунок": "sketch",
-  "карандаш": "sketch",
+  "sketch": ["sketch", "drawing", "pencil", "charcoal"],
+  "эскиз": ["sketch", "drawing", "pencil", "charcoal"],
+  "набросок": ["sketch", "drawing", "pencil", "charcoal"],
+  "рисунок": ["sketch", "drawing", "pencil", "charcoal"],
+  "карандаш": ["sketch", "pencil", "drawing"],
   
-  "живопись": "painting",
-  "картина": "painting",
-  "painting": "painting",
-  "oil": "painting",
-  "масло": "painting",
-  "художественный": "painting",
+  // Specific genres
+  "steampunk": ["steampunk", "steam", "victorian"],
+  "стимпанк": ["steampunk", "steam", "victorian"],
+  "стим": ["steampunk", "steam"],
   
-  "пиксель": "pixel",
-  "пиксельный": "pixel",
-  "pixel": "pixel",
-  "8-bit": "pixel",
-  "ретро": "pixel",
-  "retro": "pixel",
+  "fantasy": ["fantasy", "magical", "fairy"],
+  "фэнтези": ["fantasy", "magical", "fairy"],
+  "магический": ["fantasy", "magical", "magic"],
+  "сказочный": ["fantasy", "fairy", "tale"],
   
-  // Specific art styles
-  "стимпанк": "steampunk",
-  "steampunk": "steampunk",
-  "стим": "steampunk",
+  "sci-fi": ["sci-fi", "science", "futuristic", "cyberpunk"],
+  "научная фантастика": ["sci-fi", "science", "futuristic"],
+  "фантастика": ["sci-fi", "science", "futuristic"],
+  "футуристический": ["sci-fi", "futuristic", "future"],
+  "космический": ["sci-fi", "space", "cosmic"],
   
-  "фэнтези": "fantasy",
-  "fantasy": "fantasy",
-  "магический": "fantasy",
-  "сказочный": "fantasy",
+  "horror": ["horror", "scary", "dark", "gothic"],
+  "ужас": ["horror", "scary", "dark", "gothic"],
+  "страшный": ["horror", "scary", "dark"],
+  "темный": ["horror", "dark", "gothic"],
+  "мрачный": ["horror", "dark", "gloomy"],
   
-  "научная фантастика": "sci-fi",
-  "sci-fi": "sci-fi",
-  "фантастика": "sci-fi",
-  "футуристический": "sci-fi",
-  "космический": "sci-fi",
+  // Other styles
+  "minimalist": ["minimalist", "minimal", "simple", "clean"],
+  "минимализм": ["minimalist", "minimal", "simple", "clean"],
+  "минималистический": ["minimalist", "minimal", "simple"],
+  "простой": ["minimalist", "simple", "clean"],
+  "чистый": ["minimalist", "clean", "simple"],
   
-  "ужас": "horror",
-  "horror": "horror",
-  "страшный": "horror",
-  "темный": "horror",
-  "мрачный": "horror",
+  "abstract": ["abstract", "geometric", "modern"],
+  "абстрактный": ["abstract", "geometric", "modern"],
+  "абстракция": ["abstract", "geometric", "modern"],
   
-  "минимализм": "minimalist",
-  "минималистический": "minimalist",
-  "minimalist": "minimalist",
-  "простой": "minimalist",
-  "чистый": "minimalist",
+  "portrait": ["portrait", "face", "person", "headshot"],
+  "портрет": ["portrait", "face", "person", "headshot"],
+  "лицо": ["portrait", "face", "closeup"],
+  "человек": ["portrait", "person", "people"],
   
-  "абстрактный": "abstract",
-  "abstract": "abstract",
-  "абстракция": "abstract",
+  "landscape": ["landscape", "nature", "scenery", "outdoor"],
+  "пейзаж": ["landscape", "nature", "scenery", "outdoor"],
+  "природа": ["landscape", "nature", "natural"],
+  "природный": ["landscape", "nature", "natural"],
   
-  "портрет": "portrait",
-  "portrait": "portrait",
-  "лицо": "portrait",
-  "человек": "portrait",
+  "vivid": ["vivid", "colorful", "bright", "saturated"],
+  "яркий": ["vivid", "colorful", "bright", "saturated"],
+  "яркое": ["vivid", "colorful", "bright", "saturated"],
+  "насыщенный": ["vivid", "saturated", "intense"],
+  "цветной": ["vivid", "colorful", "colored"],
+  "красочный": ["vivid", "colorful", "bright"],
   
-  "пейзаж": "landscape",
-  "landscape": "landscape",
-  "природа": "landscape",
-  "природный": "landscape",
+  "pixel": ["pixel", "8-bit", "retro", "pixelated"],
+  "пиксель": ["pixel", "8-bit", "retro", "pixelated"],
+  "пиксельный": ["pixel", "8-bit", "retro", "pixelated"],
+  "ретро": ["pixel", "retro", "vintage", "old"],
 };
 
 // Function to find resolution by various formats
@@ -341,50 +336,124 @@ function findModel(input: string): string | null {
   return directMatch?.id || null;
 }
 
-// Function to find style by various formats and aliases
-function findStyle(input: string, availableStyles: MediaOption[]): MediaOption | null {
-  if (!input || !availableStyles.length) return null;
+// Enhanced function to find style by various formats and aliases
+export function findStyle(input: string, availableStyles: MediaOption[]): MediaOption | null {
+  if (!input || !availableStyles.length) {
+    console.log('🎨 findStyle: No input or no available styles');
+    return null;
+  }
   
   const normalizedInput = input.toLowerCase().trim();
+  console.log(`🎨 findStyle: Looking for "${normalizedInput}" among ${availableStyles.length} styles`);
   
-  // 1. Check direct ID match
+  // 1. Check direct ID match (exact)
   const directIdMatch = availableStyles.find(s => s.id.toLowerCase() === normalizedInput);
-  if (directIdMatch) return directIdMatch;
+  if (directIdMatch) {
+    console.log(`🎨 ✅ Direct ID match: ${normalizedInput} -> ${directIdMatch.id}`);
+    return directIdMatch;
+  }
   
   // 2. Check exact label match
   const exactLabelMatch = availableStyles.find(s => s.label.toLowerCase() === normalizedInput);
-  if (exactLabelMatch) return exactLabelMatch;
-  
-  // 3. Check aliases
-  const aliasMatch = STYLE_ALIASES[normalizedInput];
-  if (aliasMatch) {
-    // Try to find style by alias
-    const styleByAlias = availableStyles.find(s => 
-      s.id.toLowerCase().includes(aliasMatch.toLowerCase()) ||
-      s.label.toLowerCase().includes(aliasMatch.toLowerCase())
-    );
-    if (styleByAlias) return styleByAlias;
+  if (exactLabelMatch) {
+    console.log(`🎨 ✅ Exact label match: ${normalizedInput} -> ${exactLabelMatch.id}`);
+    return exactLabelMatch;
   }
   
-  // 4. Partial match in label or id
-  const partialMatch = availableStyles.find(s => 
-    s.label.toLowerCase().includes(normalizedInput) ||
-    s.id.toLowerCase().includes(normalizedInput) ||
-    normalizedInput.includes(s.label.toLowerCase()) ||
-    normalizedInput.includes(s.id.toLowerCase())
-  );
-  if (partialMatch) return partialMatch;
-  
-  // 5. Check if input contains style keywords
-  for (const [alias, styleKeyword] of Object.entries(STYLE_ALIASES)) {
-    if (normalizedInput.includes(alias)) {
-      const keywordMatch = availableStyles.find(s => 
-        s.id.toLowerCase().includes(styleKeyword.toLowerCase()) ||
-        s.label.toLowerCase().includes(styleKeyword.toLowerCase())
-      );
-      if (keywordMatch) return keywordMatch;
+  // 3. Check aliases - try all keywords for the input
+  for (const [userInput, keywords] of Object.entries(STYLE_ALIASES)) {
+    if (userInput === normalizedInput) {
+      // Found alias match, now try to find style using keywords
+      for (const keyword of keywords) {
+        // Try exact match first
+        const exactMatch = availableStyles.find(s => 
+          s.id.toLowerCase() === keyword.toLowerCase() ||
+          s.label.toLowerCase() === keyword.toLowerCase()
+        );
+        if (exactMatch) {
+          console.log(`🎨 ✅ Alias exact match: ${normalizedInput} -> ${keyword} -> ${exactMatch.id}`);
+          return exactMatch;
+        }
+        
+        // Try partial match
+        const partialMatch = availableStyles.find(s => 
+          s.id.toLowerCase().includes(keyword.toLowerCase()) ||
+          s.label.toLowerCase().includes(keyword.toLowerCase())
+        );
+        if (partialMatch) {
+          console.log(`🎨 ✅ Alias partial match: ${normalizedInput} -> ${keyword} -> ${partialMatch.id}`);
+          return partialMatch;
+        }
+      }
     }
   }
+  
+  // 4. Partial match in ID or label (contains search)
+  const partialMatch = availableStyles.find(s => 
+    s.id.toLowerCase().includes(normalizedInput) ||
+    s.label.toLowerCase().includes(normalizedInput) ||
+    normalizedInput.includes(s.id.toLowerCase()) ||
+    normalizedInput.includes(s.label.toLowerCase())
+  );
+  if (partialMatch) {
+    console.log(`🎨 ✅ Partial match: ${normalizedInput} -> ${partialMatch.id}`);
+    return partialMatch;
+  }
+  
+  // 5. Try reverse keyword search - check if any available style keywords match our aliases
+  for (const style of availableStyles) {
+    const styleIdLower = style.id.toLowerCase();
+    const styleLabelLower = style.label.toLowerCase();
+    
+    // Check if any alias keyword matches this style
+    for (const [userInput, keywords] of Object.entries(STYLE_ALIASES)) {
+      if (userInput === normalizedInput) {
+        for (const keyword of keywords) {
+          if (styleIdLower.includes(keyword.toLowerCase()) || 
+              styleLabelLower.includes(keyword.toLowerCase())) {
+            console.log(`🎨 ✅ Reverse keyword match: ${normalizedInput} -> ${keyword} -> ${style.id}`);
+            return style;
+          }
+        }
+      }
+    }
+  }
+  
+  // 6. Fuzzy match - check if input contains any style name parts
+  const fuzzyMatch = availableStyles.find(s => {
+    const styleWords = s.label.toLowerCase().split(/[\s_-]+/);
+    const inputWords = normalizedInput.split(/[\s_-]+/);
+    
+    return styleWords.some(styleWord => 
+      inputWords.some(inputWord => 
+        inputWord.includes(styleWord) || 
+        styleWord.includes(inputWord)
+      )
+    );
+  });
+  
+  if (fuzzyMatch) {
+    console.log(`🎨 ✅ Fuzzy match: ${normalizedInput} -> ${fuzzyMatch.id}`);
+    return fuzzyMatch;
+  }
+  
+  // 7. Last resort - find any style that contains common keywords
+  const commonKeywords = ['realistic', 'cinematic', 'anime', 'cartoon', 'fantasy', 'steampunk'];
+  for (const keyword of commonKeywords) {
+    if (normalizedInput.includes(keyword)) {
+      const keywordMatch = availableStyles.find(s => 
+        s.id.toLowerCase().includes(keyword) ||
+        s.label.toLowerCase().includes(keyword)
+      );
+      if (keywordMatch) {
+        console.log(`🎨 ✅ Common keyword match: ${normalizedInput} -> ${keyword} -> ${keywordMatch.id}`);
+        return keywordMatch;
+      }
+    }
+  }
+  
+  console.log(`🎨 ❌ No match found for: ${normalizedInput}`);
+  console.log(`🎨 📋 Available style samples:`, availableStyles.slice(0, 5).map(s => `${s.id} (${s.label})`).join(', '));
   
   return null;
 }
@@ -531,6 +600,51 @@ export const configureImageGeneration = (params?: CreateImageDocumentParams) => 
       } else {
         console.log('🔧 ⚠️ STYLE NOT FOUND:', style, 'using default:', defaultStyle.label);
         console.log('🔧 📋 Available styles:', styles.map(s => s.label).slice(0, 5).join(', '), '...');
+        
+        // Additional fallback: try to find the most common style types
+        const commonStyleFallbacks = [
+          'flux_steampunk', 'steampunk', 'flux_realistic', 'realistic', 
+          'flux_cinematic', 'cinematic', 'flux_anime', 'anime',
+          'flux_fantasy', 'fantasy', 'default'
+        ];
+        
+        for (const fallbackId of commonStyleFallbacks) {
+          const fallbackStyle = styles.find(s => 
+            s.id.toLowerCase().includes(fallbackId.toLowerCase()) ||
+            s.label.toLowerCase().includes(fallbackId.toLowerCase())
+          );
+          if (fallbackStyle) {
+            selectedStyle = fallbackStyle;
+            console.log('🔧 🔄 FALLBACK STYLE FOUND:', fallbackId, '->', selectedStyle.label);
+            break;
+          }
+        }
+        
+        // If still no style found, use the first available one
+        if (selectedStyle === defaultStyle && styles.length > 0) {
+          selectedStyle = styles[0];
+          console.log('🔧 🔄 USING FIRST AVAILABLE STYLE:', selectedStyle.label);
+        }
+      }
+    } else {
+      // No style specified, try to find a good default from available styles
+      const preferredDefaults = ['flux_steampunk', 'steampunk', 'flux_realistic', 'realistic'];
+      for (const preferredId of preferredDefaults) {
+        const preferredStyle = styles.find(s => 
+          s.id.toLowerCase().includes(preferredId.toLowerCase()) ||
+          s.label.toLowerCase().includes(preferredId.toLowerCase())
+        );
+        if (preferredStyle) {
+          selectedStyle = preferredStyle;
+          console.log('🔧 🎯 USING PREFERRED DEFAULT STYLE:', selectedStyle.label);
+          break;
+        }
+      }
+      
+      // If no preferred default found, use first available
+      if (selectedStyle === defaultStyle && styles.length > 0) {
+        selectedStyle = styles[0];
+        console.log('🔧 🎯 USING FIRST AVAILABLE AS DEFAULT:', selectedStyle.label);
       }
     }
     

@@ -7,6 +7,7 @@ import type {
   VideoModel 
 } from '@/lib/types/media-settings';
 import { getStyles } from '../api/get-styles';
+import { findStyle } from './configure-image-generation';
 
 const VIDEO_RESOLUTIONS: MediaResolution[] = [
   { width: 1344, height: 768, label: "1344x768", aspectRatio: "16:9", qualityType: "hd" },
@@ -113,7 +114,7 @@ export const configureVideoGeneration = (params?: CreateVideoDocumentParams) => 
     console.log('🔧 createDocument available:', !!params?.createDocument);
     
     const defaultResolution = VIDEO_RESOLUTIONS.find(r => r.width === 1920 && r.height === 1080)!;
-    const defaultStyle = {id: "flux_steampunk", label: "Steampunk", description: ""};
+    const defaultStyle: MediaOption = {id: "flux_steampunk", label: "Steampunk", description: "Steampunk style"};
     const defaultShotSize = SHOT_SIZES.find(s => s.id === 'long-shot')!;
     const defaultModel = VIDEO_MODELS.find(m => m.id === 'runway-gen3')!;
 
@@ -124,12 +125,11 @@ export const configureVideoGeneration = (params?: CreateVideoDocumentParams) => 
       if ("error" in response) {
         console.error(response.error);
       } else {
-        styles = response.items.map(style => {
-          return {
+        styles = response.items.map(style => ({
               id: style.name,
               label: style.title ?? style.name,
-          };
-        });
+              description: style.title ?? style.name,
+        }));
       }
     } catch (err) {
       console.log(err);
@@ -192,9 +192,62 @@ export const configureVideoGeneration = (params?: CreateVideoDocumentParams) => 
         VIDEO_RESOLUTIONS.find(r => r.label === resolution) || defaultResolution : 
         defaultResolution;
       
-      const selectedStyle = style ? 
-        styles.find(s => s.label === style || s.id === style) || defaultStyle : 
-        defaultStyle;
+      let selectedStyle: MediaOption = defaultStyle;
+      if (style) {
+        const foundStyle = findStyle(style, styles);
+        if (foundStyle) {
+          selectedStyle = foundStyle;
+          console.log('🔧 ✅ STYLE MATCHED:', style, '->', selectedStyle.label);
+        } else {
+          console.log('🔧 ⚠️ STYLE NOT FOUND:', style, 'using default:', defaultStyle.label);
+          console.log('🔧 📋 Available styles:', styles.map(s => s.label).slice(0, 5).join(', '), '...');
+          
+          // Additional fallback: try to find the most common style types
+          const commonStyleFallbacks = [
+            'flux_steampunk', 'steampunk', 'flux_realistic', 'realistic', 
+            'flux_cinematic', 'cinematic', 'flux_anime', 'anime',
+            'flux_fantasy', 'fantasy', 'default'
+          ];
+          
+          for (const fallbackId of commonStyleFallbacks) {
+            const fallbackStyle = styles.find(s => 
+              s.id.toLowerCase().includes(fallbackId.toLowerCase()) ||
+              s.label.toLowerCase().includes(fallbackId.toLowerCase())
+            );
+            if (fallbackStyle) {
+              selectedStyle = fallbackStyle;
+              console.log('🔧 🔄 FALLBACK STYLE FOUND:', fallbackId, '->', selectedStyle.label);
+              break;
+            }
+          }
+          
+          // If still no style found, use the first available one
+          if (selectedStyle === defaultStyle && styles.length > 0) {
+            selectedStyle = styles[0];
+            console.log('🔧 🔄 USING FIRST AVAILABLE STYLE:', selectedStyle.label);
+          }
+        }
+      } else {
+        // No style specified, try to find a good default from available styles
+        const preferredDefaults = ['flux_steampunk', 'steampunk', 'flux_realistic', 'realistic'];
+        for (const preferredId of preferredDefaults) {
+          const preferredStyle = styles.find(s => 
+            s.id.toLowerCase().includes(preferredId.toLowerCase()) ||
+            s.label.toLowerCase().includes(preferredId.toLowerCase())
+          );
+          if (preferredStyle) {
+            selectedStyle = preferredStyle;
+            console.log('🔧 🎯 USING PREFERRED DEFAULT STYLE:', selectedStyle.label);
+            break;
+          }
+        }
+        
+        // If no preferred default found, use first available
+        if (selectedStyle === defaultStyle && styles.length > 0) {
+          selectedStyle = styles[0];
+          console.log('🔧 🎯 USING FIRST AVAILABLE AS DEFAULT:', selectedStyle.label);
+        }
+      }
       
       const selectedShotSize = shotSize ? 
         SHOT_SIZES.find(s => s.label === shotSize || s.id === shotSize) || defaultShotSize : 

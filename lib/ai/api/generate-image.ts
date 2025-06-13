@@ -15,6 +15,21 @@ function generateRequestId(): string {
   return `img_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 }
 
+// Validate style before sending to API
+function validateStyleForAPI(style: MediaOption): string {
+  console.log(`🎨 Validating style for API:`, { id: style.id, label: style.label });
+  
+  // Ensure we have a valid style ID
+  if (!style.id || typeof style.id !== 'string') {
+    console.log(`🎨 ⚠️ Invalid style ID, using fallback: flux_steampunk`);
+    return 'flux_steampunk';
+  }
+  
+  // Log the final style being sent
+  console.log(`🎨 ✅ Using style ID for API: ${style.id}`);
+  return style.id;
+}
+
 export const generateImage = async (
   style: MediaOption, 
   resolution: MediaResolution, 
@@ -28,6 +43,18 @@ export const generateImage = async (
       const token = "afda4dc28cf1420db6d3e35a291c2d5f"
       
       console.log(`🎨 Starting image generation with requestId: ${requestId}, chatId: ${chatId}`);
+      
+      // Validate and prepare style for API
+      const validatedStyleId = validateStyleForAPI(style);
+      
+      console.log(`🎨 Sending to API with parameters:`, {
+        prompt: prompt.substring(0, 50) + '...',
+        style_name: validatedStyleId,
+        width: resolution.width,
+        height: resolution.height,
+        shot_size: shotSize.label,
+        model: model.id
+      });
       
       const response = await fetch('https://editor.superduperai.co/api/v1/project/image', {
         method: "POST",
@@ -51,7 +78,7 @@ export const generateImage = async (
             seed: `${Math.floor(Math.random() * 1000000000000)}`,
             generation_config_name: "comfyui/flux",
             batch_size: 1,
-            style_name: style.id,
+            style_name: validatedStyleId, // Use validated style ID
             entity_ids: [],
             references: []
           }
