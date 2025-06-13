@@ -39,6 +39,7 @@ import type { Chat } from '@/lib/db/schema';
 import { differenceInSeconds } from 'date-fns';
 import * as Sentry from '@sentry/nextjs';
 import { configureImageGeneration } from '@/lib/ai/tools/configure-image-generation';
+import { configureVideoGeneration } from '@/lib/ai/tools/configure-video-generation';
 
 export const maxDuration = 60;
 
@@ -523,6 +524,7 @@ export async function POST(request: Request) {
               : [
                   'getWeather',
                   'configureImageGeneration',
+                  'configureVideoGeneration',
                   'createDocument',
                   'updateDocument',
                   'requestSuggestions',
@@ -532,6 +534,9 @@ export async function POST(request: Request) {
           tools: {
             ...tools,
             configureImageGeneration: configureImageGeneration({
+              createDocument: tools.createDocument,
+            }),
+            configureVideoGeneration: configureVideoGeneration({
               createDocument: tools.createDocument,
             }),
           },

@@ -18,6 +18,7 @@ export interface ArtifactProps {
   isLoading: boolean;
   metadata?: ArtifactMetadata;
   setMetadata?: (metadata: ArtifactMetadata) => void;
+  chatId?: string;
 }
 
 export interface ArtifactDefinition {

@@ -19,6 +19,12 @@ export interface ImageModel {
   description?: string;
 }
 
+export interface VideoModel {
+  id: string;
+  label: string;
+  description?: string;
+}
+
 // Image-specific types
 export interface ImageSettings {
   resolution: MediaResolution;
@@ -37,20 +43,25 @@ export interface ImageGenerationConfig {
   defaultSettings: ImageSettings;
 }
 
-// Video-specific types (for future use)
+// Video-specific types
 export interface VideoSettings {
   resolution: MediaResolution;
+  style: MediaOption;
+  shotSize: MediaOption;
+  model: VideoModel;
   frameRate: number;
   duration: number;
-  style: MediaOption;
-  model: string;
+  negativePrompt?: string;
+  seed?: number;
 }
 
 export interface VideoGenerationConfig {
   type: 'video-generation-settings';
   availableResolutions: MediaResolution[];
-  availableFrameRates: { value: number; label: string }[];
   availableStyles: MediaOption[];
+  availableShotSizes: MediaOption[];
+  availableModels: VideoModel[];
+  availableFrameRates: { value: number; label: string }[];
   defaultSettings: VideoSettings;
 }
 

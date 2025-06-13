@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
   SelectContent,
@@ -11,38 +12,30 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import type { 
-  ImageGenerationConfig, 
-  ImageSettings,
-  VideoGenerationConfig,
+  VideoGenerationConfig, 
   VideoSettings,
   MediaResolution,
   MediaOption,
-  ImageModel,
-  VideoModel,
-  MediaGenerationConfig 
+  VideoModel 
 } from '@/lib/types/media-settings';
 import { generateUUID } from '@/lib/utils';
 import type { UseChatHelpers } from '@ai-sdk/react';
 
-interface MediaSettingsProps {
-  config: MediaGenerationConfig;
-  onConfirm: (settings: ImageSettings | VideoSettings) => void;
+interface VideoSettingsProps {
+  config: VideoGenerationConfig;
+  onConfirm: (settings: VideoSettings) => void;
   selectedChatModel: string;
   selectedVisibilityType: 'public' | 'private';
   append?: UseChatHelpers['append'];
 }
 
-export function MediaSettings({
+export function VideoSettings({
   config,
   onConfirm,
   selectedChatModel,
   selectedVisibilityType,
   append,
-}: MediaSettingsProps) {
-  const isVideoConfig = config.type === 'video-generation-settings';
-  const videoConfig = isVideoConfig ? config as VideoGenerationConfig : null;
-  const imageConfig = !isVideoConfig ? config as ImageGenerationConfig : null;
-
+}: VideoSettingsProps) {
   const [selectedResolution, setSelectedResolution] = useState<MediaResolution>(
     config.defaultSettings.resolution
   );
@@ -52,33 +45,34 @@ export function MediaSettings({
   const [selectedShotSize, setSelectedShotSize] = useState<MediaOption>(
     config.defaultSettings.shotSize
   );
-  const [selectedModel, setSelectedModel] = useState<ImageModel | VideoModel>(
+  const [selectedModel, setSelectedModel] = useState<VideoModel>(
     config.defaultSettings.model
   );
-  const [seed, setSeed] = useState<string>('');
-  
-  // Video-specific states
   const [selectedFrameRate, setSelectedFrameRate] = useState<number>(
-    isVideoConfig ? videoConfig!.defaultSettings.frameRate : 30
+    config.defaultSettings.frameRate
   );
   const [duration, setDuration] = useState<number>(
-    isVideoConfig ? videoConfig!.defaultSettings.duration : 10
+    config.defaultSettings.duration
   );
   const [negativePrompt, setNegativePrompt] = useState<string>(
-    isVideoConfig ? videoConfig!.defaultSettings.negativePrompt || '' : ''
+    config.defaultSettings.negativePrompt || ''
   );
+  const [seed, setSeed] = useState<string>('');
 
   const handleConfirm = () => {
-    const settings: ImageSettings | VideoSettings = {
+    const settings: VideoSettings = {
       resolution: selectedResolution,
       style: selectedStyle,
       shotSize: selectedShotSize,
       model: selectedModel,
+      frameRate: selectedFrameRate,
+      duration: duration,
+      negativePrompt: negativePrompt,
       seed: seed ? parseInt(seed) : undefined,
     };
 
     // Create user message for the selection
-    const userMessage = `Выбрано разрешение: ${selectedResolution.width}x${selectedResolution.height}, стиль: ${selectedStyle.label}, размер кадра: ${selectedShotSize.label}, модель: ${selectedModel.label}${seed ? `, сид: ${seed}` : ''}`;
+    const userMessage = `Selected video settings: ${selectedResolution.width}x${selectedResolution.height}, style: ${selectedStyle.label}, shot size: ${selectedShotSize.label}, model: ${selectedModel.label}, frame rate: ${selectedFrameRate} FPS, duration: ${duration}s${seed ? `, seed: ${seed}` : ''}`;
 
     if (append) {
       append({
@@ -93,15 +87,15 @@ export function MediaSettings({
 
   const handleGenerateRandomSeed = () => {
     const randomSeed = Math.floor(Math.random() * 1000000);
-    setSeed(String(randomSeed))
-  }
+    setSeed(String(randomSeed));
+  };
 
   return (
     <div className="max-w-4xl mx-auto p-6 border rounded-lg bg-card">
       <div className="space-y-2 mb-6">
-        <h3 className="text-lg font-semibold">Image Generation Settings</h3>
+        <h3 className="text-lg font-semibold">Video Generation Settings</h3>
         <p className="text-sm text-muted-foreground">
-          Configure your image generation preferences
+          Configure your video generation preferences
         </p>
       </div>
 
@@ -223,7 +217,7 @@ export function MediaSettings({
               <SelectValue placeholder="Select model" />
             </SelectTrigger>
             <SelectContent>
-              {config?.availableModels?.map((model) => (
+              {config.availableModels.map((model) => (
                 <SelectItem key={model.id} value={model.id}>
                   <div className="flex flex-col">
                     <span className="text-sm">{model.label}</span>
@@ -240,60 +234,89 @@ export function MediaSettings({
         </div>
       </div>
 
-      {/* Seed Input */}
-      <div className="mb-6">
+      {/* Video-specific settings row */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        {/* Frame Rate Selector */}
         <div className="space-y-2">
-          <label className="text-sm font-medium">Seed (Optional)</label>
-          <div className='flex items-center gap-2'>
+          <label className="text-sm font-medium">Frame Rate</label>
+          <Select
+            value={selectedFrameRate.toString()}
+            onValueChange={(value) => {
+              const frameRate = config.availableFrameRates.find(fr => fr.value.toString() === value);
+              if (frameRate) {
+                setSelectedFrameRate(frameRate.value);
+              }
+            }}
+          >
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Select frame rate" />
+            </SelectTrigger>
+            <SelectContent>
+              {config.availableFrameRates.map((frameRate) => (
+                <SelectItem key={frameRate.value} value={frameRate.value.toString()}>
+                  {frameRate.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Duration Input */}
+        <div className="space-y-2">
+          <label className="text-sm font-medium">Duration (seconds)</label>
           <Input
             type="number"
-            placeholder="Enter seed number for reproducible results"
-            value={seed}
-            onChange={(e) => setSeed(e.target.value)}
-            className="w-full max-w-sm"
+            min="1"
+            max="60"
+            value={duration}
+            onChange={(e) => setDuration(parseInt(e.target.value) || 10)}
+            placeholder="10"
           />
-          <Button variant="outline" onClick={handleGenerateRandomSeed}>
-            Random
-          </Button>
+        </div>
+
+        {/* Seed Input */}
+        <div className="space-y-2">
+          <label className="text-sm font-medium">Seed (Optional)</label>
+          <div className="flex gap-2">
+            <Input
+              type="number"
+              value={seed}
+              onChange={(e) => setSeed(e.target.value)}
+              placeholder="Random"
+              className="flex-1"
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleGenerateRandomSeed}
+              className="shrink-0"
+            >
+              Random
+            </Button>
           </div>
-          <p className="text-xs text-muted-foreground">
-            Leave empty for random generation, or enter a number for reproducible results
-          </p>
         </div>
       </div>
 
-      {/* Preview of selected settings */}
-      <div className="space-y-3 mb-6 p-4 bg-muted/50 rounded-lg">
-        <h4 className="text-sm font-medium">Selected Settings Preview</h4>
-        <div className="grid grid-cols-2 gap-4 text-sm">
-          <div>
-            <span className="text-muted-foreground">Resolution:</span>{' '}
-            <span className="font-medium">{selectedResolution.label}</span>
-          </div>
-          <div>
-            <span className="text-muted-foreground">Style:</span>{' '}
-            <span className="font-medium">{selectedStyle.label}</span>
-          </div>
-          <div>
-            <span className="text-muted-foreground">Shot Size:</span>{' '}
-            <span className="font-medium">{selectedShotSize.label}</span>
-          </div>
-          <div>
-            <span className="text-muted-foreground">Model:</span>{' '}
-            <span className="font-medium">{selectedModel.label}</span>
-          </div>
-          {seed && (
-            <div className="col-span-2">
-              <span className="text-muted-foreground">Seed:</span>{' '}
-              <span className="font-medium">{seed}</span>
-            </div>
-          )}
-        </div>
+      {/* Negative Prompt */}
+      <div className="space-y-2 mb-6">
+        <label className="text-sm font-medium">Negative Prompt (Optional)</label>
+        <Textarea
+          value={negativePrompt}
+          onChange={(e) => setNegativePrompt(e.target.value)}
+          placeholder="Describe what you don't want to see in the video..."
+          className="resize-none"
+          rows={3}
+        />
       </div>
 
-      <Button onClick={handleConfirm} className="w-full">
-        Confirm Settings
-      </Button>
+      <div className="flex items-center justify-between">
+        <div className="text-sm text-muted-foreground">
+          Video will be generated with the selected settings
+        </div>
+        <Button onClick={handleConfirm} className="min-w-[120px]">
+          Generate Video
+        </Button>
+      </div>
     </div>
   );
 } 

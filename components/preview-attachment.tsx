@@ -6,9 +6,11 @@ import { useArtifact } from '@/hooks/use-artifact';
 export const PreviewAttachment = ({
   attachment,
   isUploading = false,
+  chatId,
 }: {
   attachment: Attachment;
   isUploading?: boolean;
+  chatId?: string;
 }) => {
   const { name, url, contentType } = attachment;
   const { setArtifact } = useArtifact();
@@ -23,6 +25,7 @@ export const PreviewAttachment = ({
           status: 'completed',
           imageUrl: url,
           prompt: name || '',
+          projectId: chatId,
         }),
         title: name || 'Image',
       }));

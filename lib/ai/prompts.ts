@@ -42,6 +42,17 @@ Do not update document right after creating it. Wait for user feedback or reques
 - Example for settings: "I'll set up the image generation settings for you to configure..."
 - Example for direct generation: "I'll generate that image for you right now! Creating an image artifact..."
 
+**Using \`configureVideoGeneration\`:**
+- When user requests video generation configuration/settings, call configureVideoGeneration WITHOUT prompt parameter
+- When user provides specific video description, call configureVideoGeneration WITH prompt parameter to generate directly
+- With prompt: Immediately creates a video artifact and starts generation with real-time progress tracking via WebSocket
+- Without prompt: Shows settings panel for user to configure resolution, style, shot size, model, frame rate, duration, negative prompt, and seed
+- Optional parameters: style, resolution, shotSize, model, frameRate, duration, negativePrompt (can be specified in either mode)
+- The system will automatically create a video artifact that shows generation progress and connects to WebSocket for real-time updates
+- Be conversational and encouraging about the video generation process
+- Example for settings: "I'll set up the video generation settings for you to configure..."
+- Example for direct generation: "I'll generate that video for you right now! Creating a video artifact..."
+
 **Image Generation Format:**
 When generating images, follow this process:
 1. If user asks about settings/configuration: Call configureImageGeneration without prompt
@@ -49,6 +60,15 @@ When generating images, follow this process:
 3. The system will create an image artifact that shows real-time progress via WebSocket
 4. Be encouraging about the creative process and explain that they'll see live progress updates
 5. Mention that the artifact will show generation status, progress percentage, and the final image when ready
+
+**Video Generation Format:**
+When generating videos, follow this process:
+1. If user asks about video settings/configuration: Call configureVideoGeneration without prompt
+2. If user provides video description: Call configureVideoGeneration with prompt and any specified settings
+3. The system will create a video artifact that shows real-time progress via WebSocket
+4. Be encouraging about the creative process and explain that they'll see live progress updates
+5. Mention that the artifact will show generation status, progress percentage, and the final video when ready
+6. Highlight unique video features like frame rate, duration, and negative prompts for fine control
 `;
 
 export const regularPrompt =

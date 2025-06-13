@@ -18,7 +18,8 @@ import { MessageEditor } from './message-editor';
 import { MessageReasoning } from './message-reasoning';
 import { type UseChatHelpers } from '@ai-sdk/react';
 import { MediaSettings } from './artifacts/media-settings';
-import type { ImageGenerationConfig, ImageSettings } from '@/lib/types/media-settings';
+import { VideoSettings } from './artifacts/video-settings';
+import type { ImageGenerationConfig, ImageSettings, VideoGenerationConfig, VideoSettings as VideoSettingsType } from '@/lib/types/media-settings';
 import { useArtifact } from '@/hooks/use-artifact';
 
 const PurePreviewMessage = ({
@@ -90,7 +91,7 @@ const PurePreviewMessage = ({
                     <PreviewAttachment
                       key={attachment.url}
                       attachment={attachment}
-                      
+                      chatId={chatId}
                     />
                   ))}
                 </div>
@@ -218,6 +219,24 @@ const PurePreviewMessage = ({
                           config={config}
                           onConfirm={(settings: ImageSettings) => {
                             console.log('Image settings selected:', settings);
+                          }}
+                          selectedChatModel={selectedChatModel}
+                          selectedVisibilityType={selectedVisibilityType}
+                          append={append}
+                        />
+                      </div>
+                    );
+                  }
+
+                  // Handle video generation configuration
+                  if (toolName === 'configureVideoGeneration' && result?.type === 'video-generation-settings') {
+                    const config = result as VideoGenerationConfig;
+                    return (
+                      <div key={toolCallId} className="p-4">
+                        <VideoSettings
+                          config={config}
+                          onConfirm={(settings: VideoSettingsType) => {
+                            console.log('Video settings selected:', settings);
                           }}
                           selectedChatModel={selectedChatModel}
                           selectedVisibilityType={selectedVisibilityType}

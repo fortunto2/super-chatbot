@@ -1,6 +1,6 @@
 import { Artifact } from '@/components/create-artifact';
 import { CopyIcon, RedoIcon, UndoIcon } from '@/components/icons';
-import { ImageEditor } from '@/components/image-editor';
+import { VideoEditor } from '@/components/video-editor';
 import { toast } from 'sonner';
 import { memo, useMemo, useEffect } from 'react';
 import { useArtifactWebSocket } from '@/hooks/use-artifact-websocket';
@@ -8,8 +8,8 @@ import { useArtifactWebSocket } from '@/hooks/use-artifact-websocket';
 // Import console helpers for debugging (auto-exposes in browser)
 import '@/lib/utils/console-helpers';
 
-// Wrapper component that handles the artifact content for ImageEditor
-const ImageArtifactWrapper = memo(function ImageArtifactWrapper(props: any) {
+// Wrapper component that handles the artifact content for VideoEditor
+const VideoArtifactWrapper = memo(function VideoArtifactWrapper(props: any) {
   const { content, setArtifact, ...otherProps } = props;
   
   // Memoize parsed content to avoid re-parsing on every render
@@ -40,11 +40,12 @@ const ImageArtifactWrapper = memo(function ImageArtifactWrapper(props: any) {
     const state = {
       status: parsedContent.status,
       prompt: parsedContent.prompt,
+      negativePrompt: parsedContent.negativePrompt,
       projectId: parsedContent.projectId,
       requestId: parsedContent.requestId,
       timestamp: parsedContent.timestamp,
       message: parsedContent.message,
-      imageUrl: parsedContent.imageUrl, // Pass imageUrl from completed state
+      videoUrl: parsedContent.videoUrl, // Pass videoUrl from completed state
     };
     
     // Created initial state
@@ -87,17 +88,21 @@ const ImageArtifactWrapper = memo(function ImageArtifactWrapper(props: any) {
       style: parsedContent.settings.style,
       shotSize: parsedContent.settings.shotSize,
       model: parsedContent.settings.model,
+      frameRate: parsedContent.settings.frameRate,
+      duration: parsedContent.settings.duration,
+      negativePrompt: parsedContent.settings.negativePrompt,
       seed: parsedContent.settings.seed,
     };
   }, [parsedContent?.settings]);
 
-  // Memoize ImageEditor props to prevent unnecessary rerenders
-  const imageEditorProps = useMemo(() => ({
+  // Memoize VideoEditor props to prevent unnecessary rerenders
+  const videoEditorProps = useMemo(() => ({
     chatId: parsedContent?.projectId || otherProps.chatId,
     availableResolutions: otherProps.availableResolutions || [],
     availableStyles: otherProps.availableStyles || [],
     availableShotSizes: otherProps.availableShotSizes || [],
     availableModels: otherProps.availableModels || [],
+    availableFrameRates: otherProps.availableFrameRates || [],
     defaultSettings,
     append: otherProps.append,
     setMessages: otherProps.setMessages,
@@ -105,10 +110,12 @@ const ImageArtifactWrapper = memo(function ImageArtifactWrapper(props: any) {
     setArtifact,
   }), [
     parsedContent?.projectId,
+    otherProps.chatId,
     otherProps.availableResolutions,
     otherProps.availableStyles,
     otherProps.availableShotSizes,
     otherProps.availableModels,
+    otherProps.availableFrameRates,
     otherProps.append,
     otherProps.setMessages,
     defaultSettings,
@@ -118,69 +125,67 @@ const ImageArtifactWrapper = memo(function ImageArtifactWrapper(props: any) {
 
   // Handle different content types
   if (!content) {
-    return <div>No image content available</div>;
+    return <div>No video content available</div>;
   }
 
-    // If we have valid parsed content, render ImageEditor
+  // If we have valid parsed content, render VideoEditor
   if (parsedContent) {
-    return <ImageEditor {...imageEditorProps} />;
+    return <VideoEditor {...videoEditorProps} />;
   }
 
-  // Handle legacy base64 image format
-  let imageUrl: string;
-  if (content.startsWith('data:image/')) {
-    imageUrl = content;
-  } else if (content.startsWith('/9j/') || content.startsWith('iVBORw0KGgo') || content.startsWith('UklGR')) {
-    imageUrl = `data:image/png;base64,${content}`;
+  // Handle legacy video format
+  let videoUrl: string;
+  if (content.startsWith('http://') || content.startsWith('https://')) {
+    videoUrl = content;
   } else {
     try {
-      // Try to extract base64 from various formats
-      const base64Match = content.match(/data:image\/[^;]+;base64,([^"]+)/);
-      if (base64Match) {
-        imageUrl = content;
+      // Try to extract URL from various formats
+      const urlMatch = content.match(/https?:\/\/[^\s"]+/);
+      if (urlMatch) {
+        videoUrl = urlMatch[0];
       } else {
-        imageUrl = `data:image/png;base64,${content}`;
+        return <div>Invalid video content</div>;
       }
     } catch (error) {
-      console.error('🎨 Error processing image content:', error);
-      return <div>Error loading image</div>;
+      console.error('🎬 Error processing video content:', error);
+      return <div>Error loading video</div>;
     }
   }
 
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2">
-        <h3 className="text-lg font-semibold">Generated Image</h3>
+        <h3 className="text-lg font-semibold">Generated Video</h3>
         <button
           onClick={async () => {
             try {
-              await navigator.clipboard.writeText(imageUrl);
-              toast.success('Image URL copied to clipboard');
+              await navigator.clipboard.writeText(videoUrl);
+              toast.success('Video URL copied to clipboard');
             } catch (error) {
-              toast.error('Failed to copy image URL');
+              toast.error('Failed to copy video URL');
             }
           }}
           className="p-1 hover:bg-gray-100 rounded"
-          title="Copy image URL"
+          title="Copy video URL"
         >
           <CopyIcon size={16} />
         </button>
       </div>
       <div className="relative">
-        <img
-          src={imageUrl}
-          alt="Generated image"
+        <video
+          src={videoUrl}
+          controls
           className="w-full h-auto rounded-lg border"
           style={{ maxHeight: '70vh' }}
           onError={(e) => {
-            console.error('🎨 Image load error:', imageUrl.substring(0, 100));
+            console.error('🎬 Video load error:', videoUrl.substring(0, 100));
           }}
         />
       </div>
     </div>
   );
 }, (prevProps, nextProps) => {
-  // Comprehensive comparison function for memo to prevent image mix-ups
+  // Comprehensive comparison function for memo to prevent video mix-ups
   const changes = {
     content: prevProps.content !== nextProps.content,
     setArtifact: prevProps.setArtifact !== nextProps.setArtifact,
@@ -192,6 +197,7 @@ const ImageArtifactWrapper = memo(function ImageArtifactWrapper(props: any) {
     availableStyles: JSON.stringify(prevProps.availableStyles) !== JSON.stringify(nextProps.availableStyles),
     availableShotSizes: JSON.stringify(prevProps.availableShotSizes) !== JSON.stringify(nextProps.availableShotSizes),
     availableModels: JSON.stringify(prevProps.availableModels) !== JSON.stringify(nextProps.availableModels),
+    availableFrameRates: JSON.stringify(prevProps.availableFrameRates) !== JSON.stringify(nextProps.availableFrameRates),
   };
   
   // Check if content contains different projectId or requestId
@@ -201,54 +207,41 @@ const ImageArtifactWrapper = memo(function ImageArtifactWrapper(props: any) {
       const prevParsed = JSON.parse(prevProps.content);
       const nextParsed = JSON.parse(nextProps.content);
       
-      // Check for critical fields that should trigger re-render
-      contentChanged = 
-        prevParsed.projectId !== nextParsed.projectId ||
-        prevParsed.requestId !== nextParsed.requestId ||
-        prevParsed.imageUrl !== nextParsed.imageUrl ||
-        prevParsed.status !== nextParsed.status;
+      if (prevParsed.projectId !== nextParsed.projectId || 
+          prevParsed.requestId !== nextParsed.requestId) {
+        // Content has different project/request ID
+        contentChanged = true;
+      }
     } catch {
-      // If content is not JSON, compare as strings
-      contentChanged = prevProps.content !== nextProps.content;
+      // If parsing fails, fall back to string comparison
+      contentChanged = changes.content;
     }
   }
   
-  const shouldRerender = contentChanged || 
-    changes.setArtifact || 
-    changes.append || 
-    changes.setMessages ||
-    changes.chatId ||
-    changes.availableResolutions ||
-    changes.availableStyles ||
-    changes.availableShotSizes ||
-    changes.availableModels;
+  // Only re-render if something meaningful changed
+  const shouldUpdate = Object.values(changes).some(Boolean) || contentChanged;
   
-  // Check if should re-render
+  if (shouldUpdate) {
+    // VideoArtifactWrapper will re-render
+  }
   
-  return !shouldRerender; // Return false to re-render, true to skip
+  return !shouldUpdate; // Return true to prevent re-render, false to allow it
 });
 
-export default function ArtifactContentImage(props: any) {
-  return <ImageArtifactWrapper {...props} />;
+export default function ArtifactContentVideo(props: any) {
+  return <VideoArtifactWrapper {...props} />;
 }
 
-export const imageArtifact = new Artifact({
-  kind: 'image',
-  description: 'Useful for image generation with real-time progress tracking',
+export const videoArtifact = new Artifact({
+  kind: 'video',
+  description: 'Useful for video generation with real-time progress tracking',
+  content: ArtifactContentVideo,
+  actions: [],
+  toolbar: [],
   onStreamPart: ({ streamPart, setArtifact }) => {
    
     // Handle text-delta with JSON content from server
     if (streamPart.type === 'text-delta') {
-      setArtifact((draftArtifact) => ({
-        ...draftArtifact,
-        content: streamPart.content as string,
-        isVisible: true,
-        status: 'streaming',
-      }));
-    }
-    
-    // Handle legacy image-delta for backward compatibility
-    if (streamPart.type === 'image-delta') {
       setArtifact((draftArtifact) => ({
         ...draftArtifact,
         content: streamPart.content as string,
@@ -264,8 +257,8 @@ export const imageArtifact = new Artifact({
           // Try to parse content and add completion status
           const parsedContent = JSON.parse(draftArtifact.content || '{}');
           
-          // If the parsed content has imageUrl, mark as completed with imageUrl
-          if (parsedContent.imageUrl || parsedContent.status === 'completed') {
+          // If the parsed content has videoUrl, mark as completed with videoUrl
+          if (parsedContent.videoUrl || parsedContent.status === 'completed') {
             const updatedContent = {
               ...parsedContent,
               status: 'completed'
@@ -278,14 +271,13 @@ export const imageArtifact = new Artifact({
             };
           }
           
-          // Fallback: keep current content but mark as completed
+          // For other content, just mark as idle
           return {
             ...draftArtifact,
             status: 'idle',
           };
         } catch (error) {
-          console.error('📡 Error parsing content on finish:', error);
-          // For legacy base64 content, just mark as completed
+          // If content is not JSON, just mark as idle
           return {
             ...draftArtifact,
             status: 'idle',
@@ -294,100 +286,4 @@ export const imageArtifact = new Artifact({
       });
     }
   },
-  content: ImageArtifactWrapper,
-  actions: [
-    {
-      icon: <UndoIcon size={18} />,
-      description: 'View Previous version',
-      onClick: ({ handleVersionChange }) => {
-        handleVersionChange('prev');
-      },
-      isDisabled: ({ currentVersionIndex }) => {
-        if (currentVersionIndex === 0) {
-          return true;
-        }
-
-        return false;
-      },
-    },
-    {
-      icon: <RedoIcon size={18} />,
-      description: 'View Next version',
-      onClick: ({ handleVersionChange }) => {
-        handleVersionChange('next');
-      },
-      isDisabled: ({ isCurrentVersion }) => {
-        if (isCurrentVersion) {
-          return true;
-        }
-
-        return false;
-      },
-    },
-    {
-      icon: <CopyIcon size={18} />,
-      description: 'Copy image to clipboard',
-      onClick: ({ content }) => {
-        try {
-          // Try to parse content as JSON for new format
-          const parsedContent = JSON.parse(content);
-          
-          if (parsedContent.status === 'completed' && parsedContent.imageUrl) {
-            // Handle new format with imageUrl
-            fetch(parsedContent.imageUrl)
-              .then(response => response.blob())
-              .then(blob => {
-                navigator.clipboard.write([
-                  new ClipboardItem({ [blob.type]: blob }),
-                ]);
-                toast.success('Copied image to clipboard!');
-              })
-              .catch(() => {
-                toast.error('Failed to copy image to clipboard');
-              });
-            return;
-          }
-          
-          if (parsedContent.status !== 'completed') {
-            toast.error('Image is not ready yet');
-            return;
-          }
-        } catch {
-          // Fallback to legacy base64 format
-          const img = new Image();
-          img.src = `data:image/png;base64,${content}`;
-
-          img.onload = () => {
-            const canvas = document.createElement('canvas');
-            canvas.width = img.width;
-            canvas.height = img.height;
-            const ctx = canvas.getContext('2d');
-            ctx?.drawImage(img, 0, 0);
-            canvas.toBlob((blob) => {
-              if (blob) {
-                navigator.clipboard.write([
-                  new ClipboardItem({ 'image/png': blob }),
-                ]);
-                toast.success('Copied image to clipboard!');
-              }
-            }, 'image/png');
-          };
-
-          img.onerror = () => {
-            toast.error('Failed to copy image to clipboard');
-          };
-        }
-      },
-      isDisabled: ({ content }) => {
-        try {
-          const parsedContent = JSON.parse(content);
-          return parsedContent.status !== 'completed';
-        } catch {
-          // For legacy base64 content, always allow copy
-          return false;
-        }
-      },
-    },
-  ],
-  toolbar: [],
-});
+}); 
