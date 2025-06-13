@@ -19,6 +19,7 @@ import { MessageReasoning } from './message-reasoning';
 import { type UseChatHelpers } from '@ai-sdk/react';
 import { MediaSettings } from './artifacts/media-settings';
 import type { ImageGenerationConfig, ImageSettings } from '@/lib/types/media-settings';
+import { useArtifact } from '@/hooks/use-artifact';
 
 const PurePreviewMessage = ({
   chatId,
@@ -46,6 +47,7 @@ const PurePreviewMessage = ({
   append?: UseChatHelpers['append'];
 }) => {
   const [mode, setMode] = useState<'view' | 'edit'>('view');
+  const { setArtifact } = useArtifact();
 
   return (
     <AnimatePresence>
@@ -88,6 +90,7 @@ const PurePreviewMessage = ({
                     <PreviewAttachment
                       key={attachment.url}
                       attachment={attachment}
+                      
                     />
                   ))}
                 </div>

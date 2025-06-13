@@ -22,10 +22,10 @@ export type IResponsePaginated_IStyleRead_ = {
 
 export const getStyles = async () => {
     try {
-      const url = "https://editor.superduperai.co"
-      // const url = process.env.NEXT_PUBLIC_API_URL ?? "https://editor.superduperai.co"
-      const token = "afda4dc28cf1420db6d3e35a291c2d5f"
-      const response = await fetch(`${url}/api/v1/style`, {
+      // const url = "https://editor.superduperai.co"
+      const url = process.env.NEXT_PUBLIC_API_URL ?? "https://editor.superduperai.co"
+      const token = !process.env.NEXT_PUBLIC_API_URL ? "9ab6d5b74e654a7887015a4fa2b10e7f" :"afda4dc28cf1420db6d3e35a291c2d5f"
+      const response = await fetch(`${url}/api/v1/style?order_by=name&order=descendent&limit=100`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
