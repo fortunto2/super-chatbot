@@ -1,8 +1,8 @@
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
-import { generateImage, ImageGenerationResult } from '@/lib/ai/api/generate-image';
-import { ImageModel, MediaOption, MediaResolution } from '@/lib/types/media-settings';
+import { generateImage, type ImageGenerationResult } from '@/lib/ai/api/generate-image';
+import type { ImageModel, MediaOption, MediaResolution } from '@/lib/types/media-settings';
 import { useImageWebsocket } from './use-image-websocket';
-import { useImageEventHandler, type ImageGenerationState } from './use-image-event-handler';
+import { useImageEventHandler, } from './use-image-event-handler';
 
 export enum TaskStatusEnum {
   IN_PROGRESS = 'in_progress',

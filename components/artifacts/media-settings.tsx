@@ -20,7 +20,6 @@ import type {
   MediaOption,
   ImageModel,
   VideoModel,
-  MediaGenerationConfig 
 } from '@/lib/types/media-settings';
 import { generateUUID } from '@/lib/utils';
 import type { UseChatHelpers } from '@ai-sdk/react';
@@ -61,13 +60,13 @@ export function MediaSettings({
   
   // Video-specific states
   const [selectedFrameRate, setSelectedFrameRate] = useState<number>(
-    isVideoConfig ? videoConfig!.defaultSettings.frameRate : 30
+    isVideoConfig ? videoConfig?.defaultSettings.frameRate || 30 : 30
   );
   const [duration, setDuration] = useState<number>(
-    isVideoConfig ? videoConfig!.defaultSettings.duration : 10
+    isVideoConfig ? videoConfig?.defaultSettings.duration || 10 : 10
   );
   const [negativePrompt, setNegativePrompt] = useState<string>(
-    isVideoConfig ? videoConfig!.defaultSettings.negativePrompt || '' : ''
+    isVideoConfig ? videoConfig?.defaultSettings.negativePrompt || '' : ''
   );
 
   const handleConfirm = () => {
@@ -76,7 +75,7 @@ export function MediaSettings({
       style: selectedStyle,
       shotSize: selectedShotSize,
       model: selectedModel,
-      seed: seed ? parseInt(seed) : undefined,
+      seed: seed ? Number.parseInt(seed) : undefined,
     };
 
     const settings: ImageSettings | VideoSettings = isVideoConfig 
@@ -294,7 +293,7 @@ export function MediaSettings({
             <label className="text-xs sm:text-sm font-medium">Frame Rate</label>
             <Select
               value={selectedFrameRate.toString()}
-              onValueChange={(value) => setSelectedFrameRate(parseInt(value))}
+              onValueChange={(value) => setSelectedFrameRate(Number.parseInt(value))}
             >
               <SelectTrigger className="w-full h-9 sm:h-10">
                 <SelectValue placeholder="Select frame rate" />
@@ -316,7 +315,7 @@ export function MediaSettings({
               type="number"
               placeholder="Duration in seconds"
               value={duration}
-              onChange={(e) => setDuration(parseInt(e.target.value) || 10)}
+              onChange={(e) => setDuration(Number.parseInt(e.target.value) || 10)}
               className="w-full h-9 sm:h-10 text-sm"
               min="1"
               max="60"

@@ -87,7 +87,7 @@ export const useChatImageWebSocket = ({
 
           // Try direct artifact update immediately
           const artifactInstance = (window as any).artifactInstance;
-          if (artifactInstance && artifactInstance.artifact && artifactInstance.artifact.kind === 'image') {
+          if (artifactInstance?.artifact && artifactInstance.artifact.kind === 'image') {
             try {
               const currentContent = JSON.parse(artifactInstance.artifact.content || '{}');
               
@@ -169,7 +169,7 @@ export const useChatImageWebSocket = ({
                         artifactContent = JSON.parse(part.text);
                       }
                       
-                      if (artifactContent && artifactContent.status && artifactContent.projectId) {
+                      if (artifactContent?.status && artifactContent.projectId) {
                         
                         let priority = 0;
                         

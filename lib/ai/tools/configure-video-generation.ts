@@ -1,7 +1,6 @@
 import { tool } from 'ai';
 import { z } from 'zod';
 import type { 
-  MediaResolution, 
   MediaOption, 
   VideoGenerationConfig,
   VideoModel 
@@ -9,7 +8,7 @@ import type {
 import { getStyles } from '../api/get-styles';
 import { findStyle } from './configure-image-generation';
 import { getAvailableVideoModels } from '@/lib/config/superduperai';
-import { VIDEO_RESOLUTIONS, SHOT_SIZES, VIDEO_FRAME_RATES, ShotSizeEnum, DEFAULT_VIDEO_RESOLUTION, DEFAULT_VIDEO_QUALITY, DEFAULT_VIDEO_DURATION } from '@/lib/config/video-constants';
+import { VIDEO_RESOLUTIONS, SHOT_SIZES, VIDEO_FRAME_RATES, DEFAULT_VIDEO_RESOLUTION, DEFAULT_VIDEO_DURATION } from '@/lib/config/video-constants';
 
 // AICODE-NOTE: Convert SuperDuperAI VideoModel to VideoModel for compatibility
 function convertToVideoModel(sdModel: any): VideoModel {

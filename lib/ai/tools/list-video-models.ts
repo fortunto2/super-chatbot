@@ -1,7 +1,7 @@
 import { tool } from 'ai';
 import { z } from 'zod';
 // AICODE-NOTE: Updated to use new dynamic model system from SuperDuperAI config
-import { getAvailableVideoModels, findVideoModel } from '@/lib/config/superduperai';
+import { getAvailableVideoModels, } from '@/lib/config/superduperai';
 
 export const listVideoModels = tool({
   description: 'List all available video generation models from SuperDuperAI API with their capabilities, pricing, and requirements. Use this to see what models are available before generating videos.',

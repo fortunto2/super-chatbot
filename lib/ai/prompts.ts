@@ -184,7 +184,6 @@ Improve the following spreadsheet based on the given prompt.
 
 ${currentContent}
 `
-<<<<<<< HEAD
       : type === 'image'
         ? `\
 Update the following image generation settings based on the given prompt.
@@ -198,6 +197,3 @@ Update the following video generation settings based on the given prompt.
 ${currentContent}
 `
           : '';
-=======
-      : '';
->>>>>>> 0d65bb2 (Remove code artifact type support - Remove code from ArtifactKind enum - Fix TypeScript errors after code type removal)

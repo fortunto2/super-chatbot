@@ -1,7 +1,7 @@
 import { createDocumentHandler } from '@/lib/artifacts/server';
 import { generateImage } from '@/lib/ai/api/generate-image';
 import { getStyles } from '@/lib/ai/api/get-styles';
-import { ImageModel, MediaOption, MediaResolution } from '@/lib/types/media-settings';
+import type { ImageModel, MediaOption, MediaResolution } from '@/lib/types/media-settings';
 
 // Import the same constants as in configure-image-generation
 const RESOLUTIONS: MediaResolution[] = [

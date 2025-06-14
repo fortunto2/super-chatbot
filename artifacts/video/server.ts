@@ -1,7 +1,7 @@
 import { createDocumentHandler } from '@/lib/artifacts/server';
 import { generateVideo } from '@/lib/ai/api/generate-video';
 import { getStyles } from '@/lib/ai/api/get-styles';
-import { VideoModel, MediaOption, MediaResolution } from '@/lib/types/media-settings';
+import type { VideoModel, MediaOption, } from '@/lib/types/media-settings';
 import { getAvailableVideoModels } from '@/lib/config/superduperai';
 import { VIDEO_RESOLUTIONS, SHOT_SIZES, VIDEO_FRAME_RATES, DEFAULT_VIDEO_RESOLUTION, DEFAULT_VIDEO_DURATION } from '@/lib/config/video-constants';
 

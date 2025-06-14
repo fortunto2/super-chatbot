@@ -1,4 +1,4 @@
-import { DataStreamWriter } from 'ai';
+
 
 export interface ArtifactMetadata {
   [key: string]: any;

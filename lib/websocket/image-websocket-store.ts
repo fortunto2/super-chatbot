@@ -454,7 +454,7 @@ class ImageWebsocketStore {
         
         // Extract clean project ID from incoming event data
         let messageProjectId = eventData.projectId;
-        if (messageProjectId && messageProjectId.startsWith('project.')) {
+        if (messageProjectId?.startsWith('project.')) {
           messageProjectId = messageProjectId.substring(8);
         }
         

@@ -1,5 +1,5 @@
 import { Artifact } from '@/components/create-artifact';
-import { CopyIcon, RedoIcon, UndoIcon } from '@/components/icons';
+import { CopyIcon, } from '@/components/icons';
 import { VideoEditor } from '@/components/video-editor';
 import { toast } from 'sonner';
 import { memo, useMemo, useEffect } from 'react';

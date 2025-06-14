@@ -1,4 +1,4 @@
-import { ImageModel, MediaOption, MediaResolution } from "@/lib/types/media-settings";
+import type { ImageModel, MediaOption, MediaResolution } from "@/lib/types/media-settings";
 import { 
   getSuperduperAIConfig, 
   createAuthHeaders, 
@@ -36,7 +36,7 @@ function validateStyleForAPI(style: MediaOption): string {
 }
 
 // Polling function to check file status
-async function pollForCompletion(fileId: string, maxWaitTime: number = 120000): Promise<any> {
+async function pollForCompletion(fileId: string, maxWaitTime = 120000): Promise<any> {
   const config = getSuperduperAIConfig();
   const startTime = Date.now();
   const pollInterval = 2000; // 2 seconds
@@ -160,7 +160,7 @@ export const generateImageHybrid = async (
   const styleId = validateStyleForAPI(style);
 
   console.log(`🎨 Starting hybrid image generation:`, {
-    prompt: prompt.substring(0, 50) + '...',
+    prompt: `${prompt.substring(0, 50)}...`,
     model: model.id,
     style: styleId,
     resolution: `${resolution.width}x${resolution.height}`,

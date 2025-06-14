@@ -1,6 +1,6 @@
 import { auth } from '@/app/(auth)/auth';
 import { saveMessages, getMessageById } from '@/lib/db/queries';
-import { NextRequest, NextResponse } from 'next/server';
+import { type NextRequest, NextResponse } from 'next/server';
 import { eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';

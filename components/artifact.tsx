@@ -27,7 +27,6 @@ import { imageArtifact } from '@/artifacts/image/client';
 import { sheetArtifact } from '@/artifacts/sheet/client';
 import { textArtifact } from '@/artifacts/text/client';
 import { videoArtifact } from '@/artifacts/video/client';
-import equal from 'fast-deep-equal';
 import type { UseChatHelpers } from '@ai-sdk/react';
 import type { VisibilityType } from './visibility-selector';
 

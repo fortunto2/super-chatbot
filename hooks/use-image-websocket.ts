@@ -41,7 +41,7 @@ export const useImageWebsocket = ({ projectId, eventHandlers, enabled = true }: 
     // Reset attempts for new project
     setConnectionAttempts(0);
 
-    const attemptConnection = (attempt: number = 1) => {
+    const attemptConnection = (attempt = 1) => {
       if (!mountedRef.current) {
         return;
       }

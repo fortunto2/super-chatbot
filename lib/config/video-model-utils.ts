@@ -1,4 +1,4 @@
-import { getAvailableVideoModels, type VideoModel as SuperDuperVideoModel } from './superduperai';
+import { getAvailableVideoModels, } from './superduperai';
 import videoModelsConfig from './video-models.json';
 import type { VideoModel } from '@/lib/types/media-settings';
 

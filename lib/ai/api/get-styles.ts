@@ -23,7 +23,7 @@ export type IResponsePaginated_IStyleRead_ = {
 
 // Cache for styles to avoid repeated API calls
 let stylesCache: IResponsePaginated_IStyleRead_ | null = null;
-let cacheExpiry: number = 0;
+let cacheExpiry = 0;
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
 export const getStyles = async () => {

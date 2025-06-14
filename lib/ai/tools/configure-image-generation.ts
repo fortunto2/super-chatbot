@@ -289,8 +289,8 @@ function findResolution(input: string): MediaResolution | null {
   // Try to parse dimensions manually (1920x1080, 1920*1080, 1920 на 1080, etc.)
   const dimensionMatch = normalizedInput.match(/(\d+)\s*[x*×на]\s*(\d+)/);
   if (dimensionMatch) {
-    const width = parseInt(dimensionMatch[1]);
-    const height = parseInt(dimensionMatch[2]);
+    const width = Number.parseInt(dimensionMatch[1]);
+    const height = Number.parseInt(dimensionMatch[2]);
     
     return RESOLUTIONS.find(r => r.width === width && r.height === height) || null;
   }
@@ -689,7 +689,7 @@ export const configureImageGeneration = (params?: CreateImageDocumentParams) => 
     const humanReadableTitle = `AI Image: ${prompt.substring(0, 60)}${prompt.length > 60 ? '...' : ''}`;
 
     console.log('🔧 ✅ ARTIFACT PARAMS PREPARED:', {
-      prompt: prompt.substring(0, 50) + '...',
+      prompt: `${prompt.substring(0, 50)}...`,
       resolution: selectedResolution.label,
       style: selectedStyle.label,
       shotSize: selectedShotSize.label,

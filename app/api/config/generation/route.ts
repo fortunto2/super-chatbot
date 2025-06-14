@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { type NextRequest, NextResponse } from 'next/server';
 import { getCachedGenerationConfigs, getVideoModelsForAgent, getCacheStatus } from '@/lib/ai/api/config-cache';
 
 export async function GET(request: NextRequest) {
@@ -8,7 +8,7 @@ export async function GET(request: NextRequest) {
     const type = searchParams.get('type');
     
     switch (action) {
-      case 'list':
+      case 'list': {
         const configs = await getCachedGenerationConfigs();
         let filteredConfigs = configs;
         
@@ -22,14 +22,16 @@ export async function GET(request: NextRequest) {
           total: filteredConfigs.length,
           cache: getCacheStatus(),
         });
+      }
         
-      case 'video-models':
+      case 'video-models': {
         const videoModels = await getVideoModelsForAgent();
         return NextResponse.json({
           success: true,
           data: videoModels,
           cache: getCacheStatus(),
         });
+      }
         
       case 'cache-status':
         return NextResponse.json({
@@ -37,7 +39,7 @@ export async function GET(request: NextRequest) {
           data: getCacheStatus(),
         });
         
-      case 'refresh':
+      case 'refresh': {
         const refreshedConfigs = await getCachedGenerationConfigs(true);
         return NextResponse.json({
           success: true,
@@ -46,6 +48,7 @@ export async function GET(request: NextRequest) {
           total: refreshedConfigs.length,
           cache: getCacheStatus(),
         });
+      }
         
       default:
         return NextResponse.json({

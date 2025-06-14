@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { CopyIcon } from '@/components/icons';
 import { toast } from 'sonner';
 import type { UseChatHelpers } from '@ai-sdk/react';
@@ -77,15 +76,15 @@ function GenerationSkeleton({ prompt }: { prompt?: string }) {
     <div className="flex flex-col items-center justify-center p-8">
       <div className="relative max-w-full max-h-[70vh] overflow-hidden rounded-lg border bg-gradient-to-br from-gray-50 to-gray-100">
         <div className="w-full h-80 bg-gradient-to-br from-gray-200 to-gray-300 animate-pulse flex items-center justify-center relative overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-[shimmer_2s_infinite] transform -skew-x-12"></div>
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-[shimmer_2s_infinite] transform -skew-x-12" />
           
           <div className="text-center space-y-4 z-10 relative">
             <div className="size-16 mx-auto bg-white/50 rounded-lg flex items-center justify-center backdrop-blur-sm">
               <span className="text-2xl">🎬</span>
             </div>
             <div className="space-y-2">
-              <div className="h-3 bg-white/40 rounded animate-pulse w-32 mx-auto"></div>
-              <div className="h-2 bg-white/30 rounded animate-pulse w-24 mx-auto"></div>
+              <div className="h-3 bg-white/40 rounded animate-pulse w-32 mx-auto" />
+              <div className="h-2 bg-white/30 rounded animate-pulse w-24 mx-auto" />
             </div>
           </div>
         </div>

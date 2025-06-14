@@ -105,7 +105,7 @@ export function logSystemHealth() {
 }
 
 // Auto-check function that can be called periodically
-export function startPeriodicHealthCheck(intervalMs: number = 30000) {
+export function startPeriodicHealthCheck(intervalMs = 30000) {
   if (typeof window === 'undefined') return;
   
   const interval = setInterval(() => {
@@ -127,6 +127,6 @@ export function startPeriodicHealthCheck(intervalMs: number = 30000) {
 export function stopPeriodicHealthCheck() {
   if (typeof window !== 'undefined' && (window as any).imageHealthCheckInterval) {
     clearInterval((window as any).imageHealthCheckInterval);
-    delete (window as any).imageHealthCheckInterval;
+    (window as any).imageHealthCheckInterval = undefined;
   }
 } 

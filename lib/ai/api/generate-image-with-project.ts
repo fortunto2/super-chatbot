@@ -1,4 +1,4 @@
-import { ImageModel, MediaOption, MediaResolution } from "@/lib/types/media-settings";
+import type { ImageModel, MediaOption, MediaResolution } from "@/lib/types/media-settings";
 import { 
   getSuperduperAIConfig, 
   createAuthHeaders, 
@@ -84,7 +84,7 @@ async function createProject(prompt: string): Promise<string> {
 }
 
 // Polling function to check file status
-async function pollForCompletion(fileId: string, maxWaitTime: number = 120000): Promise<any> {
+async function pollForCompletion(fileId: string, maxWaitTime = 120000): Promise<any> {
   const config = getSuperduperAIConfig();
   const startTime = Date.now();
   const pollInterval = 2000; // 2 seconds
@@ -208,7 +208,7 @@ export const generateImageWithProject = async (
   const styleId = validateStyleForAPI(style);
 
   console.log(`🎨 Starting image generation with project:`, {
-    prompt: prompt.substring(0, 50) + '...',
+    prompt: `${prompt.substring(0, 50)}...`,
     model: model.id,
     style: styleId,
     resolution: `${resolution.width}x${resolution.height}`,

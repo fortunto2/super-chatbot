@@ -1,11 +1,8 @@
 'use client';
-
-import { useChat } from '@ai-sdk/react';
-import { useEffect, useRef, useMemo, memo } from 'react';
-import { artifactDefinitions, ArtifactKind } from './artifact';
-import { Suggestion } from '@/lib/db/schema';
+import { useEffect, useRef, memo } from 'react';
+import { artifactDefinitions, type ArtifactKind } from './artifact';
+import type { Suggestion } from '@/lib/db/schema';
 import { initialArtifactData, useArtifact } from '@/hooks/use-artifact';
-import { generateUUID } from '@/lib/utils';
 
 export type DataStreamDelta = {
   type:

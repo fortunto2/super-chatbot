@@ -1,9 +1,8 @@
-import { ImageModel, MediaOption, MediaResolution } from "@/lib/types/media-settings";
+import type { ImageModel, MediaOption, MediaResolution } from "@/lib/types/media-settings";
 import { 
   getSuperduperAIConfig, 
   createAuthHeaders, 
   createAPIURL, 
-  API_ENDPOINTS 
 } from '@/lib/config/superduperai';
 // import { ensureProjectForChatId } from '@/lib/utils/simple-project';
 
@@ -94,7 +93,7 @@ export async function generateImage(
     const requestId = generateRequestId();
     
     console.log(`🚀 Starting image generation:`, {
-      prompt: prompt.substring(0, 100) + '...',
+      prompt: `${prompt.substring(0, 100)}...`,
       model: model.label,
       resolution: `${resolution.width}x${resolution.height}`,
       style: style.label,

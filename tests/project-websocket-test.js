@@ -23,9 +23,9 @@ if (!SUPERDUPERAI_TOKEN) {
 // Generate unique project ID (UUID format)
 function generateProjectId() {
   // Generate a valid UUID v4
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
     const r = Math.random() * 16 | 0;
-    const v = c == 'x' ? r : (r & 0x3 | 0x8);
+    const v = c === 'x' ? r : (r & 0x3 | 0x8);
     return v.toString(16);
   });
 }
@@ -86,7 +86,7 @@ async function testProjectWebSocket() {
     
     let completedFile;
     let method = 'unknown';
-    let startTime = Date.now();
+    const startTime = Date.now();
 
     try {
       completedFile = await tryWebSocketWithProject(projectId, fileId);

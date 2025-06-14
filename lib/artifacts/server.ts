@@ -3,11 +3,11 @@ import { imageDocumentHandler } from '@/artifacts/image/server';
 import { sheetDocumentHandler } from '@/artifacts/sheet/server';
 import { textDocumentHandler } from '@/artifacts/text/server';
 import { videoDocumentHandler } from '@/artifacts/video/server';
-import { ArtifactKind } from '@/components/artifact';
-import { DataStreamWriter } from 'ai';
-import { Document } from '../db/schema';
+import type { ArtifactKind } from '@/components/artifact';
+import type { DataStreamWriter } from 'ai';
+import type { Document } from '../db/schema';
 import { saveDocument } from '../db/queries';
-import { Session } from 'next-auth';
+import type { Session } from 'next-auth';
 
 export interface SaveDocumentProps {
   id: string;

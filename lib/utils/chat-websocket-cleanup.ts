@@ -10,11 +10,11 @@ export class ChatWebSocketCleanup {
    * Set the current active chat and cleanup previous connections
    */
   static setActiveChat(chatId: string) {
-    if (this.currentChatId && this.currentChatId !== chatId) {
-      console.log('🧹 ChatWebSocketCleanup: Switching from', this.currentChatId, 'to', chatId);
+    if (ChatWebSocketCleanup.currentChatId && ChatWebSocketCleanup.currentChatId !== chatId) {
+      console.log('🧹 ChatWebSocketCleanup: Switching from', ChatWebSocketCleanup.currentChatId, 'to', chatId);
       
       // Clean up previous chat connections
-      imageWebsocketStore.cleanupProject(this.currentChatId);
+      imageWebsocketStore.cleanupProject(ChatWebSocketCleanup.currentChatId);
       
       // Force cleanup if too many handlers are accumulating
       const debugInfo = imageWebsocketStore.getDebugInfo();
@@ -24,14 +24,14 @@ export class ChatWebSocketCleanup {
       }
     }
     
-    this.currentChatId = chatId;
+    ChatWebSocketCleanup.currentChatId = chatId;
   }
 
   /**
    * Get the current active chat ID
    */
   static getCurrentChatId(): string | null {
-    return this.currentChatId;
+    return ChatWebSocketCleanup.currentChatId;
   }
 
   /**
@@ -40,7 +40,7 @@ export class ChatWebSocketCleanup {
   static cleanupAll() {
     console.log('🧹 ChatWebSocketCleanup: Cleaning up all connections');
     imageWebsocketStore.forceCleanup();
-    this.currentChatId = null;
+    ChatWebSocketCleanup.currentChatId = null;
   }
 
   /**
@@ -48,7 +48,7 @@ export class ChatWebSocketCleanup {
    */
   static getDebugInfo() {
     return {
-      currentChatId: this.currentChatId,
+      currentChatId: ChatWebSocketCleanup.currentChatId,
       websocketInfo: imageWebsocketStore.getDebugInfo()
     };
   }

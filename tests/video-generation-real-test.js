@@ -96,7 +96,7 @@ async function runRealTest() {
   console.log('   - Resolution:', `${payload.config.width}x${payload.config.height}`);
   console.log('   - Duration:', `${payload.config.duration}s @ ${payload.config.frame_rate}fps`);
   console.log('   - Style:', payload.config.style_name);
-  console.log('   - Prompt:', payload.config.prompt.substring(0, 50) + '...');
+  console.log('   - Prompt:', `${payload.config.prompt.substring(0, 50)}...`);
   
   if (isDryRun) {
     console.log('\n🔍 DRY RUN - Would send this request:');
@@ -122,11 +122,11 @@ async function runRealTest() {
     console.log('✅ API call successful!');
     console.log('🎬 Video generation should be starting...');
     
-    if (apiResult.data && apiResult.data.id) {
+    if (apiResult.data?.id) {
       console.log('🆔 Project ID:', apiResult.data.id);
     }
     
-    if (apiResult.data && apiResult.data.files) {
+    if (apiResult.data?.files) {
       console.log('📁 Files:', apiResult.data.files.length);
     }
     
@@ -162,7 +162,7 @@ async function runRealTest() {
 if (require.main === module) {
   runRealTest()
     .then(result => {
-      console.log('\n' + '='.repeat(60));
+      console.log(`\n${'='.repeat(60)}`);
       if (result.success) {
         console.log('🎉 Test completed successfully!');
         process.exit(0);

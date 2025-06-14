@@ -1,4 +1,4 @@
-import { GenerationConfig, getGenerationConfigs } from './get-generation-configs';
+import { type GenerationConfig, getGenerationConfigs } from './get-generation-configs';
 
 interface CachedConfig {
   data: GenerationConfig[];
@@ -16,7 +16,7 @@ let configCache: CachedConfig | null = null;
  * Get cached generation configurations or fetch from API
  */
 export const getCachedGenerationConfigs = async (
-  forceRefresh: boolean = false
+  forceRefresh = false
 ): Promise<GenerationConfig[]> => {
   const now = Date.now();
   

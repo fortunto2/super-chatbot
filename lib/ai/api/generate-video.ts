@@ -1,4 +1,4 @@
-import { VideoModel, MediaOption, MediaResolution } from "@/lib/types/media-settings";
+import type { VideoModel, MediaOption, MediaResolution } from "@/lib/types/media-settings";
 import { 
   getSuperduperAIConfig, 
   createAuthHeaders, 
@@ -31,8 +31,8 @@ export const generateVideo = async (
   shotSize: MediaOption,
   chatId: string,
   negativePrompt?: string,
-  frameRate: number = 30,
-  duration: number = 5,
+  frameRate = 30,
+  duration = 5,
   sourceImageId?: string,
   sourceImageUrl?: string
 ): Promise<VideoGenerationResult> => {
