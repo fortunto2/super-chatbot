@@ -9,6 +9,7 @@ import { DEFAULT_CHAT_MODEL } from '@/lib/ai/models';
 import type { DBMessage } from '@/lib/db/schema';
 import type { Attachment, UIMessage } from 'ai';
 import * as Sentry from '@sentry/nextjs';
+import { ChatPageWrapper } from '@/components/chat-page-wrapper';
 
 export default async function Page(props: { params: Promise<{ id: string }> }) {
   try {
@@ -92,34 +93,28 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
 
       if (!chatModelFromCookie) {
         return (
-          <>
-            <Chat
-              id={chat.id}
-              initialMessages={convertToUIMessages(messagesFromDb)}
-              initialChatModel={DEFAULT_CHAT_MODEL}
-              initialVisibilityType={chat.visibility}
-              isReadonly={session?.user?.id !== chat.userId}
-              session={session}
-              autoResume={true}
-            />
-            <DataStreamHandler id={id} />
-          </>
-        );
-      }
-
-      return (
-        <>
-          <Chat
+          <ChatPageWrapper
             id={chat.id}
             initialMessages={convertToUIMessages(messagesFromDb)}
-            initialChatModel={chatModelFromCookie.value}
+            initialChatModel={DEFAULT_CHAT_MODEL}
             initialVisibilityType={chat.visibility}
             isReadonly={session?.user?.id !== chat.userId}
             session={session}
             autoResume={true}
           />
-          <DataStreamHandler id={id} />
-        </>
+        );
+      }
+
+      return (
+        <ChatPageWrapper
+          id={chat.id}
+          initialMessages={convertToUIMessages(messagesFromDb)}
+          initialChatModel={chatModelFromCookie.value}
+          initialVisibilityType={chat.visibility}
+          isReadonly={session?.user?.id !== chat.userId}
+          session={session}
+          autoResume={true}
+        />
       );
     } catch (error) {
       // Логируем ошибку получения сообщений

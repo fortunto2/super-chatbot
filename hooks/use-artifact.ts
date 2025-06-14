@@ -2,7 +2,7 @@
 
 import useSWR from 'swr';
 import { UIArtifact } from '@/components/artifact';
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useRef, useEffect } from 'react';
 
 export const initialArtifactData: UIArtifact = {
   documentId: 'init',
@@ -43,9 +43,22 @@ export function useArtifact() {
     },
   );
 
+  // Throttle logging to prevent spam
+  const lastLogTime = useRef<number>(0);
+  const logWithThrottle = (message: string, data?: any) => {
+    if (process.env.NODE_ENV === 'development') {
+      const now = Date.now();
+      if (now - lastLogTime.current > 500) { // Log at most every 500ms
+        console.log(message, data);
+        lastLogTime.current = now;
+      }
+    }
+  };
+
   const artifact = useMemo(() => {
-    if (!localArtifact) return initialArtifactData;
-    return localArtifact;
+    const result = localArtifact || initialArtifactData;
+    // Artifact state changed silently
+    return result;
   }, [localArtifact]);
 
   const setArtifact = useCallback(
@@ -53,11 +66,14 @@ export function useArtifact() {
       setLocalArtifact((currentArtifact) => {
         const artifactToUpdate = currentArtifact || initialArtifactData;
 
+        let newArtifact: UIArtifact;
         if (typeof updaterFn === 'function') {
-          return updaterFn(artifactToUpdate);
+          newArtifact = updaterFn(artifactToUpdate);
+        } else {
+          newArtifact = updaterFn;
         }
 
-        return updaterFn;
+        return newArtifact;
       });
     },
     [setLocalArtifact],
@@ -72,6 +88,18 @@ export function useArtifact() {
         fallbackData: null,
       },
     );
+
+  // Expose artifact globally for debugging
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      (window as any).artifactInstance = {
+        artifact,
+        setArtifact,
+        metadata: localArtifactMetadata,
+        setMetadata: setLocalArtifactMetadata,
+      };
+    }
+  }, [artifact, setArtifact, localArtifactMetadata, setLocalArtifactMetadata]);
 
   return useMemo(
     () => ({

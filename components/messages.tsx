@@ -17,6 +17,9 @@ interface MessagesProps {
   reload: UseChatHelpers['reload'];
   isReadonly: boolean;
   isArtifactVisible: boolean;
+  selectedChatModel: string;
+  selectedVisibilityType: 'public' | 'private';
+  append?: UseChatHelpers['append'];
 }
 
 function PureMessages({
@@ -27,6 +30,9 @@ function PureMessages({
   setMessages,
   reload,
   isReadonly,
+  selectedChatModel,
+  selectedVisibilityType,
+  append,
 }: MessagesProps) {
   const {
     containerRef: messagesContainerRef,
@@ -63,6 +69,9 @@ function PureMessages({
           requiresScrollPadding={
             hasSentMessage && index === messages.length - 1
           }
+          selectedChatModel={selectedChatModel}
+          selectedVisibilityType={selectedVisibilityType}
+          append={append}
         />
       ))}
 

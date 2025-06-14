@@ -110,6 +110,10 @@ function PureMultimodalInput({
   const [uploadQueue, setUploadQueue] = useState<Array<string>>([]);
 
   const submitForm = useCallback(() => {
+    if (!input.trim() && attachments.length === 0) {
+      return;
+    }
+
     window.history.replaceState({}, '', `/chat/${chatId}`);
 
     handleSubmit(undefined, {
@@ -130,6 +134,7 @@ function PureMultimodalInput({
     setLocalStorageInput,
     width,
     chatId,
+    input,
   ]);
 
   const uploadFile = async (file: File) => {
@@ -245,7 +250,7 @@ function PureMultimodalInput({
           className="flex flex-row gap-2 overflow-x-scroll items-end"
         >
           {attachments.map((attachment) => (
-            <PreviewAttachment key={attachment.url} attachment={attachment} />
+            <PreviewAttachment key={attachment.url} attachment={attachment} chatId={chatId} />
           ))}
 
           {uploadQueue.map((filename) => (
@@ -257,6 +262,7 @@ function PureMultimodalInput({
                 contentType: '',
               }}
               isUploading={true}
+              chatId={chatId}
             />
           ))}
         </div>

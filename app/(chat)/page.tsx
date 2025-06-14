@@ -6,6 +6,7 @@ import { generateUUID } from '@/lib/utils';
 import { DataStreamHandler } from '@/components/data-stream-handler';
 import { auth } from '../(auth)/auth';
 import { redirect } from 'next/navigation';
+import { ChatPageWrapper } from '@/components/chat-page-wrapper';
 
 export default async function Page() {
   const session = await auth();
@@ -21,35 +22,29 @@ export default async function Page() {
 
   if (!modelIdFromCookie) {
     return (
-      <>
-        <Chat
-          key={id}
-          id={id}
-          initialMessages={[]}
-          initialChatModel={DEFAULT_CHAT_MODEL}
-          initialVisibilityType="private"
-          isReadonly={false}
-          session={session}
-          autoResume={false}
-        />
-        <DataStreamHandler id={id} />
-      </>
-    );
-  }
-
-  return (
-    <>
-      <Chat
-        key={id}
+      <ChatPageWrapper
+      key={id}
         id={id}
         initialMessages={[]}
-        initialChatModel={modelIdFromCookie.value}
+        initialChatModel={DEFAULT_CHAT_MODEL}
         initialVisibilityType="private"
         isReadonly={false}
         session={session}
         autoResume={false}
       />
-      <DataStreamHandler id={id} />
-    </>
+    );
+  }
+
+  return (
+    <ChatPageWrapper
+      id={id}
+      key={id}
+      initialMessages={[]}
+      initialChatModel={modelIdFromCookie.value}
+      initialVisibilityType="private"
+      isReadonly={false}
+      session={session}
+      autoResume={false}
+    />
   );
 }

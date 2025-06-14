@@ -8,11 +8,12 @@ import {
   useCallback,
   useEffect,
   useState,
+  useRef,
 } from 'react';
 import useSWR, { useSWRConfig } from 'swr';
 import { useDebounceCallback, useWindowSize } from 'usehooks-ts';
 import type { Document, Vote } from '@/lib/db/schema';
-import { fetcher } from '@/lib/utils';
+import { fetcher, generateUUID } from '@/lib/utils';
 import { MultimodalInput } from './multimodal-input';
 import { Toolbar } from './toolbar';
 import { VersionFooter } from './version-footer';
@@ -25,6 +26,7 @@ import { imageArtifact } from '@/artifacts/image/client';
 import { codeArtifact } from '@/artifacts/code/client';
 import { sheetArtifact } from '@/artifacts/sheet/client';
 import { textArtifact } from '@/artifacts/text/client';
+import { videoArtifact } from '@/artifacts/video/client';
 import equal from 'fast-deep-equal';
 import type { UseChatHelpers } from '@ai-sdk/react';
 import type { VisibilityType } from './visibility-selector';
@@ -34,6 +36,7 @@ export const artifactDefinitions = [
   codeArtifact,
   imageArtifact,
   sheetArtifact,
+  videoArtifact,
 ];
 export type ArtifactKind = (typeof artifactDefinitions)[number]['kind'];
 
@@ -52,6 +55,22 @@ export interface UIArtifact {
   };
 }
 
+// Function to convert JSON title to human-readable format
+function getDisplayTitle(title: string, kind: ArtifactKind): string {
+  if (kind === 'image') {
+    try {
+      const params = JSON.parse(title);
+      if (params.prompt) {
+        return `AI Image: ${params.prompt.substring(0, 60)}${params.prompt.length > 60 ? '...' : ''}`;
+      }
+    } catch {
+      // If not JSON, return as is
+      return title;
+    }
+  }
+  return title;
+}
+
 function PureArtifact({
   chatId,
   input,
@@ -68,6 +87,7 @@ function PureArtifact({
   votes,
   isReadonly,
   selectedVisibilityType,
+  selectedChatModel,
 }: {
   chatId: string;
   input: string;
@@ -84,8 +104,23 @@ function PureArtifact({
   reload: UseChatHelpers['reload'];
   isReadonly: boolean;
   selectedVisibilityType: VisibilityType;
+  selectedChatModel: string;
 }) {
   const { artifact, setArtifact, metadata, setMetadata } = useArtifact();
+
+  // Only log in development and with throttling to avoid spam
+  const logIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const lastLogTimeRef = useRef<number>(0);
+  
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      const now = Date.now();
+      if (now - lastLogTimeRef.current > 1000) { // Throttle to once per second
+          // Artifact component rendered
+        lastLogTimeRef.current = now;
+      }
+    }
+  });
 
   const {
     data: documents,
@@ -104,6 +139,10 @@ function PureArtifact({
 
   const { open: isSidebarOpen } = useSidebar();
 
+  // Memoize effect dependencies to prevent unnecessary reruns
+  const documentsLength = documents?.length || 0;
+  const lastDocumentId = documents?.at(-1)?.id;
+  
   useEffect(() => {
     if (documents && documents.length > 0) {
       const mostRecentDocument = documents.at(-1);
@@ -117,10 +156,15 @@ function PureArtifact({
         }));
       }
     }
-  }, [documents, setArtifact]);
+  }, [documentsLength, lastDocumentId, setArtifact]);
 
+  // Memoize mutateDocuments call to prevent unnecessary API calls
+  const stableArtifactStatus = useRef(artifact.status);
   useEffect(() => {
-    mutateDocuments();
+    if (stableArtifactStatus.current !== artifact.status) {
+      stableArtifactStatus.current = artifact.status;
+      mutateDocuments();
+    }
   }, [artifact.status, mutateDocuments]);
 
   const { mutate } = useSWRConfig();
@@ -253,6 +297,218 @@ function PureArtifact({
       }
     }
   }, [artifact.documentId, artifactDefinition, setMetadata]);
+
+  const [selectedResolution, setSelectedResolution] = useState<string>('1024x1024');
+  const [selectedStyle, setSelectedStyle] = useState<string>('natural');
+  const [selectedShotSize, setSelectedShotSize] = useState<string>('medium-shot');
+  const [resolutions, setResolutions] = useState<any[]>([]);
+  const [styles, setStyles] = useState<any[]>([]);
+  const [shotSizes, setShotSizes] = useState<any[]>([]);
+
+  // useEffect(() => {
+  //   const fetchData = async () => {
+  //     try {
+  //       // Fetch resolutions
+  //       const resolutionResponse = await fetch('/api/chat', {
+  //         method: 'POST',
+  //         headers: { 'Content-Type': 'application/json' },
+  //         body: JSON.stringify({
+  //           id: generateUUID(),
+  //           message: {
+  //             id: generateUUID(),
+  //             createdAt: new Date(),
+  //             role: 'user',
+  //             content: 'resolution',
+  //             parts: [{ type: 'text', text: 'resolution' }]
+  //           },
+  //           selectedChatModel: 'chat-model',
+  //           selectedVisibilityType: 'private',
+  //           type: 'resolution'
+  //         }),
+  //       });
+
+  //       if (resolutionResponse.ok) {
+  //         const reader = resolutionResponse.body?.getReader();
+  //         if (reader) {
+  //           let result = '';
+  //           while (true) {
+  //             const { done, value } = await reader.read();
+  //             if (done) break;
+  //             result += new TextDecoder().decode(value);
+  //           }
+            
+  //           // Parse the SSE data
+  //           const lines = result.split('\n');
+  //           let data: any[] = [];
+  //           for (const line of lines) {
+  //             if (line.startsWith('data:')) {
+  //               try {
+  //                 const jsonData = JSON.parse(line.slice(5));
+  //                 if (jsonData.data) {
+  //                   data = Array.isArray(jsonData.data) ? jsonData.data : [jsonData.data];
+  //                   break;
+  //                 }
+  //               } catch (e) {
+  //                 console.error('Error parsing resolution data line:', e);
+  //               }
+  //             }
+  //           }
+  //           setResolutions(data);
+  //         }
+  //       }
+
+  //       // Fetch styles
+  //       const styleResponse = await fetch('/api/chat', {
+  //         method: 'POST',
+  //         headers: { 'Content-Type': 'application/json' },
+  //         body: JSON.stringify({
+  //           id: generateUUID(),
+  //           message: {
+  //             id: generateUUID(),
+  //             createdAt: new Date(),
+  //             role: 'user',
+  //             content: 'style',
+  //             parts: [{ type: 'text', text: 'style' }]
+  //           },
+  //           selectedChatModel: 'chat-model',
+  //           selectedVisibilityType: 'private',
+  //           type: 'style'
+  //         }),
+  //       });
+
+  //       if (styleResponse.ok) {
+  //         const reader = styleResponse.body?.getReader();
+  //         if (reader) {
+  //           let result = '';
+  //           while (true) {
+  //             const { done, value } = await reader.read();
+  //             if (done) break;
+  //             result += new TextDecoder().decode(value);
+  //           }
+            
+  //           // Parse the SSE data
+  //           const lines = result.split('\n');
+  //           let data: any[] = [];
+  //           for (const line of lines) {
+  //             if (line.startsWith('data:')) {
+  //               try {
+  //                 const jsonData = JSON.parse(line.slice(5));
+  //                 if (jsonData.data) {
+  //                   data = Array.isArray(jsonData.data) ? jsonData.data : [jsonData.data];
+  //                   break;
+  //                 }
+  //               } catch (e) {
+  //                 console.error('Error parsing style data line:', e);
+  //               }
+  //             }
+  //           }
+  //           setStyles(data);
+  //         }
+  //       }
+
+  //       // Fetch shot sizes
+  //       const shotSizeResponse = await fetch('/api/chat', {
+  //         method: 'POST',
+  //         headers: { 'Content-Type': 'application/json' },
+  //         body: JSON.stringify({
+  //           id: generateUUID(),
+  //           message: {
+  //             id: generateUUID(),
+  //             createdAt: new Date(),
+  //             role: 'user',
+  //             content: 'shot-size',
+  //             parts: [{ type: 'text', text: 'shot-size' }]
+  //           },
+  //           selectedChatModel: 'chat-model',
+  //           selectedVisibilityType: 'private',
+  //           type: 'shot-size'
+  //         }),
+  //       });
+
+  //       if (shotSizeResponse.ok) {
+  //         const reader = shotSizeResponse.body?.getReader();
+  //         if (reader) {
+  //           let result = '';
+  //           while (true) {
+  //             const { done, value } = await reader.read();
+  //             if (done) break;
+  //             result += new TextDecoder().decode(value);
+  //           }
+            
+  //           // Parse the SSE data
+  //           const lines = result.split('\n');
+  //           let data: any[] = [];
+  //           for (const line of lines) {
+  //             if (line.startsWith('data:')) {
+  //               try {
+  //                 const jsonData = JSON.parse(line.slice(5));
+  //                 if (jsonData.data) {
+  //                   data = Array.isArray(jsonData.data) ? jsonData.data : [jsonData.data];
+  //                   break;
+  //                 }
+  //               } catch (e) {
+  //                 console.error('Error parsing shot size data line:', e);
+  //               }
+  //             }
+  //           }
+  //           setShotSizes(data);
+  //         }
+  //       }
+  //     } catch (error) {
+  //       console.error('Error fetching data:', error);
+  //     }
+  //   };
+
+  //   fetchData();
+  // }, []);
+
+  const handleResolutionSelect = (resolution: string) => {
+    setSelectedResolution(resolution);
+    const message = {
+      id: generateUUID(),
+      role: 'user',
+      content: `Selected resolution: ${resolution}`,
+      parts: [],
+      createdAt: new Date().toISOString(),
+      data: {
+        type: 'resolution',
+        resolution,
+      },
+    };
+    handleSubmit(new Event('submit'));
+  };
+
+  const handleStyleSelect = (style: string) => {
+    setSelectedStyle(style);
+    const message = {
+      id: generateUUID(),
+      role: 'user',
+      content: `Selected style: ${style}`,
+      parts: [],
+      createdAt: new Date().toISOString(),
+      data: {
+        type: 'style',
+        style,
+      },
+    };
+    handleSubmit(new Event('submit'));
+  };
+
+  const handleShotSizeSelect = (shotSize: string) => {
+    setSelectedShotSize(shotSize);
+    const message = {
+      id: generateUUID(),
+      role: 'user',
+      content: `Selected shot size: ${shotSize}`,
+      parts: [],
+      createdAt: new Date().toISOString(),
+      data: {
+        type: 'shot-size',
+        shotSize,
+      },
+    };
+    handleSubmit(new Event('submit'));
+  };
 
   return (
     <AnimatePresence>
@@ -417,7 +673,7 @@ function PureArtifact({
                 <ArtifactCloseButton />
 
                 <div className="flex flex-col">
-                  <div className="font-medium">{artifact.title}</div>
+                  <div className="font-medium">{getDisplayTitle(artifact.title, artifact.kind)}</div>
 
                   {isContentDirty ? (
                     <div className="text-sm text-muted-foreground">
@@ -451,25 +707,33 @@ function PureArtifact({
             </div>
 
             <div className="dark:bg-muted bg-background h-full overflow-y-scroll !max-w-full items-center">
-              <artifactDefinition.content
-                title={artifact.title}
-                content={
-                  isCurrentVersion
-                    ? artifact.content
-                    : getDocumentContentById(currentVersionIndex)
-                }
-                mode={mode}
-                status={artifact.status}
-                currentVersionIndex={currentVersionIndex}
-                suggestions={[]}
-                onSaveContent={saveContent}
-                isInline={false}
-                isCurrentVersion={isCurrentVersion}
-                getDocumentContentById={getDocumentContentById}
-                isLoading={isDocumentsFetching && !artifact.content}
-                metadata={metadata}
-                setMetadata={setMetadata}
-              />
+              {(() => {
+                return (
+                  <artifactDefinition.content
+                    title={artifact.title}
+                    content={
+                      isCurrentVersion
+                        ? artifact.content
+                        : getDocumentContentById(currentVersionIndex)
+                    }
+                    mode={mode}
+                    status={artifact.status}
+                    currentVersionIndex={currentVersionIndex}
+                    suggestions={[]}
+                    onSaveContent={saveContent}
+                    isInline={false}
+                    isCurrentVersion={isCurrentVersion}
+                    getDocumentContentById={getDocumentContentById}
+                    isLoading={isDocumentsFetching && !artifact.content}
+                    metadata={metadata}
+                    setMetadata={setMetadata}
+                    append={append}
+                    setMessages={setMessages}
+                    setArtifact={setArtifact}
+                    chatId={chatId}
+                  />
+                );
+              })()}
 
               <AnimatePresence>
                 {isCurrentVersion && (
@@ -503,12 +767,24 @@ function PureArtifact({
 }
 
 export const Artifact = memo(PureArtifact, (prevProps, nextProps) => {
+  // Only re-render if critical props change
   if (prevProps.status !== nextProps.status) return false;
-  if (!equal(prevProps.votes, nextProps.votes)) return false;
   if (prevProps.input !== nextProps.input) return false;
-  if (!equal(prevProps.messages, nextProps.messages.length)) return false;
-  if (prevProps.selectedVisibilityType !== nextProps.selectedVisibilityType)
-    return false;
+  if (prevProps.selectedVisibilityType !== nextProps.selectedVisibilityType) return false;
+  if (prevProps.chatId !== nextProps.chatId) return false;
+  
+  // Check votes length instead of deep equality for performance
+  const prevVotesLength = prevProps.votes?.length || 0;
+  const nextVotesLength = nextProps.votes?.length || 0;
+  if (prevVotesLength !== nextVotesLength) return false;
+  
+  // Check messages length instead of deep equality for performance
+  if (prevProps.messages.length !== nextProps.messages.length) return false;
+  
+  // Check if the last message ID changed (more efficient than deep comparison)
+  const prevLastMessage = prevProps.messages.at(-1);
+  const nextLastMessage = nextProps.messages.at(-1);
+  if (prevLastMessage?.id !== nextLastMessage?.id) return false;
 
   return true;
 });
