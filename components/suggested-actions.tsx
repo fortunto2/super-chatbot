@@ -19,24 +19,24 @@ function PureSuggestedActions({
 }: SuggestedActionsProps) {
   const suggestedActions = [
     {
-      title: 'What are the advantages',
-      label: 'of using Next.js?',
-      action: 'What are the advantages of using Next.js?',
+      title: 'Generate an image',
+      label: 'of a futuristic cityscape at sunset',
+      action: 'Create a cinematic wide shot of a futuristic cityscape at sunset with flying cars and neon lights, photorealistic style',
     },
     {
-      title: 'Write code to',
-      label: `demonstrate djikstra's algorithm`,
-      action: `Write code to demonstrate djikstra's algorithm`,
+      title: 'Create a video',
+      label: 'showing ocean waves at the beach',
+      action: 'Generate a 10-second video of ocean waves gently crashing on a sandy beach at golden hour, cinematic style, 30fps',
     },
     {
-      title: 'Help me write an essay',
-      label: `about silicon valley`,
-      action: `Help me write an essay about silicon valley`,
+      title: 'Write a screenplay',
+      label: 'about AI and human friendship',
+      action: 'Write a 3-page comedy screenplay about an AI assistant and a human becoming unlikely friends while working on a creative project',
     },
     {
-      title: 'What is the weather',
-      label: 'in San Francisco?',
-      action: 'What is the weather in San Francisco?',
+      title: 'Design a storyboard',
+      label: 'for a product commercial',
+      action: 'Create a 6-panel storyboard for a 30-second commercial showing someone using a smartphone app, include camera angles and scene descriptions',
     },
   ];
 

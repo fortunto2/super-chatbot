@@ -1,1 +1,1 @@
-export type ArtifactKind = 'code' | 'image' | 'text' | 'sheet' | 'resolution'; 
+export type ArtifactKind = 'image' | 'text' | 'sheet' | 'video'; 
