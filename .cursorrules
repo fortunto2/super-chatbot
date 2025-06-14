@@ -1,4 +1,9 @@
 1. используй context7 mcp для поиска документации библиотек. 
 2. не вставляй русские тексты в код, все на англ, и комментарии на англ.
 3. пиши инсайты и решения готовые в виде документации в папку docs и обновляй существующие. 
-4. используй описание в начале диалога из AGENTS.md и docs 
+4. используй описание в начале диалога из AGENTS.md и docs/README.md
+
+**IMPORTANT**: All AI agents must follow the [AI-First Development Methodology](./docs/development/ai-development-methodology.md) which includes:
+- Two-phase development (Planning → Implementation)  
+- AICODE comment system for persistent memory
+- Implementation plan templates and approval process

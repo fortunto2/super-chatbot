@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { generateUUID } from '@/lib/utils';
 import { imageWebsocketStore } from '@/lib/websocket/image-websocket-store';
+import { getSuperduperAIConfig, createWSURL } from '@/lib/config/superduperai';
 import type { UseChatHelpers } from '@ai-sdk/react';
 
 interface ChatImageWebSocketOptions {
@@ -316,7 +317,8 @@ export const useChatImageWebSocket = ({
       return;
     }
 
-    const url = `wss://editor.superduperai.co/api/v1/ws/project.${projectId}`;
+    const config = getSuperduperAIConfig();
+    const url = createWSURL(`/api/v1/ws/project.${projectId}`, config);
     
     // Create handler for this project if not exists
     if (!handlersMapRef.current.has(projectId)) {

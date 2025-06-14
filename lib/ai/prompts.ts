@@ -47,11 +47,45 @@ Do not update document right after creating it. Wait for user feedback or reques
 - When user provides specific video description, call configureVideoGeneration WITH prompt parameter to generate directly
 - With prompt: Immediately creates a video artifact and starts generation with real-time progress tracking via WebSocket
 - Without prompt: Shows settings panel for user to configure resolution, style, shot size, model, frame rate, duration, negative prompt, and seed
-- Optional parameters: style, resolution, shotSize, model, frameRate, duration, negativePrompt (can be specified in either mode)
+- Optional parameters: style, resolution, shotSize, model, frameRate, duration, negativePrompt, sourceImageId, sourceImageUrl (can be specified in either mode)
+- **Default Economical Settings (for cost efficiency):**
+  - **Resolution:** 1344x768 HD (16:9) - Good quality, lower cost than Full HD
+  - **Duration:** 5 seconds - Shorter videos cost less
+  - **Quality:** HD instead of Full HD - Balanced quality/cost ratio
+  - Always mention these economical defaults when generating videos
+- **Model Types:**
+  - **Text-to-Video Models:** Generate videos from text prompts only
+    - **LTX** (comfyui/ltx) - 0.40 USD per second, no VIP required, 5s max - Best value option
+    - **Sora** (azure-openai/sora) - 2.00 USD per second, VIP required, up to 20s - Longest duration
+  - **Image-to-Video Models:** Require source image + text prompt
+    - **VEO3** (google-cloud/veo3) - 3.00 USD per second, VIP required, 5-8s - Premium quality
+    - **VEO2** (google-cloud/veo2) - 2.00 USD per second, VIP required, 5-8s - High quality  
+    - **KLING 2.1** (fal-ai/kling-video/v2.1/standard/image-to-video) - 1.00 USD per second, VIP required, 5-10s
+- **For Image-to-Video Models:** When user selects VEO, KLING or other image-to-video models:
+  - ALWAYS ask for source image if not provided
+  - Suggest using recently generated images from the chat
+  - Use sourceImageId parameter for images from this chat
+  - Use sourceImageUrl parameter for external image URLs
+  - Example: "VEO2 is an image-to-video model that needs a source image. Would you like to use the image you just generated, or do you have another image in mind?"
 - The system will automatically create a video artifact that shows generation progress and connects to WebSocket for real-time updates
 - Be conversational and encouraging about the video generation process
+- Always mention the economical settings being used (HD resolution, 5s duration) for cost transparency
 - Example for settings: "I'll set up the video generation settings for you to configure..."
-- Example for direct generation: "I'll generate that video for you right now! Creating a video artifact..."
+- Example for direct generation: "I'll generate that video for you right now using economical HD settings (1344x768, 5s) for cost efficiency! Creating a video artifact..."
+
+**Using \`listVideoModels\`:**
+- Use this tool to discover available video generation models with their capabilities and pricing
+- Call with format: 'agent-friendly' for formatted descriptions, 'simple' for basic info, 'detailed' for full specs
+- Filter by price, duration support, or exclude VIP models as needed
+- Always check available models before making recommendations to users
+- Example: "Let me check what video models are currently available..."
+
+**Using \`findBestVideoModel\`:**
+- Use this tool to automatically select the optimal video model based on requirements
+- Specify maxPrice, preferredDuration, vipAllowed, or prioritizeQuality parameters
+- Returns the best model recommendation with usage tips
+- Use this when user has specific budget or quality requirements
+- Example: "I'll find the best video model for your needs..."
 
 **Image Generation Format:**
 When generating images, follow this process:
@@ -145,16 +179,22 @@ Improve the following contents of the document based on the given prompt.
 
 ${currentContent}
 `
-    : type === 'code'
+    : type === 'sheet'
       ? `\
-Improve the following code snippet based on the given prompt.
-
-${currentContent}
-`
-      : type === 'sheet'
-        ? `\
 Improve the following spreadsheet based on the given prompt.
 
 ${currentContent}
 `
-        : '';
+      : type === 'image'
+        ? `\
+Update the following image generation settings based on the given prompt.
+
+${currentContent}
+`
+        : type === 'video'
+          ? `\
+Update the following video generation settings based on the given prompt.
+
+${currentContent}
+`
+          : '';

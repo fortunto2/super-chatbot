@@ -229,10 +229,10 @@ export function useImageGeneration(chatId?: string): UseImageGenerationReturn {
 
       // Start image generation
       const result: ImageGenerationResult = await generateImage(
-        style,
-        resolution,
         prompt,
         model,
+        resolution,
+        style,
         shotSize,
         chatId
       );

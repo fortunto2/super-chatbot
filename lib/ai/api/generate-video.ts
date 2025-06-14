@@ -1,4 +1,12 @@
 import { VideoModel, MediaOption, MediaResolution } from "@/lib/types/media-settings";
+import { 
+  getSuperduperAIConfig, 
+  createAuthHeaders, 
+  createAPIURL, 
+  API_ENDPOINTS,
+  getAvailableVideoModels,
+  findVideoModel
+} from '@/lib/config/superduperai';
 
 export interface VideoGenerationResult {
   success: boolean;
@@ -24,56 +32,135 @@ export const generateVideo = async (
   chatId: string,
   negativePrompt?: string,
   frameRate: number = 30,
-  duration: number = 10
+  duration: number = 5,
+  sourceImageId?: string,
+  sourceImageUrl?: string
 ): Promise<VideoGenerationResult> => {
     try {
       const requestId = generateRequestId();
-      const token = "afda4dc28cf1420db6d3e35a291c2d5f"
+      const config = getSuperduperAIConfig();
       
       console.log(`🎬 Starting video generation with requestId: ${requestId}, chatId: ${chatId}`);
+      console.log('🎬 Model requested:', model);
       
-      const response = await fetch('https://editor.superduperai.co/api/v1/project/video', {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          'Authorization': `Bearer ${token}`,
-          'X-Request-ID': requestId // Add request ID to headers
-        },
-        body: JSON.stringify({
+      // Use our new dynamic model discovery system
+      let actualModelName = model.id;
+      
+      // Try to find the model in our dynamic system
+      const dynamicModel = await findVideoModel(model.id);
+      if (dynamicModel) {
+        actualModelName = dynamicModel.id;
+        console.log('🎬 ✅ Found dynamic model:', actualModelName, 'with name:', dynamicModel.name);
+      } else {
+        console.log('🎬 ⚠️ Model not found in dynamic system, using provided ID:', model.id);
+        
+        // Log available models for debugging
+        const availableModels = await getAvailableVideoModels();
+        console.log('🎬 Available models:', availableModels.map(m => `${m.id} (${m.name})`));
+      }
+      
+      console.log('🎬 Final model ID for API:', actualModelName);
+      
+      // AICODE-NOTE: Check if this is an image-to-video model based on model name patterns
+      const isImageToVideo = actualModelName.includes('image-to-video') ||
+                            actualModelName.includes('veo') ||
+                            actualModelName.includes('kling') ||
+                            actualModelName.toLowerCase().includes('image2video') ||
+                            actualModelName.toLowerCase().includes('img2vid');
+      
+      // AICODE-NOTE: SuperDuperAI API payload structure for video generation
+      let apiPayload: any;
+      
+      if (isImageToVideo && (sourceImageId || sourceImageUrl)) {
+        // Image-to-video payload structure (matching user example)
+        apiPayload = {
+          params: {
+            config: {
+              seed: Math.floor(Math.random() * 1000000000000),
+              steps: 50,
+              width: resolution.width,
+              height: resolution.height,
+              prompt,
+              duration,
+              batch_size: 1,
+              aspect_ratio: resolution.aspectRatio,
+              negative_prompt: negativePrompt || ''
+            },
+            file_ids: sourceImageId ? [sourceImageId] : [],
+            references: sourceImageUrl ? [{
+              type: "source",
+              reference_url: sourceImageUrl
+            }] : [],
+            generation_config: {
+              name: actualModelName,
+              type: "image_to_video",
+              label: dynamicModel?.name || model.label,
+              params: {
+                vip_required: true,
+                price_per_second: dynamicModel?.pricePerSecond || 2,
+                arguments_template: `{"prompt": {{config.prompt|tojson}}, "image_url": "{{reference.source}}", "aspect_ratio": "{{config.aspect_ratio}}", "duration": {{config.duration|int}}, "fps": ${frameRate}, "enhance_prompt": true, "samples": {{config.batch_size|default(1)}}, "seed": {{config.seed|int}}, "negative_prompt": {{config.negative_prompt|tojson}}}`,
+                available_durations: [5, 6, 7, 8]
+              },
+                             source: "superduperai"
+            }
+          }
+        };
+      } else {
+        // Text-to-video payload structure (existing format)
+        apiPayload = {
           projectId: chatId,
-          requestId: requestId, // Include in body as well
+          requestId: requestId,
           type: "video",
           template_name: null,
           config: {
             prompt,
-            negative_prompt: negativePrompt || "",
+            negative_prompt: negativePrompt || '',
             width: resolution.width,
             height: resolution.height,
-            aspectRatio: resolution.aspectRatio,
+            aspect_ratio: resolution.aspectRatio,
             qualityType: resolution.qualityType,
             shot_size: shotSize.label,
             seed: `${Math.floor(Math.random() * 1000000000000)}`,
-            generation_config_name: "runway/gen3",
-            frame_rate: frameRate,
-            duration: duration,
+            generation_config_name: actualModelName,
             batch_size: 1,
             style_name: style.id,
             entity_ids: [],
-            references: []
+            references: [],
+            // Video-specific parameters
+            duration,
+            frame_rate: frameRate,
           }
-        }),
+        };
+      }
+      
+      console.log('🎬 Sending to SuperDuperAI API with payload:', apiPayload);
+      
+      const response = await fetch(createAPIURL(API_ENDPOINTS.GENERATE_VIDEO), {
+        method: "POST",
+        headers: {
+          ...createAuthHeaders(config),
+          'X-Request-ID': requestId
+        },
+        body: JSON.stringify(apiPayload),
       });
-  
   
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('API Error Response:', errorText);
+        console.error('🎬 ❌ SuperDuperAI API Error Response:', errorText);
         
         if (response.status === 401) {
           return {
             success: false,
             requestId,
-            error: 'Authentication failed. The API token may be invalid or expired.',
+            error: 'Authentication failed. Check SUPERDUPERAI_TOKEN environment variable.',
+          };
+        }
+        
+        if (response.status === 404) {
+          return {
+            success: false,
+            requestId,
+            error: `Model "${actualModelName}" not found. Available models: ${(await getAvailableVideoModels()).map(m => m.id).join(', ')}`,
           };
         }
         
@@ -90,7 +177,7 @@ export const generateVideo = async (
   
       const result = await response.json();
       
-      console.log(`🎬 Video generation API response for requestId ${requestId}:`, result);
+      console.log(`🎬 ✅ SuperDuperAI video generation API response for requestId ${requestId}:`, result);
       
       const finalProjectId = result.id || chatId;
       
@@ -113,10 +200,10 @@ export const generateVideo = async (
       };
   
     } catch (error: any) {
-      console.error('Video generation error:', error);
+      console.error('🎬 ❌ Video generation error:', error);
       return {
         success: false,
         error: error?.message || 'Unknown error occurred during video generation',
       };
     }
-  } 
+} 

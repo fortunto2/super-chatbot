@@ -1,5 +1,6 @@
 // Console helper functions for quick debugging in browser
 import { imageWebsocketStore } from '@/lib/websocket/image-websocket-store';
+import { getSuperduperAIConfig } from '@/lib/config/superduperai';
 import { imageMonitor, getImageDebugInfo } from './image-debug';
 import { logSystemHealth, performSystemHealthCheck } from './image-system-check';
 
@@ -127,7 +128,8 @@ const chatWebSocket = {
     console.log('🔍 Current WebSocket state:', debugInfo);
     
     // Test URL formation
-    const baseUrl = process.env.NEXT_PUBLIC_WS_URL || 'https://editor.superduperai.co';
+    const config = getSuperduperAIConfig();
+    const baseUrl = config.wsURL.replace('wss://', 'https://').replace('ws://', 'http://');
     const url = `${baseUrl.replace('https://', 'wss://')}/api/v1/ws/project.${projectId}`;
     console.log('🔗 Would connect to URL:', url);
     
@@ -158,7 +160,8 @@ const chatWebSocket = {
     } else {
       console.log('❌ Chat WebSocket instance not found, using store directly');
       const store = (window as any).imageWebsocketStore || imageWebsocketStore;
-      const baseUrl = process.env.NEXT_PUBLIC_WS_URL || 'https://editor.superduperai.co';
+      const config = getSuperduperAIConfig();
+      const baseUrl = config.wsURL.replace('wss://', 'https://').replace('ws://', 'http://');
       const url = `${baseUrl.replace('https://', 'wss://')}/api/v1/ws/project.${projectId}`;
       
       const testHandler = (data: any) => {

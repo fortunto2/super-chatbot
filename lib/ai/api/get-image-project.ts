@@ -1,4 +1,6 @@
 
+import { getSuperduperAIConfig, createAPIURL } from '@/lib/config/superduperai';
+
 export interface ImageGenerationResult {
     success: boolean;
     project?: any
@@ -9,8 +11,10 @@ export const getProject = async (
   chatId: string
 ): Promise<ImageGenerationResult> => {
     try {
-      const token = "afda4dc28cf1420db6d3e35a291c2d5f"
-      const response = await fetch('https://editor.superduperai.co/api/v1/project', {
+      const config = getSuperduperAIConfig();
+      const token = config.apiToken;
+  const url = createAPIURL('/api/v1/project', config);
+  const response = await fetch(url, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",

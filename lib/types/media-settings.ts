@@ -23,6 +23,10 @@ export interface VideoModel {
   id: string;
   label: string;
   description?: string;
+  apiName?: string; // Original API name for requests
+  pricePerSecond?: number; // Price per second
+  availableDurations?: number[]; // Available durations in seconds
+  vipRequired?: boolean; // Whether VIP is required
 }
 
 // Image-specific types

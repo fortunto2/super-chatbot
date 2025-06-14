@@ -8,115 +8,57 @@ import type {
 } from '@/lib/types/media-settings';
 import { getStyles } from '../api/get-styles';
 import { findStyle } from './configure-image-generation';
+import { getAvailableVideoModels } from '@/lib/config/superduperai';
+import { VIDEO_RESOLUTIONS, SHOT_SIZES, VIDEO_FRAME_RATES, ShotSizeEnum, DEFAULT_VIDEO_RESOLUTION, DEFAULT_VIDEO_QUALITY, DEFAULT_VIDEO_DURATION } from '@/lib/config/video-constants';
 
-const VIDEO_RESOLUTIONS: MediaResolution[] = [
-  { width: 1344, height: 768, label: "1344x768", aspectRatio: "16:9", qualityType: "hd" },
-  { width: 1920, height: 1080, label: "1920×1080", aspectRatio: "16:9", qualityType: "full_hd" },
-
-  { width: 1664, height: 1216, label: "1664x1216", aspectRatio: "4:3", qualityType: "full_hd" },
-  { width: 1152, height: 896, label: "1152x896", aspectRatio: "4:3", qualityType: "hd" },
-
-  { width: 1024, height: 1024, label: "1024x1024", aspectRatio: "1:1", qualityType: "hd" },
-  { width: 1408, height: 1408, label: "1408×1408", aspectRatio: "1:1", qualityType: "full_hd" },
-
-  { width: 1408, height: 1760, label: "1408×1760", aspectRatio: "4:5", qualityType: "full_hd" },
-  { width: 1024, height: 1280, label: "1024x1280", aspectRatio: "4:5", qualityType: "hd" },
-
-  { width: 1080, height: 1920, label: "1080×1920", aspectRatio: "9:16", qualityType: "full_hd" },
-  { width: 768, height: 1344, label: "768x1344", aspectRatio: "9:16", qualityType: "hd" },
-];
-
-export enum ShotSizeEnum {
-  EXTREME_LONG_SHOT = 'Extreme Long Shot',
-  LONG_SHOT = 'Long Shot',
-  MEDIUM_SHOT = 'Medium Shot',
-  MEDIUM_CLOSE_UP = 'Medium Close-Up',
-  CLOSE_UP = 'Close-Up',
-  EXTREME_CLOSE_UP = 'Extreme Close-Up',
-  TWO_SHOT = 'Two-Shot',
-  DETAIL_SHOT = 'Detail Shot',
+// AICODE-NOTE: Convert SuperDuperAI VideoModel to VideoModel for compatibility
+function convertToVideoModel(sdModel: any): VideoModel {
+  return {
+    id: sdModel.id,
+    label: sdModel.name || sdModel.id,
+    description: sdModel.description || `Video generation model - $${sdModel.pricePerSecond}/sec`,
+  };
 }
-
-const SHOT_SIZES: MediaOption[] = [
-  {
-    id: 'extreme-long-shot',
-    label: ShotSizeEnum.EXTREME_LONG_SHOT,
-    description: 'Shows vast landscapes or cityscapes with tiny subjects',
-  },
-  {
-    id: 'long-shot',
-    label: ShotSizeEnum.LONG_SHOT,
-    description: 'Shows full body of subject with surrounding environment',
-  },
-  {
-    id: 'medium-shot',
-    label: ShotSizeEnum.MEDIUM_SHOT,
-    description: 'Shows subject from waist up, good for conversations',
-  },
-  {
-    id: 'medium-close-up',
-    label: ShotSizeEnum.MEDIUM_CLOSE_UP,
-    description: 'Shows subject from chest up, good for portraits',
-  },
-  {
-    id: 'close-up',
-    label: ShotSizeEnum.CLOSE_UP,
-    description: 'Shows a subject\'s face or a small object in detail',
-  },
-  {
-    id: 'extreme-close-up',
-    label: ShotSizeEnum.EXTREME_CLOSE_UP,
-    description: 'Shows extreme detail of a subject, like eyes or small objects',
-  },
-  {
-    id: 'two-shot',
-    label: ShotSizeEnum.TWO_SHOT,
-    description: 'Shows two subjects in frame, good for interactions',
-  },
-  {
-    id: 'detail-shot',
-    label: ShotSizeEnum.DETAIL_SHOT,
-    description: 'Focuses on a specific object or part of a subject',
-  },
-];
-
-const VIDEO_FRAME_RATES = [
-  { value: 24, label: "24 FPS (Cinematic)" },
-  { value: 30, label: "30 FPS (Standard)" },
-  { value: 60, label: "60 FPS (Smooth)" },
-  { value: 120, label: "120 FPS (High Speed)" },
-];
-
-const VIDEO_MODELS: VideoModel[] = [
-  { id: 'runway-gen3', label: 'Runway Gen-3', description: 'Advanced video generation model with high quality' },
-  { id: 'runway-gen2', label: 'Runway Gen-2', description: 'Previous generation model with good quality' },
-  { id: 'stable-video', label: 'Stable Video Diffusion', description: 'Stable video generation model' },
-];
 
 interface CreateVideoDocumentParams {
   createDocument: any;
 }
 
 export const configureVideoGeneration = (params?: CreateVideoDocumentParams) => tool({
-  description: 'Configure video generation settings or generate a video directly if prompt is provided. When prompt is provided, this will create a video artifact that shows generation progress in real-time.',
+  description: 'Configure video generation settings or generate a video directly if prompt is provided. When prompt is provided, this will create a video artifact that shows generation progress in real-time. Available models are loaded dynamically from SuperDuperAI API.',
   parameters: z.object({
     prompt: z.string().optional().describe('Detailed description of the video to generate. If provided, will immediately create video artifact and start generation'),
     negativePrompt: z.string().optional().describe('What to avoid in the video generation'),
     style: z.string().optional().describe('Style of the video'),
-    resolution: z.string().optional().describe('Video resolution (e.g., "1920x1080", "1024x1024")'),
+    resolution: z.string().optional().describe('Video resolution (e.g., "1344x768", "1024x1024"). Default is HD 1344x768 for cost efficiency.'),
     shotSize: z.string().optional().describe('Shot size for the video (extreme-long-shot, long-shot, medium-shot, medium-close-up, close-up, extreme-close-up, two-shot, detail-shot)'),
-    model: z.string().optional().describe('AI model to use (runway-gen3, runway-gen2, stable-video)'),
+    model: z.string().optional().describe('AI model to use. Models are loaded dynamically from SuperDuperAI API. Use model name like "LTX" or full model ID. For image-to-video models (VEO, KLING), a source image is required.'),
     frameRate: z.number().optional().describe('Frame rate in FPS (24, 30, 60, 120)'),
-    duration: z.number().optional().describe('Video duration in seconds'),
+    duration: z.number().optional().describe('Video duration in seconds. Default is 5 seconds for cost efficiency.'),
+    sourceImageId: z.string().optional().describe('ID of source image for image-to-video models (VEO, KLING). Required for image-to-video generation.'),
+    sourceImageUrl: z.string().optional().describe('URL of source image for image-to-video models. Alternative to sourceImageId.'),
   }),
-  execute: async ({ prompt, negativePrompt, style, resolution, shotSize, model, frameRate, duration }) => {
+  execute: async ({ prompt, negativePrompt, style, resolution, shotSize, model, frameRate, duration, sourceImageId, sourceImageUrl }) => {
     console.log('🔧 configureVideoGeneration called with:', { prompt, negativePrompt, style, resolution, shotSize, model, frameRate, duration });
     console.log('🔧 createDocument available:', !!params?.createDocument);
     
-    const defaultResolution = VIDEO_RESOLUTIONS.find(r => r.width === 1920 && r.height === 1080)!;
+    // AICODE-NOTE: Use economical defaults
+    const defaultResolution = DEFAULT_VIDEO_RESOLUTION;
     const defaultStyle: MediaOption = {id: "flux_steampunk", label: "Steampunk", description: "Steampunk style"};
     const defaultShotSize = SHOT_SIZES.find(s => s.id === 'long-shot')!;
-    const defaultModel = VIDEO_MODELS.find(m => m.id === 'runway-gen3')!;
+    
+    // AICODE-NOTE: Load models from our new dynamic system
+    console.log('🎬 Loading video models from SuperDuperAI API...');
+    const superDuperModels = await getAvailableVideoModels();
+    const availableModels = superDuperModels.map(convertToVideoModel);
+    
+    console.log('🎬 ✅ Loaded video models:', availableModels.map(m => m.id));
+    
+    const defaultModel = availableModels[0] || {
+      id: 'comfyui/ltx',
+      label: 'LTX Video',
+      description: 'LTX Video - High quality video generation'
+    };
 
     let styles: MediaOption[] = [];
 
@@ -143,7 +85,7 @@ export const configureVideoGeneration = (params?: CreateVideoDocumentParams) => 
         availableResolutions: VIDEO_RESOLUTIONS,
         availableStyles: styles,
         availableShotSizes: SHOT_SIZES,
-        availableModels: VIDEO_MODELS,
+        availableModels: availableModels,
         availableFrameRates: VIDEO_FRAME_RATES,
         defaultSettings: {
           resolution: defaultResolution,
@@ -151,7 +93,7 @@ export const configureVideoGeneration = (params?: CreateVideoDocumentParams) => 
           shotSize: defaultShotSize,
           model: defaultModel,
           frameRate: 30,
-          duration: 10,
+          duration: DEFAULT_VIDEO_DURATION, // 5 seconds for economy
           negativePrompt: "",
           seed: undefined
         }
@@ -170,7 +112,7 @@ export const configureVideoGeneration = (params?: CreateVideoDocumentParams) => 
         availableResolutions: VIDEO_RESOLUTIONS,
         availableStyles: styles,
         availableShotSizes: SHOT_SIZES,
-        availableModels: VIDEO_MODELS,
+        availableModels: availableModels,
         availableFrameRates: VIDEO_FRAME_RATES,
         defaultSettings: {
           resolution: defaultResolution,
@@ -178,7 +120,7 @@ export const configureVideoGeneration = (params?: CreateVideoDocumentParams) => 
           shotSize: defaultShotSize,
           model: defaultModel,
           frameRate: frameRate || 30,
-          duration: duration || 10,
+          duration: duration || DEFAULT_VIDEO_DURATION,
           negativePrompt: negativePrompt || "",
           seed: undefined
         }
@@ -254,8 +196,27 @@ export const configureVideoGeneration = (params?: CreateVideoDocumentParams) => 
         defaultShotSize;
       
       const selectedModel = model ? 
-        VIDEO_MODELS.find(m => m.label === model || m.id === model) || defaultModel : 
+        availableModels.find(m => m.label === model || m.id === model || (m as any).apiName === model) || defaultModel : 
         defaultModel;
+
+      // AICODE-NOTE: Check if selected model is image-to-video and requires source image
+      const isImageToVideoModel = selectedModel.id.includes('veo') || 
+                                 selectedModel.id.includes('kling') ||
+                                 selectedModel.id.includes('image-to-video') ||
+                                 selectedModel.id.includes('img2vid');
+      
+      // AICODE-NOTE: Validate source image for image-to-video models
+      if (isImageToVideoModel && !sourceImageId && !sourceImageUrl) {
+        return {
+          error: `The selected model "${selectedModel.label}" is an image-to-video model and requires a source image. Please provide either sourceImageId or sourceImageUrl parameter, or select a text-to-video model like LTX instead.`,
+          suggestion: "You can use a recently generated image from this chat as the source, or upload a new image first.",
+          availableTextToVideoModels: availableModels.filter(m => 
+            !m.id.includes('veo') && 
+            !m.id.includes('kling') && 
+            !m.id.includes('image-to-video')
+          ).map(m => `${m.label} (${m.id})`)
+        };
+      }
 
       // Create the video document with all parameters
       const videoParams = {
@@ -266,7 +227,9 @@ export const configureVideoGeneration = (params?: CreateVideoDocumentParams) => 
         shotSize: selectedShotSize,
         model: selectedModel,
         frameRate: frameRate || 30,
-        duration: duration || 10
+        duration: duration || DEFAULT_VIDEO_DURATION, // Use economical default
+        sourceImageId: sourceImageId || undefined,
+        sourceImageUrl: sourceImageUrl || undefined
       };
 
       console.log('🔧 ✅ CREATING VIDEO DOCUMENT WITH PARAMS:', videoParams);
@@ -284,7 +247,7 @@ export const configureVideoGeneration = (params?: CreateVideoDocumentParams) => 
           
           return {
             ...result,
-            message: `I'm creating a video with description: "${prompt}". Artifact created and generation started.`
+            message: `I'm creating a video with description: "${prompt}". Using economical HD settings (${selectedResolution.label}, ${duration || DEFAULT_VIDEO_DURATION}s) for cost efficiency. Artifact created and generation started.`
           };
         } catch (error) {
           console.error('🔧 ❌ CREATE DOCUMENT ERROR:', error);
@@ -312,7 +275,7 @@ export const configureVideoGeneration = (params?: CreateVideoDocumentParams) => 
           availableResolutions: VIDEO_RESOLUTIONS,
           availableStyles: styles,
           availableShotSizes: SHOT_SIZES,
-          availableModels: VIDEO_MODELS,
+          availableModels: availableModels,
           availableFrameRates: VIDEO_FRAME_RATES,
           defaultSettings: {
             resolution: defaultResolution,
@@ -320,7 +283,7 @@ export const configureVideoGeneration = (params?: CreateVideoDocumentParams) => 
             shotSize: defaultShotSize,
             model: defaultModel,
             frameRate: frameRate || 30,
-            duration: duration || 10,
+            duration: duration || DEFAULT_VIDEO_DURATION,
             negativePrompt: negativePrompt || "",
             seed: undefined
           }

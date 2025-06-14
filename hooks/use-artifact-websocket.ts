@@ -3,6 +3,7 @@
 import { useEffect, useCallback, useRef } from 'react';
 import { useArtifact } from '@/hooks/use-artifact';
 import { imageWebsocketStore } from '@/lib/websocket/image-websocket-store';
+import { getSuperduperAIConfig } from '@/lib/config/superduperai';
 import type { ImageEventHandler } from '@/lib/websocket/image-websocket-store';
 
 interface UseArtifactWebSocketOptions {
@@ -18,7 +19,7 @@ export const useArtifactWebSocket = ({ enabled = true }: UseArtifactWebSocketOpt
 
   // Parse current artifact content to get projectId and requestId
   const getArtifactInfo = useCallback(() => {
-    if (!artifact.content || artifact.kind !== 'image') {
+    if (!artifact.content || (artifact.kind !== 'image' && artifact.kind !== 'video')) {
       return { projectId: null, requestId: null };
     }
 
@@ -34,7 +35,7 @@ export const useArtifactWebSocket = ({ enabled = true }: UseArtifactWebSocketOpt
     }
   }, [artifact.content, artifact.kind]);
 
-  // Create event handler for image completion
+  // Create event handler for media completion (image or video)
   const createEventHandler = useCallback((projectId: string, requestId: string): ImageEventHandler => {
     return (eventData) => {
       console.log('🔌 Artifact WebSocket: Received event:', {
@@ -42,17 +43,22 @@ export const useArtifactWebSocket = ({ enabled = true }: UseArtifactWebSocketOpt
         projectId: eventData.projectId,
         requestId: eventData.requestId,
         targetProjectId: projectId,
-        targetRequestId: requestId
+        targetRequestId: requestId,
+        objectType: eventData.object?.type
       });
 
       if (eventData.type === 'file' && eventData.object?.url) {
-        const imageUrl = eventData.object.url;
+        const mediaUrl = eventData.object.url;
+        const mediaType = eventData.object.type; // 'image' or 'video'
         
-        console.log('🔌 Artifact WebSocket: Updating artifact with completed image:', imageUrl);
+        console.log('🔌 Artifact WebSocket: Updating artifact with completed media:', {
+          url: mediaUrl,
+          type: mediaType
+        });
         
         setArtifact((currentArtifact) => {
-          if (currentArtifact.kind !== 'image') {
-            console.log('🔌 Artifact WebSocket: Skipping update - not an image artifact');
+          if (currentArtifact.kind !== 'image' && currentArtifact.kind !== 'video') {
+            console.log('🔌 Artifact WebSocket: Skipping update - not a media artifact');
             return currentArtifact;
           }
 
@@ -70,20 +76,39 @@ export const useArtifactWebSocket = ({ enabled = true }: UseArtifactWebSocketOpt
               return currentArtifact;
             }
 
-            const updatedContent = {
-              ...currentContent,
-              status: 'completed',
-              imageUrl: imageUrl,
-              requestId: requestId || currentContent.requestId,
-              projectId: projectId || currentContent.projectId,
-              timestamp: Date.now(),
-              message: 'Image generation completed!'
-            };
+            // AICODE-FIX: Set appropriate URL field based on artifact type and media type
+            const isVideoArtifact = currentArtifact.kind === 'video';
+            const isVideoMedia = mediaType === 'video';
+            
+            let updatedContent;
+            if (isVideoArtifact || isVideoMedia) {
+              updatedContent = {
+                ...currentContent,
+                status: 'completed',
+                videoUrl: mediaUrl,
+                requestId: requestId || currentContent.requestId,
+                projectId: projectId || currentContent.projectId,
+                timestamp: Date.now(),
+                message: 'Video generation completed!'
+              };
+            } else {
+              updatedContent = {
+                ...currentContent,
+                status: 'completed',
+                imageUrl: mediaUrl,
+                requestId: requestId || currentContent.requestId,
+                projectId: projectId || currentContent.projectId,
+                timestamp: Date.now(),
+                message: 'Image generation completed!'
+              };
+            }
 
             console.log('🔌 Artifact WebSocket: Successfully updated artifact content:', {
               previousStatus: currentContent.status,
               newStatus: updatedContent.status,
-              hasImageUrl: !!updatedContent.imageUrl
+              hasMediaUrl: !!(updatedContent.imageUrl || updatedContent.videoUrl),
+              artifactKind: currentArtifact.kind,
+              mediaType: mediaType
             });
 
             return {
@@ -123,7 +148,8 @@ export const useArtifactWebSocket = ({ enabled = true }: UseArtifactWebSocketOpt
       projectId,
       requestId,
       artifactStatus: artifact.status,
-      artifactDocumentId: artifact.documentId
+      artifactDocumentId: artifact.documentId,
+      artifactKind: artifact.kind
     });
 
     // Clean up previous connection
@@ -139,7 +165,8 @@ export const useArtifactWebSocket = ({ enabled = true }: UseArtifactWebSocketOpt
     currentRequestIdRef.current = requestId;
 
     // Connect to WebSocket
-    const baseUrl = process.env.NEXT_PUBLIC_WS_URL || 'https://editor.superduperai.co';
+    const config = getSuperduperAIConfig();
+    const baseUrl = config.wsURL.replace('wss://', 'https://').replace('ws://', 'http://');
     const url = `${baseUrl.replace('https://', 'wss://')}/api/v1/ws/project.${projectId}`;
     
     console.log('🔌 Artifact WebSocket: Connecting to URL:', url);
