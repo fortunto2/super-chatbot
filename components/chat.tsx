@@ -6,7 +6,7 @@ import { Suspense, useEffect, useState } from 'react';
 import useSWR, { useSWRConfig } from 'swr';
 import { ChatHeader } from '@/components/chat-header';
 import type { Vote } from '@/lib/db/schema';
-import { fetcher, generateUUID } from '@/lib/utils';
+import { fetcher, generateUUID, cn } from '@/lib/utils';
 import { Artifact } from './artifact';
 import { MultimodalInput } from './multimodal-input';
 import { Messages } from './messages';
@@ -22,7 +22,6 @@ import { useAutoResume } from '@/hooks/use-auto-resume';
 import { useChatImageWebSocket } from '@/hooks/use-chat-image-websocket';
 import { ChatWebSocketCleanup } from '@/lib/utils/chat-websocket-cleanup';
 import { LoaderIcon } from './icons';
-import { cn } from '@/lib/utils';
 import { PreviewMessage, ThinkingMessage } from './message';
 
 function ChatContent({
@@ -258,6 +257,9 @@ function ChatContent({
                   message.id === messages[messages.length - 1].id &&
                   message.role === 'assistant'
                 }
+                selectedChatModel={initialChatModel}
+                selectedVisibilityType={visibilityType}
+                append={append}
               />
             ))}
             {status === 'streaming' && <ThinkingMessage />}
