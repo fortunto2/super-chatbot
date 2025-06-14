@@ -10,7 +10,7 @@ import { generateUUID } from '@/lib/utils';
 export type DataStreamDelta = {
   type:
     | 'text-delta'
-    | 'code-delta'
+  
     | 'sheet-delta'
     | 'image-delta'
     | 'title'
