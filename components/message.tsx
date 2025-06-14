@@ -9,7 +9,7 @@ import { PencilEditIcon, SparklesIcon } from './icons';
 import { Markdown } from './markdown';
 import { MessageActions } from './message-actions';
 import { PreviewAttachment } from './preview-attachment';
-import { Weather } from './weather';
+
 import equal from 'fast-deep-equal';
 import { cn, sanitizeText } from '@/lib/utils';
 import { Button } from './ui/button';
@@ -192,18 +192,7 @@ const PurePreviewMessage = ({
                 
 
                 if (state === 'call') {
-                  return (
-                    <div
-                      key={toolCallId}
-                      className={cx({
-                        skeleton: ['getWeather'].includes(toolName),
-                      })}
-                    >
-                      {toolName === 'getWeather' ? (
-                        <Weather />
-                      ) : null}
-                    </div>
-                  );
+                  return null;
                 }
 
                 if (state === 'result') {
@@ -245,13 +234,7 @@ const PurePreviewMessage = ({
                     );
                   }
 
-                  return (
-                    <div key={toolCallId}>
-                      {toolName === 'getWeather' ? (
-                        <Weather weatherAtLocation={result} />
-                      ) : null}
-                    </div>
-                  );
+                  return null;
                 }
               }
             })}

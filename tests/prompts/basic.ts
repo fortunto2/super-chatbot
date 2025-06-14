@@ -16,7 +16,7 @@ export const TEST_PROMPTS: Record<string, CoreMessage> = {
   USER_NEXTJS: {
     role: 'user',
     content: [
-      { type: 'text', text: 'What are the advantages of using Next.js?' },
+      { type: 'text', text: 'Create a cinematic wide shot of a futuristic cityscape at sunset with flying cars and neon lights, photorealistic style' },
     ],
   },
   USER_IMAGE_ATTACHMENT: {
@@ -37,7 +37,7 @@ export const TEST_PROMPTS: Record<string, CoreMessage> = {
     content: [
       {
         type: 'text',
-        text: 'Help me write an essay about Silicon Valley',
+        text: 'Write a 3-page comedy screenplay about an AI assistant and a human becoming unlikely friends while working on a creative project',
       },
     ],
   },
