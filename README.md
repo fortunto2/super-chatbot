@@ -12,7 +12,8 @@
   <a href="#features"><strong>Features</strong></a> ·
   <a href="#model-providers"><strong>Model Providers</strong></a> ·
   <a href="#deploy-your-own"><strong>Deploy Your Own</strong></a> ·
-  <a href="#running-locally"><strong>Running locally</strong></a>
+  <a href="#running-locally"><strong>Running locally</strong></a> ·
+  <a href="#architecture"><strong>Architecture</strong></a>
 </p>
 <br/>
 
@@ -60,3 +61,35 @@ pnpm dev
 ```
 
 Your app template should now be running on [localhost:3000](http://localhost:3000).
+
+## Architecture
+
+This application is built with a modern, scalable architecture designed for high performance and extensibility:
+
+### 📚 Documentation
+- **[Complete Architecture Overview](docs/ARCHITECTURE.md)** - Comprehensive system architecture documentation
+- **[Technical Specifications](docs/TECHNICAL_SPECIFICATIONS.md)** - Detailed implementation and configuration details
+- **[WebSocket Architecture](docs/CHAT_WEBSOCKET_ARCHITECTURE.md)** - Real-time communication implementation
+- **[Image Generation Guide](docs/IMAGE_GENERATION_README.md)** - Media generation capabilities
+
+### 🏗️ Core Components
+- **Frontend**: Next.js 15 with React 19, Tailwind CSS, and Radix UI
+- **Backend**: Next.js API Routes with custom middleware and authentication
+- **AI Agent**: Vercel AI SDK with 8+ specialized tools for content generation
+- **Database**: PostgreSQL with Drizzle ORM for data persistence
+- **Storage**: Vercel Blob for file and media storage
+- **Monitoring**: Sentry for error tracking and performance monitoring
+
+### 🤖 AI Capabilities
+- **Text Generation**: Azure OpenAI integration with streaming responses
+- **Image Generation**: FLUX Pro/Dev models with multiple resolutions and styles
+- **Video Generation**: SuperDuperAi Veo3, Runway Gen-3/Gen-2, and Stable Video Diffusion
+- **Document Processing**: Real-time collaborative editing with ProseMirror
+- **Code Execution**: Interactive code editor with syntax highlighting
+
+### 🔧 Development Features
+- **Type Safety**: Full TypeScript implementation with strict mode
+- **Code Quality**: Biome for linting and formatting
+- **Testing**: Playwright for E2E testing
+- **Real-time**: WebSocket implementation for live updates
+- **Security**: NextAuth v5 with guest authentication and rate limiting
