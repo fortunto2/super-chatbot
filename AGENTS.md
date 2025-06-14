@@ -28,11 +28,18 @@ This Agents.md file provides comprehensive guidance for AI assistants working wi
 AI agents should understand these core tools:
 - `create-document`: For creating editable documents
 - `update-document`: For modifying existing documents  
-- `configure-image-generation`: For FLUX Pro/Dev image generation
-- `configure-video-generation`: For SuperDuperAi api (Veo3) video generation
+- `configure-image-generation`: For FLUX Pro/Dev image generation via SuperDuperAI API
+- `configure-video-generation`: For SuperDuperAi api (Veo3) video generation via SuperDuperAI API
 - `get-weather`: For real-time weather data
 - `request-suggestions`: For generating contextual suggestions
 - `diagnose-styles`: For UI/UX analysis and recommendations
+
+### SuperDuperAI Backend Integration
+AI agents must use **SuperDuperAI API** as the primary backend for media generation:
+- **Base URL**: `https://dev-editor.superduperai.co`
+- **Authentication**: Bearer token authentication required
+- **WebSocket**: Real-time updates for generation progress
+- **File Management**: Integrated file upload and download system
 
 ### Artifact Types
 AI agents should handle these artifact types:
@@ -106,6 +113,157 @@ const blob = await put(filename, file, {
   access: 'public',
   addRandomSuffix: true,
 })
+```
+
+## SuperDuperAI API Integration Patterns
+
+### Authentication Pattern
+AI agents must authenticate with SuperDuperAI API:
+```typescript
+// SuperDuperAI API authentication
+const SUPERDUPERAI_BASE_URL = 'https://dev-editor.superduperai.co'
+const SUPERDUPERAI_TOKEN = process.env.SUPERDUPERAI_API_TOKEN
+
+const headers = {
+  'Authorization': `Bearer ${SUPERDUPERAI_TOKEN}`,
+  'Content-Type': 'application/json'
+}
+```
+
+### Image Generation Pattern
+AI agents should use this pattern for image generation:
+```typescript
+// SuperDuperAI Image Generation
+async function generateImage(params: ImageGenerationParams) {
+  // 1. Create generation request
+  const response = await fetch(`${SUPERDUPERAI_BASE_URL}/api/v1/generation/image`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({
+      prompt: params.prompt,
+      negative_prompt: params.negativePrompt,
+      model: params.model || 'flux', // flux or sdxl
+      width: params.width,
+      height: params.height,
+      quality: params.quality || 'hd', // hd, full_hd, sd
+      style: params.style,
+      shot_size: params.shotSize,
+      seed: params.seed
+    })
+  })
+
+  const generation = await response.json()
+  
+  // 2. Poll for completion or use WebSocket
+  return await pollGenerationStatus('image', generation.id)
+}
+
+async function pollGenerationStatus(type: 'image' | 'video', id: string) {
+  while (true) {
+    const response = await fetch(
+      `${SUPERDUPERAI_BASE_URL}/api/v1/generation/${type}/${id}`,
+      { headers }
+    )
+    const result = await response.json()
+    
+    if (result.status === 'completed') {
+      return result
+    } else if (result.status === 'error') {
+      throw new Error(result.error || 'Generation failed')
+    }
+    
+    // Wait before next poll
+    await new Promise(resolve => setTimeout(resolve, 2000))
+  }
+}
+```
+
+### Video Generation Pattern
+AI agents should use this pattern for video generation:
+```typescript
+// SuperDuperAI Video Generation
+async function generateVideo(params: VideoGenerationParams) {
+  // 1. Create generation request
+  const response = await fetch(`${SUPERDUPERAI_BASE_URL}/api/v1/generation/video`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({
+      prompt: params.prompt,
+      negative_prompt: params.negativePrompt,
+      model: params.model || 'veo3',
+      width: params.width,
+      height: params.height,
+      duration: params.duration || 10,
+      fps: params.frameRate || 30,
+      aspect_ratio: params.aspectRatio || '16:9',
+      style: params.style,
+      shot_size: params.shotSize,
+      seed: params.seed,
+      // Video-specific parameters
+      references: params.references || []
+    })
+  })
+
+  const generation = await response.json()
+  
+  // 2. Poll for completion or use WebSocket
+  return await pollGenerationStatus('video', generation.id)
+}
+```
+
+### WebSocket Real-time Updates Pattern
+AI agents should implement WebSocket for real-time generation progress:
+```typescript
+// SuperDuperAI WebSocket integration
+function connectToGenerationUpdates(generationId: string) {
+  const ws = new WebSocket(`wss://dev-editor.superduperai.co/ws`)
+  
+  ws.onmessage = (event) => {
+    const message = JSON.parse(event.data)
+    
+    if (message.type === 'render_progress') {
+      // Update progress in UI
+      updateGenerationProgress(generationId, message.object.progress)
+    } else if (message.type === 'render_result') {
+      // Generation completed
+      handleGenerationComplete(generationId, message.object)
+    }
+  }
+  
+  return ws
+}
+```
+
+### File Download Pattern
+AI agents should handle file downloads from SuperDuperAI:
+```typescript
+// Download generated media
+async function downloadGeneratedMedia(type: 'image' | 'video', id: string) {
+  const response = await fetch(
+    `${SUPERDUPERAI_BASE_URL}/api/v1/generation/${type}/${id}/download`,
+    {
+      method: 'POST',
+      headers
+    }
+  )
+  
+  if (!response.ok) {
+    throw new Error(`Download failed: ${response.statusText}`)
+  }
+  
+  return response.blob()
+}
+
+// Store in Vercel Blob
+async function storeGeneratedMedia(blob: Blob, filename: string) {
+  const file = new File([blob], filename)
+  const result = await put(filename, file, {
+    access: 'public',
+    addRandomSuffix: true,
+  })
+  
+  return result.url
+}
 ```
 
 ## AI Integration Patterns for Agents
@@ -230,6 +388,8 @@ AI agents should be aware of these required environment variables:
 - `BLOB_READ_WRITE_TOKEN`: Vercel Blob access token
 - `AZURE_OPENAI_API_KEY`: Azure OpenAI API key
 - `NEXT_PUBLIC_SENTRY_DSN`: Sentry monitoring DSN
+- `SUPERDUPERAI_API_TOKEN`: SuperDuperAI API authentication token
+- `SUPERDUPERAI_BASE_URL`: SuperDuperAI API base URL (https://dev-editor.superduperai.co)
 
 ### Vercel Deployment
 - Use Vercel for optimal Next.js deployment
@@ -256,6 +416,69 @@ function handleAPIError(error: unknown): APIError {
     return { error: 'Database error', code: 500 }
   }
   return { error: 'Internal server error', code: 500 }
+}
+
+// SuperDuperAI API Error Handling
+async function handleSuperDuperAIError(response: Response) {
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}))
+    
+    switch (response.status) {
+      case 401:
+        throw new Error('SuperDuperAI authentication failed - check API token')
+      case 422:
+        throw new Error(`SuperDuperAI validation error: ${JSON.stringify(errorData)}`)
+      case 429:
+        throw new Error('SuperDuperAI rate limit exceeded')
+      case 500:
+        throw new Error('SuperDuperAI internal server error')
+      default:
+        throw new Error(`SuperDuperAI API error: ${response.status} ${response.statusText}`)
+    }
+  }
+}
+
+// Enhanced generation status polling with error handling
+async function pollGenerationStatusWithRetry(
+  type: 'image' | 'video', 
+  id: string, 
+  maxRetries: number = 3
+) {
+  let retries = 0
+  
+  while (true) {
+    try {
+      const response = await fetch(
+        `${SUPERDUPERAI_BASE_URL}/api/v1/generation/${type}/${id}`,
+        { headers }
+      )
+      
+      await handleSuperDuperAIError(response)
+      const result = await response.json()
+      
+      if (result.status === 'completed') {
+        return result
+      } else if (result.status === 'error') {
+        throw new Error(result.error || 'Generation failed')
+      }
+      
+      // Reset retry counter on successful request
+      retries = 0
+      
+      // Wait before next poll
+      await new Promise(resolve => setTimeout(resolve, 2000))
+      
+    } catch (error) {
+      retries++
+      if (retries >= maxRetries) {
+        throw new Error(`Generation polling failed after ${maxRetries} retries: ${error}`)
+      }
+      
+      // Exponential backoff
+      const delay = Math.min(1000 * Math.pow(2, retries), 10000)
+      await new Promise(resolve => setTimeout(resolve, delay))
+    }
+  }
 }
 ```
 
@@ -334,6 +557,60 @@ When AI agents help create PRs, ensure they:
 - Keep API documentation current
 - Include migration guides for breaking changes
 
+## SuperDuperAI API Important Details
+
+### API Schema and Models
+Based on the [SuperDuperAI OpenAPI specification](https://dev-editor.superduperai.co/openapi.json), AI agents must understand:
+
+#### Image Generation Models
+- **FLUX**: Primary model for high-quality image generation
+- **SDXL**: Alternative model for specific use cases
+- **Quality Types**: `full_hd`, `hd`, `sd`
+- **Shot Sizes**: `Extreme Long Shot`, `Long Shot`, `Medium Shot`, `Medium Close-Up`, `Close-Up`, `Extreme Close-Up`, `Two-Shot`, `Detail Shot`
+
+#### Video Generation Models  
+- **Veo3**: Primary model for video generation (SuperDuperAI's flagship model)
+- **Aspect Ratios**: `16:9`, `9:16`, `4:3`, `1:1`
+- **Quality Support**: Full HD, HD, SD resolutions
+- **Duration**: Configurable video length in seconds
+- **FPS**: Frame rate control (24, 30, 60, 120)
+
+#### Task Status Tracking
+AI agents must handle these status values:
+- `in_progress`: Generation is ongoing
+- `completed`: Generation finished successfully
+- `error`: Generation failed
+
+#### WebSocket Message Types
+- `task`: Task status updates
+- `render_progress`: Real-time progress updates
+- `render_result`: Final generation results
+- `data`, `file`, `entity`, `scene`: Other data updates
+
+### API Rate Limits and Best Practices
+- **Authentication**: Bearer token required for all generation endpoints
+- **Polling Frequency**: Poll status every 2 seconds maximum
+- **Retry Logic**: Implement exponential backoff for failed requests
+- **File Handling**: Use proper download endpoints for generated media
+- **WebSocket**: Preferred for real-time updates over polling
+
+### Error Handling Requirements
+AI agents must handle these specific error cases:
+- **401 Unauthorized**: Invalid or expired API token
+- **422 Validation Error**: Invalid request parameters
+- **429 Rate Limited**: Too many requests, implement backoff
+- **500 Internal Error**: SuperDuperAI service issues
+
+### Integration Checklist for AI Agents
+- [ ] Authenticate with SuperDuperAI API using Bearer token
+- [ ] Validate all parameters before sending requests
+- [ ] Implement proper error handling and retry logic
+- [ ] Use WebSocket for real-time progress updates
+- [ ] Download and store generated media in Vercel Blob
+- [ ] Track generation status in local database
+- [ ] Provide user feedback during generation process
+- [ ] Handle generation failures gracefully
+
 ## AI Agent Collaboration Notes
 
 ### Multi-Agent Coordination
@@ -341,11 +618,20 @@ When AI agents help create PRs, ensure they:
 - Share context through proper documentation
 - Implement proper version control for AI-generated content
 - Coordinate database schema changes
+- Share SuperDuperAI API rate limits and usage tracking
 
 ### Knowledge Sharing
 - Document AI tool capabilities and limitations
 - Share best practices for AI integration
 - Maintain up-to-date architecture documentation
 - Coordinate on API design decisions
+- Share SuperDuperAI API response patterns and error handling
 
-This Agents.md guide helps ensure AI agents work effectively with the Super Chatbot codebase while maintaining code quality, security, and performance standards. 
+### SuperDuperAI Integration Guidelines
+- Always use the latest API version and endpoints
+- Implement proper authentication token management
+- Monitor API usage and respect rate limits
+- Cache generation results to avoid redundant API calls
+- Implement proper error logging for debugging
+
+This Agents.md guide helps ensure AI agents work effectively with the Super Chatbot codebase while maintaining code quality, security, and performance standards when integrating with SuperDuperAI API. 
