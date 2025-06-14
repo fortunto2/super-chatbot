@@ -1,0 +1,1 @@
+export type ArtifactKind = 'code' | 'image' | 'text' | 'sheet' | 'resolution'; 

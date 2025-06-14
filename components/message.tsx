@@ -5,7 +5,6 @@ import cx from 'classnames';
 import { AnimatePresence, motion } from 'framer-motion';
 import { memo, useState } from 'react';
 import type { Vote } from '@/lib/db/schema';
-import { DocumentToolCall, DocumentToolResult } from './document';
 import { PencilEditIcon, SparklesIcon } from './icons';
 import { Markdown } from './markdown';
 import { MessageActions } from './message-actions';
@@ -16,10 +15,11 @@ import { cn, sanitizeText } from '@/lib/utils';
 import { Button } from './ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
 import { MessageEditor } from './message-editor';
-import { DocumentPreview } from './document-preview';
 import { MessageReasoning } from './message-reasoning';
-import type { UseChatHelpers } from '@ai-sdk/react';
-import { MessageReasoningDebug } from './message-reasoning-debug';
+import { type UseChatHelpers } from '@ai-sdk/react';
+import { MediaSettings } from './artifacts/media-settings';
+import type { ImageGenerationConfig, ImageSettings, VideoGenerationConfig, VideoSettings as VideoSettingsType } from '@/lib/types/media-settings';
+import { useArtifact } from '@/hooks/use-artifact';
 
 const PurePreviewMessage = ({
   chatId,
@@ -30,6 +30,9 @@ const PurePreviewMessage = ({
   reload,
   isReadonly,
   requiresScrollPadding,
+  selectedChatModel,
+  selectedVisibilityType,
+  append,
 }: {
   chatId: string;
   message: UIMessage;
@@ -39,8 +42,12 @@ const PurePreviewMessage = ({
   reload: UseChatHelpers['reload'];
   isReadonly: boolean;
   requiresScrollPadding: boolean;
+  selectedChatModel: string;
+  selectedVisibilityType: 'public' | 'private';
+  append?: UseChatHelpers['append'];
 }) => {
   const [mode, setMode] = useState<'view' | 'edit'>('view');
+  const { setArtifact } = useArtifact();
 
   return (
     <AnimatePresence>
@@ -83,147 +90,55 @@ const PurePreviewMessage = ({
                     <PreviewAttachment
                       key={attachment.url}
                       attachment={attachment}
+                      chatId={chatId}
                     />
                   ))}
                 </div>
               )}
 
-            {/* Отладочная информация о сообщении со всеми полями */}
-            {message.role === 'assistant' && (
-              <div className="text-xs text-muted-foreground mb-2 bg-muted p-2 rounded">
-                <details>
-                  <summary>Debug info (expand)</summary>
-                  <pre className="text-xs overflow-auto">
-                    {JSON.stringify(message, null, 2)}
-                  </pre>
-                </details>
-              </div>
-            )}
-
-            {/* Если есть поля reasoning или content с рассуждениями в сообщении */}
-            {message.role === 'assistant' && (
-              message.reasoning || 
-              (message.content && typeof message.content === 'string' && message.content.includes("<think>"))
-            ) && (
-              <MessageReasoningDebug
-                key={`reasoning-direct-${message.id}`}
-                isLoading={isLoading}
-                reasoning={message.reasoning || message.content}
-                message={message}
-              />
-            )}
-
             {message.parts?.map((part, index) => {
               const { type } = part;
               const key = `message-${message.id}-part-${index}`;
 
-              // Отладочное логирование для всех частей сообщения
-              if (message.role === 'assistant') {
-                console.log(`Message part ${index}:`, JSON.stringify({
-                  type, 
-                  partKeys: Object.keys(part),
-                  hasTextDelta: 'textDelta' in part,
-                  hasText: 'text' in part
-                }));
-              }
-
               if (type === 'reasoning') {
-                // В AI SDK 4.2 рассуждения могут находиться в разных полях
-                let reasoningText = '';
-                
-                // Пробуем получить текст рассуждений из поля reasoning
-                if ('reasoning' in part) {
-                  reasoningText = (part as any).reasoning;
-                } 
-                // Пробуем получить из textDelta
-                else if ('textDelta' in part) {
-                  reasoningText = (part as any).textDelta;
-                }
-                // Или из поля text
-                else if ('text' in part) {
-                  reasoningText = (part as any).text;
-                }
-                
                 return (
-                  <MessageReasoningDebug
+                  <MessageReasoning
                     key={key}
                     isLoading={isLoading}
-                    reasoning={reasoningText}
-                    message={message}
-                  />
-                );
-              }
-
-              // Проверяем, нет ли reasoning в message напрямую
-              if (index === 0 && message.reasoning && typeof message.reasoning === 'string') {
-                return (
-                  <MessageReasoningDebug
-                    key={`reasoning-root`}
-                    isLoading={isLoading}
-                    reasoning={message.reasoning}
-                    message={message}
+                    reasoning={part.reasoning}
                   />
                 );
               }
 
               if (type === 'text') {
                 if (mode === 'view') {
-                  // Ищем рассуждения в тексте части сообщения
-                  if (message.role === 'assistant' && part.text) {
-                    const thinkMatch = part.text.match(/<think>(.*?)<\/think>/s);
-                    if (thinkMatch && thinkMatch[1]) {
-                      // Отображаем рассуждения
-                      const reasoningText = thinkMatch[1].trim();
-                      
-                      // Очищаем текст от тегов think для отображения в обычной части
-                      const cleanText = part.text.replace(/<think>.*?<\/think>/s, '').trim();
-                      
-                      // Показываем как рассуждения, так и очищенный текст
+                  // Check if this is a resolution selection message
+                  if (part.text.startsWith('Выбрано разрешение:')) {
+                    const resolutionMatch = part.text.match(/разрешение: (\d+)x(\d+), стиль: (.+?), размер кадра: (.+?), модель: (.+?)(?:, сид: (\d+))?$/);
+                    if (resolutionMatch) {
+                      const [, width, height, style, shotSize, imageModel, seed] = resolutionMatch;
                       return (
-                        <div key={key}>
-                          <MessageReasoningDebug
-                            key={`reasoning-inline-${message.id}-${index}`}
-                            isLoading={isLoading}
-                            reasoning={reasoningText}
-                            message={message}
-                          />
-                          <div className="flex flex-row gap-2 items-start">
-                            {message.role !== 'assistant' && !isReadonly && (
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Button
-                                    data-testid="message-edit-button"
-                                    variant="ghost"
-                                    className="px-2 h-fit rounded-full text-muted-foreground opacity-0 group-hover/message:opacity-100"
-                                    onClick={() => {
-                                      setMode('edit');
-                                    }}
-                                  >
-                                    <PencilEditIcon />
-                                  </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>Edit message</TooltipContent>
-                              </Tooltip>
-                            )}
-
-                            <div
-                              data-testid="message-content"
-                              className={cn('flex flex-col gap-4', {
-                                'bg-primary text-primary-foreground px-3 py-2 rounded-xl':
-                                  message.role !== 'assistant',
-                              })}
-                            >
-                              <Markdown>{sanitizeText(cleanText)}</Markdown>
+                        <div key={key} className="flex flex-row gap-2 items-start">
+                          <div
+                            data-testid="message-content"
+                            className="flex flex-col gap-4 bg-primary text-primary-foreground px-3 py-2 rounded-xl"
+                          >
+                            <div className="flex flex-col gap-2">
+                              <p>Выбрано разрешение: {width} × {height}</p>
+                              <p>Стиль: {style}</p>
+                              <p>Размер кадра: {shotSize}</p>
+                              <p>Модель: {imageModel}</p>
+                              {seed && <p>Сид: {seed}</p>}
                             </div>
                           </div>
                         </div>
                       );
                     }
                   }
-                  
+
                   return (
                     <div key={key} className="flex flex-row gap-2 items-start">
-                      {message.role !== 'assistant' && !isReadonly && (
+                      {message.role === 'user' && !isReadonly && (
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <Button
@@ -245,7 +160,7 @@ const PurePreviewMessage = ({
                         data-testid="message-content"
                         className={cn('flex flex-col gap-4', {
                           'bg-primary text-primary-foreground px-3 py-2 rounded-xl':
-                            message.role !== 'assistant',
+                            message.role === 'user',
                         })}
                       >
                         <Markdown>{sanitizeText(part.text)}</Markdown>
@@ -273,11 +188,10 @@ const PurePreviewMessage = ({
 
               if (type === 'tool-invocation') {
                 const { toolInvocation } = part;
-                const { toolName, toolCallId, state } = toolInvocation;
+                const { toolName, toolCallId, state, args } = toolInvocation;
+                
 
                 if (state === 'call') {
-                  const { args } = toolInvocation;
-
                   return (
                     <div
                       key={toolCallId}
@@ -287,20 +201,6 @@ const PurePreviewMessage = ({
                     >
                       {toolName === 'getWeather' ? (
                         <Weather />
-                      ) : toolName === 'createDocument' ? (
-                        <DocumentPreview isReadonly={isReadonly} args={args} />
-                      ) : toolName === 'updateDocument' ? (
-                        <DocumentToolCall
-                          type="update"
-                          args={args}
-                          isReadonly={isReadonly}
-                        />
-                      ) : toolName === 'requestSuggestions' ? (
-                        <DocumentToolCall
-                          type="request-suggestions"
-                          args={args}
-                          isReadonly={isReadonly}
-                        />
                       ) : null}
                     </div>
                   );
@@ -308,31 +208,48 @@ const PurePreviewMessage = ({
 
                 if (state === 'result') {
                   const { result } = toolInvocation;
+                  
+                  // Handle image generation configuration
+                  if (toolName === 'configureImageGeneration' && result?.type === 'image-generation-settings') {
+                    const config = result as ImageGenerationConfig;
+                    return (
+                      <div key={toolCallId} className="p-4">
+                        <MediaSettings
+                          config={config}
+                          onConfirm={(settings: ImageSettings) => {
+                            console.log('Image settings selected:', settings);
+                          }}
+                          selectedChatModel={selectedChatModel}
+                          selectedVisibilityType={selectedVisibilityType}
+                          append={append}
+                        />
+                      </div>
+                    );
+                  }
+
+                  // Handle video generation configuration
+                  if (toolName === 'configureVideoGeneration' && result?.type === 'video-generation-settings') {
+                    const config = result as VideoGenerationConfig;
+                    return (
+                      <div key={toolCallId} className="p-4">
+                        <MediaSettings
+                          config={config}
+                          onConfirm={(settings: ImageSettings | VideoSettingsType) => {
+                            console.log('Video settings selected:', settings);
+                          }}
+                          selectedChatModel={selectedChatModel}
+                          selectedVisibilityType={selectedVisibilityType}
+                          append={append}
+                        />
+                      </div>
+                    );
+                  }
 
                   return (
                     <div key={toolCallId}>
                       {toolName === 'getWeather' ? (
                         <Weather weatherAtLocation={result} />
-                      ) : toolName === 'createDocument' ? (
-                        <DocumentPreview
-                          isReadonly={isReadonly}
-                          result={result}
-                        />
-                      ) : toolName === 'updateDocument' ? (
-                        <DocumentToolResult
-                          type="update"
-                          result={result}
-                          isReadonly={isReadonly}
-                        />
-                      ) : toolName === 'requestSuggestions' ? (
-                        <DocumentToolResult
-                          type="request-suggestions"
-                          result={result}
-                          isReadonly={isReadonly}
-                        />
-                      ) : (
-                        <pre>{JSON.stringify(result, null, 2)}</pre>
-                      )}
+                      ) : null}
                     </div>
                   );
                 }

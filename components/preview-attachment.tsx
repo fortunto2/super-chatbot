@@ -1,15 +1,36 @@
 import type { Attachment } from 'ai';
 
 import { LoaderIcon } from './icons';
+import { useArtifact } from '@/hooks/use-artifact';
 
 export const PreviewAttachment = ({
   attachment,
   isUploading = false,
+  chatId,
 }: {
   attachment: Attachment;
   isUploading?: boolean;
+  chatId?: string;
 }) => {
   const { name, url, contentType } = attachment;
+  const { setArtifact } = useArtifact();
+
+  const handleImageClick = () => {
+    if (contentType && contentType.startsWith('image')) {
+      setArtifact((prev) => ({
+        ...prev,
+        isVisible: true,
+        kind: 'image',
+        content: JSON.stringify({
+          status: 'completed',
+          imageUrl: url,
+          prompt: name || '',
+          projectId: chatId,
+        }),
+        title: name || 'Image',
+      }));
+    }
+  };
 
   return (
     <div data-testid="input-attachment-preview" className="flex flex-col gap-2">
@@ -22,7 +43,8 @@ export const PreviewAttachment = ({
               key={url}
               src={url}
               alt={name ?? 'An image attachment'}
-              className="rounded-md size-full object-cover"
+              className="rounded-md size-full object-cover cursor-pointer"
+              onClick={handleImageClick}
             />
           ) : (
             <div className="" />

@@ -6,10 +6,7 @@ import {
 import { createAzure } from '@ai-sdk/azure';
 import { isTestEnvironment } from '@/lib/constants';
 import {
-  artifactModel,
   chatModel,
-  reasoningModel,
-  titleModel,
 } from './models.test';
 
 // Создаем настроенный экземпляр провайдера Azure

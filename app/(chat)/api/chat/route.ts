@@ -38,6 +38,8 @@ import { after } from 'next/server';
 import type { Chat } from '@/lib/db/schema';
 import { differenceInSeconds } from 'date-fns';
 import * as Sentry from '@sentry/nextjs';
+import { configureImageGeneration } from '@/lib/ai/tools/configure-image-generation';
+import { configureVideoGeneration } from '@/lib/ai/tools/configure-video-generation';
 
 export const maxDuration = 60;
 
@@ -107,20 +109,8 @@ function getStreamContext() {
 export async function POST(request: Request) {
   let requestBody: PostRequestBody;
 
-  // Проверяем request перед парсингом JSON
-  if (!request || !request.body) {
-    console.error('Empty request or request body');
-    return new Response('Empty request body', { status: 400 });
-  }
-
   try {
     const json = await request.json();
-    
-    if (!json) {
-      console.error('JSON parse returned empty object');
-      return new Response('Empty JSON object in request body', { status: 400 });
-    }
-    
     requestBody = postRequestBodySchema.parse(json);
   } catch (error) {
     console.error('Invalid request body:', error);
@@ -503,28 +493,38 @@ export async function POST(request: Request) {
       // Continue execution, as we can proceed without DB record
     }
 
-    console.log('Processing chat request with model:', selectedChatModel);
-
-    // Явное включение рассуждений в зависимости от выбранной модели
-    const useReasoningModel = selectedChatModel === 'chat-model-reasoning';
-    console.log('Using reasoning model:', useReasoningModel);
-
     const stream = createDataStream({
       execute: (dataStream) => {
+        const enhancedDataStream = {
+          ...dataStream,
+          end: () => {},
+          error: (error: Error) => {
+            console.error('Stream error:', error);
+          }
+        };
+
+        const tools = {
+          getWeather,
+          createDocument: createDocument({ session, dataStream: enhancedDataStream }),
+          updateDocument: updateDocument({ session, dataStream: enhancedDataStream }),
+          requestSuggestions: requestSuggestions({
+            session,
+            dataStream: enhancedDataStream,
+          }),
+        };
+
         const result = streamText({
           model: myProvider.languageModel(selectedChatModel),
           system: systemPrompt({ selectedChatModel, requestHints }),
           messages,
           maxSteps: 5,
-          // Явно передаем опцию включения рассуждений в ответ
-          experimental_reasoning: useReasoningModel,
-          experimental_sendReasoning: useReasoningModel, 
-          sendReasoning: useReasoningModel,
           experimental_activeTools:
             selectedChatModel === 'chat-model-reasoning'
               ? []
               : [
                   'getWeather',
+                  'configureImageGeneration',
+                  'configureVideoGeneration',
                   'createDocument',
                   'updateDocument',
                   'requestSuggestions',
@@ -532,113 +532,77 @@ export async function POST(request: Request) {
           experimental_transform: smoothStream({ chunking: 'word' }),
           experimental_generateMessageId: generateUUID,
           tools: {
-            getWeather,
-            createDocument: createDocument({ session, dataStream }),
-            updateDocument: updateDocument({ session, dataStream }),
-            requestSuggestions: requestSuggestions({
-              session,
-              dataStream,
+            ...tools,
+            configureImageGeneration: configureImageGeneration({
+              createDocument: tools.createDocument,
+            }),
+            configureVideoGeneration: configureVideoGeneration({
+              createDocument: tools.createDocument,
             }),
           },
-        });
+          onFinish: async ({ response }) => {
+            if (session.user?.id) {
+              try {
+                const assistantMessages = response.messages.filter(
+                  (message) => message.role === 'assistant'
+                );
 
-        // Отладочное логирование
-        console.log('streamText configuration:', {
-          selectedModel: selectedChatModel,
-          isReasoningModel: useReasoningModel,
-          experimentalOptions: {
-            experimental_reasoning: useReasoningModel,
-            experimental_sendReasoning: useReasoningModel, 
-            sendReasoning: useReasoningModel
+                if (assistantMessages.length === 0) {
+                  console.warn('No assistant messages found in response');
+                  return;
+                }
+
+                const assistantId = getTrailingMessageId({
+                  messages: assistantMessages,
+                });
+
+                if (!assistantId) {
+                  console.warn('No assistant message ID found');
+                  return;
+                }
+
+                const [, assistantMessage] = appendResponseMessages({
+                  messages: [message],
+                  responseMessages: response.messages,
+                });
+
+                if (!assistantMessage) {
+                  console.warn('Failed to append response messages');
+                  return;
+                }
+
+                await saveMessages({
+                  messages: [
+                    {
+                      id: assistantId,
+                      chatId: id,
+                      role: assistantMessage.role,
+                      parts: assistantMessage.parts,
+                      attachments:
+                        assistantMessage.experimental_attachments ?? [],
+                      createdAt: new Date(),
+                    },
+                  ],
+                });
+              } catch (error) {
+                console.error('Failed to save assistant message:', error);
+                if (error instanceof Error) {
+                  console.error(error.stack);
+                }
+              }
+            }
           },
-          // Свойства результата
-          resultKeys: Object.keys(result)
+          experimental_telemetry: {
+            isEnabled: isProductionEnvironment,
+            functionId: 'stream-text',
+          },
         });
 
         result.consumeStream();
 
-        // Добавляем отладочную информацию
-        console.log('Sending response with reasoning option:', { 
-          sendReasoning: true,
-          selectedChatModel
-        });
-
-        // Явно обрабатываем рассуждения для Azure/Deepseek
-        if (selectedChatModel === 'chat-model-reasoning') {
-          // Модифицируем поток данных для явного добавления рассуждений
-          const originalMergeIntoDataStream = result.mergeIntoDataStream.bind(result);
-          result.mergeIntoDataStream = (dataStream, options) => {
-            // Перехватываем каждый объект в потоке данных
-            const originalWrite = dataStream.write;
-            
-            // Отслеживаем, было ли добавлено рассуждение
-            let reasoningAdded = false;
-            
-            dataStream.write = function(data: any) {
-              if (data && typeof data === 'object') {
-                // Для отладки
-                console.log('Streaming data type:', data.type);
-                
-                // Если это объект типа append-message, извлекаем и добавляем рассуждения
-                if (data.type === 'append-message' && data.message) {
-                  try {
-                    const message = JSON.parse(data.message);
-                    
-                    // Если уже есть reasoning или reasoning-части, не меняем
-                    if (message.reasoning || 
-                        (message.parts && message.parts.some((p: any) => p.type === 'reasoning'))) {
-                      console.log('Message already has reasoning parts');
-                    } 
-                    // Если рассуждений нет, но это модель с reasoning, добавляем их из content
-                    else if (selectedChatModel === 'chat-model-reasoning' && 
-                             message.content && 
-                             typeof message.content === 'string') {
-                      
-                      // Проверяем на наличие тегов <think>
-                      const thinkMatch = message.content.match(/<think>(.*?)<\/think>/s);
-                      if (thinkMatch && thinkMatch[1] && !reasoningAdded) {
-                        console.log('Extracting reasoning from content tags');
-                        
-                        // Модифицируем сообщение, чтобы включить рассуждения
-                        message.reasoning = thinkMatch[1].trim();
-                        
-                        // Также можно добавить часть рассуждений
-                        if (!message.parts) message.parts = [];
-                        message.parts.push({
-                          type: 'reasoning',
-                          reasoning: message.reasoning
-                        });
-                        
-                        // Удаляем теги <think> из content
-                        message.content = message.content.replace(/<think>.*?<\/think>/s, '').trim();
-                        
-                        // Обновляем сообщение в data
-                        data.message = JSON.stringify(message);
-                        
-                        // Отмечаем, что рассуждения добавлены
-                        reasoningAdded = true;
-                      }
-                    }
-                  } catch (e) {
-                    console.error('Error processing message:', e);
-                  }
-                }
-              }
-              return originalWrite.call(this, data);
-            };
-            
-            return originalMergeIntoDataStream(dataStream, { 
-              ...options, 
-              sendReasoning: true 
-            });
-          };
-        }
-
         result.mergeIntoDataStream(dataStream, {
           sendReasoning: true,
         });
-        
-        return result;
       },
       onError: () => {
         return 'Oops, an error occurred!';
@@ -790,3 +754,7 @@ export async function DELETE(request: Request) {
     return formatErrorResponse(error);
   }
 }
+
+
+
+

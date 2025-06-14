@@ -19,6 +19,8 @@ import type { Session } from 'next-auth';
 import { useSearchParams } from 'next/navigation';
 import { useChatVisibility } from '@/hooks/use-chat-visibility';
 import { useAutoResume } from '@/hooks/use-auto-resume';
+import { useChatImageWebSocket } from '@/hooks/use-chat-image-websocket';
+import { ChatWebSocketCleanup } from '@/lib/utils/chat-websocket-cleanup';
 import { LoaderIcon } from './icons';
 import { cn } from '@/lib/utils';
 import { PreviewMessage, ThinkingMessage } from './message';
@@ -31,6 +33,7 @@ function ChatContent({
   isReadonly,
   session,
   autoResume,
+  onDataStream,
 }: {
   id: string;
   initialMessages: Array<UIMessage>;
@@ -39,6 +42,7 @@ function ChatContent({
   isReadonly: boolean;
   session: Session;
   autoResume: boolean;
+  onDataStream?: (dataStream: any[]) => void;
 }) {
   const { mutate } = useSWRConfig();
 
@@ -65,12 +69,26 @@ function ChatContent({
     experimental_throttle: 100,
     sendExtraMessageFields: true,
     generateId: generateUUID,
-    experimental_prepareRequestBody: (body) => ({
-      id,
-      message: body.messages.at(-1),
-      selectedChatModel: initialChatModel,
-      selectedVisibilityType: visibilityType,
-    }),
+    experimental_prepareRequestBody: (body) => {
+      const lastMessage = body.messages.at(-1);
+      if (!lastMessage || !lastMessage.content || !lastMessage.content.trim()) return null;
+      
+      const messageId = lastMessage.id || generateUUID();
+      
+      return {
+        id: id,
+        message: {
+          id: messageId,
+          createdAt: new Date(),
+          role: 'user',
+          content: lastMessage.content.trim(),
+          parts: lastMessage.parts || [{ type: 'text', text: lastMessage.content.trim() }],
+          experimental_attachments: lastMessage.experimental_attachments || []
+        },
+        selectedChatModel: initialChatModel,
+        selectedVisibilityType: visibilityType,
+      };
+    },
     onFinish: () => {
       mutate(unstable_serialize(getChatHistoryPaginationKey));
     },
@@ -79,6 +97,7 @@ function ChatContent({
         type: 'error',
         description: error.message,
       });
+      console.log(error)
     },
   });
 
@@ -107,6 +126,14 @@ function ChatContent({
   const [attachments, setAttachments] = useState<Array<Attachment>>([]);
   const isArtifactVisible = useArtifactSelector((state) => state.isVisible);
 
+  // Notify parent about dataStream changes for artifacts
+  useEffect(() => {
+    if (data && onDataStream) {
+      // Notifying parent about dataStream changes
+      onDataStream(data);
+    }
+  }, [data, onDataStream]);
+
   useAutoResume({
     autoResume,
     initialMessages,
@@ -114,6 +141,41 @@ function ChatContent({
     data,
     setMessages,
   });
+
+  // Set active chat for cleanup management
+  useEffect(() => {
+    ChatWebSocketCleanup.setActiveChat(id);
+  }, [id]);
+
+  // Global WebSocket connection for image generation
+  const chatImageWebSocket = useChatImageWebSocket({
+    chatId: id,
+    messages,
+    setMessages,
+    enabled: !isReadonly, // Only enable for non-readonly chats
+  });
+
+  // Register WebSocket instance for debugging
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const globalWindow = window as any;
+      if (globalWindow.setChatWebSocketInstance) {
+        // Create a persistent storage object that maintains lastImageUrl
+        if (!globalWindow.chatWebSocketInstance) {
+          globalWindow.chatWebSocketInstance = {};
+        }
+        
+        // Update with current WebSocket data while preserving lastImageUrl
+        Object.assign(globalWindow.chatWebSocketInstance, {
+          ...chatImageWebSocket,
+          messages,
+          lastImageUrl: globalWindow.chatWebSocketInstance.lastImageUrl // Preserve existing URL
+        });
+        
+        // Debugging instance stored silently
+      }
+    }
+  }, [chatImageWebSocket, messages]);
 
   return (
     <>
@@ -135,6 +197,9 @@ function ChatContent({
           reload={reload}
           isReadonly={isReadonly}
           isArtifactVisible={isArtifactVisible}
+          selectedChatModel={initialChatModel}
+          selectedVisibilityType={visibilityType}
+          append={append}
         />
 
         <form className="flex mx-auto px-4 bg-background pb-4 md:pb-6 gap-2 w-full md:max-w-3xl">
@@ -173,6 +238,7 @@ function ChatContent({
         votes={votes}
         isReadonly={isReadonly}
         selectedVisibilityType={visibilityType}
+        selectedChatModel={initialChatModel}
       />
 
       <div className="pb-48 pt-4 md:pt-8">
@@ -210,6 +276,7 @@ export function Chat(props: {
   isReadonly: boolean;
   session: Session;
   autoResume: boolean;
+  onDataStream?: (dataStream: any[]) => void;
 }) {
   return (
     <Suspense
