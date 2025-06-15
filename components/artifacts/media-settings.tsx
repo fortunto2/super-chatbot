@@ -1,5 +1,6 @@
 'use client';
 
+import React from 'react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,11 +19,12 @@ import type {
   VideoSettings,
   MediaResolution,
   MediaOption,
-  ImageModel,
-  VideoModel,
 } from '@/lib/types/media-settings';
+import type { VideoModel, ImageModel } from '@/lib/config/superduperai';
 import { generateUUID } from '@/lib/utils';
 import type { UseChatHelpers } from '@ai-sdk/react';
+import { cn } from '@/lib/utils';
+import { ImageIcon, VideoIcon, Wand2 } from 'lucide-react';
 
 interface MediaSettingsProps {
   config: ImageGenerationConfig | VideoGenerationConfig;
@@ -88,7 +90,7 @@ export function MediaSettings({
       : baseSettings as ImageSettings;
 
     // Create user message for the selection
-    const userMessage = `Выбрано разрешение: ${selectedResolution.width}x${selectedResolution.height}, стиль: ${selectedStyle.label}, размер кадра: ${selectedShotSize.label}, модель: ${selectedModel.label}${seed ? `, сид: ${seed}` : ''}`;
+    const userMessage = `Selected resolution: ${selectedResolution.width}x${selectedResolution.height}, style: ${selectedStyle.label}, shot size: ${selectedShotSize.label}, model: ${selectedModel.label}${seed ? `, seed: ${seed}` : ''}`;
 
     if (append) {
       append({
@@ -106,8 +108,9 @@ export function MediaSettings({
       return;
     }
 
-    // Send message to generate image with current settings
-    const generateMessage = `Создай изображение: ${prompt}. Используй разрешение ${selectedResolution.label}, стиль "${selectedStyle.label}", план "${selectedShotSize.label}", модель "${selectedModel.label}"${seed ? `, сид ${seed}` : ''}.`;
+    // Generate appropriate message based on media type
+    const mediaType = isVideoConfig ? 'video' : 'image';
+    const generateMessage = `Generate ${mediaType}: ${prompt}. Use resolution ${selectedResolution.label}, style "${selectedStyle.label}", shot size "${selectedShotSize.label}", model "${selectedModel.label}"${seed ? `, seed ${seed}` : ''}${isVideoConfig && selectedFrameRate ? `, frame rate ${selectedFrameRate} FPS` : ''}${isVideoConfig && duration ? `, duration ${duration} sec` : ''}.`;
 
     if (append) {
       append({

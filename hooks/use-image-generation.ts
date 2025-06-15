@@ -1,6 +1,7 @@
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { generateImage, type ImageGenerationResult } from '@/lib/ai/api/generate-image';
-import type { ImageModel, MediaOption, MediaResolution } from '@/lib/types/media-settings';
+import type { MediaOption, MediaResolution } from '@/lib/types/media-settings';
+import type { ImageModel } from '@/lib/config/superduperai';
 import { useImageWebsocket } from './use-image-websocket';
 import { useImageEventHandler, } from './use-image-event-handler';
 

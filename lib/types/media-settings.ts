@@ -1,4 +1,6 @@
 // Base types for media settings system
+import type { VideoModel, ImageModel } from '@/lib/config/superduperai';
+
 export interface MediaOption {
   id: string;
   label: string;
@@ -11,22 +13,6 @@ export interface MediaResolution {
   label: string;
   aspectRatio?: string;
   qualityType?: "hd" | "full_hd"
-}
-
-export interface ImageModel {
-  id: string;
-  label: string;
-  description?: string;
-}
-
-export interface VideoModel {
-  id: string;
-  label: string;
-  description?: string;
-  apiName?: string; // Original API name for requests
-  pricePerSecond?: number; // Price per second
-  availableDurations?: number[]; // Available durations in seconds
-  vipRequired?: boolean; // Whether VIP is required
 }
 
 // Image-specific types

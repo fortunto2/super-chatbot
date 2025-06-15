@@ -4,8 +4,9 @@ import type {
   MediaResolution, 
   MediaOption, 
   ImageGenerationConfig,
-  ImageModel 
 } from '@/lib/types/media-settings';
+import type { ImageModel } from '@/lib/config/superduperai';
+import { getAvailableImageModels } from '@/lib/config/superduperai';
 import { getStyles } from '../api/get-styles';
 
 const RESOLUTIONS: MediaResolution[] = [
@@ -318,7 +319,7 @@ function findShotSize(input: string): string | null {
 }
 
 // Function to find model by alias
-function findModel(input: string): string | null {
+function findModel(input: string, availableModels: ImageModel[]): string | null {
   if (!input) return null;
   
   const normalizedInput = input.toLowerCase().trim();
@@ -328,9 +329,9 @@ function findModel(input: string): string | null {
   if (aliasMatch) return aliasMatch;
   
   // Check direct ID match
-  const directMatch = IMAGE_MODELS.find(m => 
+  const directMatch = availableModels.find(m => 
     m.id === normalizedInput ||
-    m.label.toLowerCase() === normalizedInput
+    (m.label && m.label.toLowerCase() === normalizedInput)
   );
   
   return directMatch?.id || null;
@@ -511,10 +512,7 @@ const SHOT_SIZES: MediaOption[] = [
   },
 ];
 
-const IMAGE_MODELS: ImageModel[] = [
-  { id: 'flux-dev', label: 'Flux Dev', description: 'Previous generation flux model' },
-  { id: 'flux-pro', label: 'Flux Pro Ultra 1.1', description: 'Latest flux model with high quality and creativity' },
-];
+// AICODE-NOTE: IMAGE_MODELS now loaded dynamically from API via getAvailableImageModels()
 
 interface CreateImageDocumentParams {
   createDocument: any;
@@ -536,7 +534,19 @@ export const configureImageGeneration = (params?: CreateImageDocumentParams) => 
     const defaultResolution = RESOLUTIONS.find(r => r.width === 1024 && r.height === 1024)!;
     const defaultStyle: MediaOption = {id: "flux_steampunk", label: "Steampunk", description: "Steampunk style"};
     const defaultShotSize = SHOT_SIZES.find(s => s.id === 'long-shot')!;
-    const defaultModel = IMAGE_MODELS.find(m => m.id === 'flux-dev')!;
+    
+    // AICODE-NOTE: Load dynamic models from SuperDuperAI API
+    let availableModels: ImageModel[] = [];
+    try {
+      availableModels = await getAvailableImageModels();
+      console.log('🎨 ✅ Loaded dynamic image models:', availableModels.map(m => m.id));
+    } catch (error) {
+      console.error('🎨 ❌ Failed to load dynamic models:', error);
+      // Will use fallback models from getAvailableImageModels()
+      availableModels = await getAvailableImageModels();
+    }
+    
+    const defaultModel = availableModels.find(m => m.id === 'flux-dev') || availableModels[0];
 
     let styles: MediaOption[] = [];
 
@@ -563,7 +573,7 @@ export const configureImageGeneration = (params?: CreateImageDocumentParams) => 
         availableResolutions: RESOLUTIONS,
         availableStyles: styles,
         availableShotSizes: SHOT_SIZES,
-        availableModels: IMAGE_MODELS,
+        availableModels: availableModels,
         defaultSettings: {
           resolution: defaultResolution,
           style: defaultStyle,
@@ -664,9 +674,9 @@ export const configureImageGeneration = (params?: CreateImageDocumentParams) => 
     
     let selectedModel = defaultModel;
     if (model) {
-      const foundModelId = findModel(model);
+      const foundModelId = findModel(model, availableModels);
       if (foundModelId) {
-        const foundModel = IMAGE_MODELS.find(m => m.id === foundModelId);
+        const foundModel = availableModels.find(m => m.id === foundModelId);
         if (foundModel) {
           selectedModel = foundModel;
           console.log('🔧 ✅ MODEL MATCHED:', model, '->', selectedModel.label);

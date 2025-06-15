@@ -1,4 +1,5 @@
-import type { VideoModel, MediaOption, MediaResolution } from "@/lib/types/media-settings";
+import type { VideoModel } from '@/lib/config/superduperai';
+import type { MediaOption, MediaResolution } from '@/lib/types/media-settings';
 import { 
   getSuperduperAIConfig, 
   createAuthHeaders, 

@@ -1,6 +1,7 @@
 import { getAvailableVideoModels, } from './superduperai';
 import videoModelsConfig from './video-models.json';
-import type { VideoModel } from '@/lib/types/media-settings';
+import { MediaResolution } from '@/lib/types/media-settings';
+import { VideoModel } from '@/lib/config/superduperai';
 
 /**
  * Enhanced video model with metadata
@@ -51,9 +52,7 @@ export async function getEnhancedVideoModels(): Promise<EnhancedVideoModel[]> {
       }
       
       return {
-        id: apiModel.id,
-        label: metadata?.ui_label || apiModel.name,
-        description: metadata?.ui_description || apiModel.description,
+        ...apiModel,
         category,
         uiLabel: metadata?.ui_label || apiModel.name,
         uiDescription: metadata?.ui_description || apiModel.description,
@@ -72,8 +71,17 @@ export async function getEnhancedVideoModels(): Promise<EnhancedVideoModel[]> {
     // Fallback to basic LTX model
     return [{
       id: 'comfyui/ltx',
+      name: 'LTX Video',
       label: 'LTX Video',
       description: 'Budget-friendly image-to-video generation',
+      maxDuration: 30,
+      maxResolution: { width: 1216, height: 704 },
+      supportedFrameRates: [30],
+      pricePerSecond: 0.4,
+      workflowPath: 'LTX/default.json',
+      supportedAspectRatios: ['16:9', '1:1', '9:16'],
+      supportedQualities: ['hd'],
+      type: 'image_to_video',
       category: 'image_to_video',
       uiLabel: 'LTX Video',
       uiDescription: 'Budget-friendly image-to-video generation',

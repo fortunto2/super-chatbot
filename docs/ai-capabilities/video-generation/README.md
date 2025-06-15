@@ -20,6 +20,8 @@ The video generation system supports multiple AI models and provides real-time p
 
 ### Troubleshooting
 
+- **[Model Type Classification](./model-type-classification.md)** - Fix for incorrect text-to-video vs image-to-video model detection
+- **[Single Model Issue](./single-model-issue.md)** - Troubleshooting guide for when only one video model appears in settings
 - **[WebSocket Troubleshooting](./websocket-troubleshooting.md)** - Debugging guide for real-time update issues
 
 ## Quick Start

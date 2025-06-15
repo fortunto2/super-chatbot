@@ -86,4 +86,11 @@ cat docs/ai-capabilities/image-generation/README.md
 - Root README.md - Project overview and setup
 - Implementation plans archive in `development/implementation-plans/`
 
-This structured approach ensures AI agents can quickly navigate to relevant information without getting lost in documentation chaos. 
+This structured approach ensures AI agents can quickly navigate to relevant information without getting lost in documentation chaos.
+
+## 🔧 Development
+
+- [AI-First Development Methodology](./development/ai-development-methodology.md) - Core development approach for AI agents
+- [Development Workflow](./development/development-workflow.md) - Step-by-step development process
+- [Code Quality Standards](./development/code-quality-standards.md) - Standards for maintainable code
+- [Type Unification](./development/type-unification.md) - VideoModel type consolidation process 

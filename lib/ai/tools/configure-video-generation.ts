@@ -2,21 +2,17 @@ import { tool } from 'ai';
 import { z } from 'zod';
 import type { 
   MediaOption, 
-  VideoGenerationConfig,
-  VideoModel 
+  VideoGenerationConfig
 } from '@/lib/types/media-settings';
+import type { VideoModel } from '@/lib/config/superduperai';
 import { getStyles } from '../api/get-styles';
 import { findStyle } from './configure-image-generation';
 import { getAvailableVideoModels } from '@/lib/config/superduperai';
 import { VIDEO_RESOLUTIONS, SHOT_SIZES, VIDEO_FRAME_RATES, DEFAULT_VIDEO_RESOLUTION, DEFAULT_VIDEO_DURATION } from '@/lib/config/video-constants';
 
-// AICODE-NOTE: Convert SuperDuperAI VideoModel to VideoModel for compatibility
-function convertToVideoModel(sdModel: any): VideoModel {
-  return {
-    id: sdModel.id,
-    label: sdModel.name || sdModel.id,
-    description: sdModel.description || `Video generation model - $${sdModel.pricePerSecond}/sec`,
-  };
+// AICODE-NOTE: Now using unified VideoModel type from superduperai.ts
+function convertToVideoModel(sdModel: VideoModel): VideoModel {
+  return sdModel; // No conversion needed, already in correct format
 }
 
 interface CreateVideoDocumentParams {
@@ -198,21 +194,23 @@ export const configureVideoGeneration = (params?: CreateVideoDocumentParams) => 
         availableModels.find(m => m.label === model || m.id === model || (m as any).apiName === model) || defaultModel : 
         defaultModel;
 
-      // AICODE-NOTE: Check if selected model is image-to-video and requires source image
-      const isImageToVideoModel = selectedModel.id.includes('veo') || 
-                                 selectedModel.id.includes('kling') ||
-                                 selectedModel.id.includes('image-to-video') ||
-                                 selectedModel.id.includes('img2vid');
+      // AICODE-NOTE: Check if selected model is image-to-video based on actual type field from API
+      const isImageToVideoModel = selectedModel.type === 'image_to_video';
+      
+      console.log('🔧 🎯 Model type check:', {
+        modelId: selectedModel.id,
+        modelName: selectedModel.label,
+        apiType: selectedModel.type,
+        isImageToVideo: isImageToVideoModel
+      });
       
       // AICODE-NOTE: Validate source image for image-to-video models
       if (isImageToVideoModel && !sourceImageId && !sourceImageUrl) {
         return {
-          error: `The selected model "${selectedModel.label}" is an image-to-video model and requires a source image. Please provide either sourceImageId or sourceImageUrl parameter, or select a text-to-video model like LTX instead.`,
+          error: `The selected model "${selectedModel.label}" is an image-to-video model and requires a source image. Please provide either sourceImageId or sourceImageUrl parameter, or select a text-to-video model.`,
           suggestion: "You can use a recently generated image from this chat as the source, or upload a new image first.",
           availableTextToVideoModels: availableModels.filter(m => 
-            !m.id.includes('veo') && 
-            !m.id.includes('kling') && 
-            !m.id.includes('image-to-video')
+            m.type === 'text_to_video' || m.type !== 'image_to_video'
           ).map(m => `${m.label} (${m.id})`)
         };
       }

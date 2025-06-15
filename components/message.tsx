@@ -205,7 +205,7 @@ const PurePreviewMessage = ({
                       <div key={toolCallId} className="p-4">
                         <MediaSettings
                           config={config}
-                          onConfirm={(settings: ImageSettings) => {
+                          onConfirm={(settings: ImageSettings | VideoSettingsType) => {
                             console.log('Image settings selected:', settings);
                           }}
                           selectedChatModel={selectedChatModel}

@@ -1,17 +1,14 @@
 import { createDocumentHandler } from '@/lib/artifacts/server';
 import { generateVideo } from '@/lib/ai/api/generate-video';
 import { getStyles } from '@/lib/ai/api/get-styles';
-import type { VideoModel, MediaOption, } from '@/lib/types/media-settings';
+import type { MediaOption } from '@/lib/types/media-settings';
+import type { VideoModel } from '@/lib/config/superduperai';
 import { getAvailableVideoModels } from '@/lib/config/superduperai';
 import { VIDEO_RESOLUTIONS, SHOT_SIZES, VIDEO_FRAME_RATES, DEFAULT_VIDEO_RESOLUTION, DEFAULT_VIDEO_DURATION } from '@/lib/config/video-constants';
 
-// AICODE-NOTE: Convert SuperDuperAI VideoModel to VideoModel for compatibility
-function convertToVideoModel(sdModel: any): VideoModel {
-  return {
-    id: sdModel.id,
-    label: sdModel.name || sdModel.id,
-    description: sdModel.description || `Video generation model - $${sdModel.pricePerSecond}/sec`,
-  };
+// AICODE-NOTE: Now using unified VideoModel type from superduperai.ts
+function convertToVideoModel(sdModel: VideoModel): VideoModel {
+  return sdModel; // No conversion needed, already in correct format
 }
 
 export const videoDocumentHandler = createDocumentHandler<'video'>({
@@ -49,8 +46,17 @@ export const videoDocumentHandler = createDocumentHandler<'video'>({
         // Fallback to default LTX model
         availableModels = [{
           id: 'comfyui/ltx',
+          name: 'LTX Video',
           label: 'LTX Video',
-          description: 'LTX Video - High quality video generation'
+          description: 'LTX Video - High quality video generation',
+          maxDuration: 30,
+          maxResolution: { width: 1216, height: 704 },
+          supportedFrameRates: [30],
+          pricePerSecond: 0.4,
+          workflowPath: 'LTX/default.json',
+          supportedAspectRatios: ['16:9', '1:1', '9:16'],
+          supportedQualities: ['hd'],
+          type: 'image_to_video',
         }];
       }
 
@@ -171,8 +177,17 @@ export const videoDocumentHandler = createDocumentHandler<'video'>({
         console.error('🎬 ❌ Failed to load dynamic models for update:', error);
         availableModels = [{
           id: 'comfyui/ltx',
+          name: 'LTX Video',
           label: 'LTX Video',
-          description: 'LTX Video - High quality video generation'
+          description: 'LTX Video - High quality video generation',
+          maxDuration: 30,
+          maxResolution: { width: 1216, height: 704 },
+          supportedFrameRates: [30],
+          pricePerSecond: 0.4,
+          workflowPath: 'LTX/default.json',
+          supportedAspectRatios: ['16:9', '1:1', '9:16'],
+          supportedQualities: ['hd'],
+          type: 'image_to_video',
         }];
       }
 

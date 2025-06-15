@@ -1,7 +1,9 @@
 import { createDocumentHandler } from '@/lib/artifacts/server';
 import { generateImage } from '@/lib/ai/api/generate-image';
 import { getStyles } from '@/lib/ai/api/get-styles';
-import type { ImageModel, MediaOption, MediaResolution } from '@/lib/types/media-settings';
+import type { MediaOption, MediaResolution } from '@/lib/types/media-settings';
+import type { ImageModel } from '@/lib/config/superduperai';
+import { getAvailableImageModels } from '@/lib/config/superduperai';
 
 // Import the same constants as in configure-image-generation
 const RESOLUTIONS: MediaResolution[] = [
@@ -28,10 +30,7 @@ const SHOT_SIZES: MediaOption[] = [
   { id: 'detail-shot', label: 'Detail Shot', description: 'Focuses on a specific object or part of a subject' },
 ];
 
-const IMAGE_MODELS: ImageModel[] = [
-  { id: 'flux-dev', label: 'Flux Dev', description: 'Previous generation flux model' },
-  { id: 'flux-pro', label: 'Flux Pro Ultra 1.1', description: 'Latest flux model with high quality and creativity' },
-];
+// AICODE-NOTE: IMAGE_MODELS now loaded dynamically from API via getAvailableImageModels()
 
 export const imageDocumentHandler = createDocumentHandler<'image'>({
   kind: 'image',
@@ -53,6 +52,17 @@ export const imageDocumentHandler = createDocumentHandler<'image'>({
       } = params;
 
      
+
+      // AICODE-NOTE: Load dynamic models from SuperDuperAI API
+      let availableModels: ImageModel[] = [];
+      try {
+        availableModels = await getAvailableImageModels();
+        console.log('🎨 ✅ Loaded dynamic image models:', availableModels.map(m => m.id));
+      } catch (error) {
+        console.error('🎨 ❌ Failed to load dynamic models:', error);
+        // Will use fallback models from getAvailableImageModels()
+        availableModels = await getAvailableImageModels();
+      }
 
       // Get available styles from API
       let availableStyles: MediaOption[] = [];
@@ -101,7 +111,7 @@ export const imageDocumentHandler = createDocumentHandler<'image'>({
           availableResolutions: RESOLUTIONS,
           availableStyles,
           availableShotSizes: SHOT_SIZES,
-          availableModels: IMAGE_MODELS,
+          availableModels: availableModels,
         },
         timestamp: Date.now(),
         message: 'Image generation started, connecting to WebSocket...'
@@ -140,6 +150,15 @@ export const imageDocumentHandler = createDocumentHandler<'image'>({
         shotSize = { id: 'long-shot', label: 'Long Shot' }
       } = params;
 
+      // AICODE-NOTE: Load dynamic models for update as well
+      let availableModels: ImageModel[] = [];
+      try {
+        availableModels = await getAvailableImageModels();
+      } catch (error) {
+        console.error('🎨 ❌ Failed to load dynamic models for update:', error);
+        availableModels = await getAvailableImageModels();
+      }
+
       // Start new image generation
       const result = await generateImage(prompt, model, resolution, style, shotSize, chatId);
 
@@ -166,7 +185,7 @@ export const imageDocumentHandler = createDocumentHandler<'image'>({
           availableResolutions: RESOLUTIONS,
           availableStyles: [],
           availableShotSizes: SHOT_SIZES,
-          availableModels: IMAGE_MODELS,
+          availableModels: availableModels,
         },
         timestamp: Date.now(),
         message: 'Updated image generation started, connecting to WebSocket...'
