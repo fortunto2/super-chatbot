@@ -40,7 +40,7 @@ export const videoDocumentHandler = createDocumentHandler<'video'>({
       try {
         const superDuperModels = await getAvailableVideoModels();
         availableModels = superDuperModels.map(convertToVideoModel);
-        console.log('🎬 ✅ Loaded dynamic video models:', availableModels.map(m => m.id));
+        console.log('🎬 ✅ Loaded dynamic video models:', availableModels.map(m => m.name));
       } catch (error) {
         console.error('🎬 ❌ Failed to load dynamic models:', error);
         // Fallback to default LTX model
@@ -56,8 +56,8 @@ export const videoDocumentHandler = createDocumentHandler<'video'>({
           workflowPath: 'LTX/default.json',
           supportedAspectRatios: ['16:9', '1:1', '9:16'],
           supportedQualities: ['hd'],
-          type: 'image_to_video',
-        }];
+          type: 'image_to_video' as any,
+        } as VideoModel];
       }
 
       // Get available styles from API
@@ -187,7 +187,7 @@ export const videoDocumentHandler = createDocumentHandler<'video'>({
           workflowPath: 'LTX/default.json',
           supportedAspectRatios: ['16:9', '1:1', '9:16'],
           supportedQualities: ['hd'],
-          type: 'image_to_video',
+          type: 'image_to_video' as any,
         }];
       }
 
