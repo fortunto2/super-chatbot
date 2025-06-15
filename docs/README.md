@@ -91,6 +91,7 @@ This structured approach ensures AI agents can quickly navigate to relevant info
 ## 🔧 Development
 
 - [AI-First Development Methodology](./development/ai-development-methodology.md) - Core development approach for AI agents
+- [OpenAPI Migration Guide](./development/openapi-migration-guide.md) - Dynamic model discovery migration
 - [Development Workflow](./development/development-workflow.md) - Step-by-step development process
 - [Code Quality Standards](./development/code-quality-standards.md) - Standards for maintainable code
 - [Type Unification](./development/type-unification.md) - VideoModel type consolidation process 

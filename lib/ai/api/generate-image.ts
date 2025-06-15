@@ -49,7 +49,7 @@ function createImagePayload(
   const styleId = validateStyleForAPI(style);
   
   console.log(`🎯 Creating image payload:`, {
-    model: model.id,
+    model: model.name,
     resolution: `${resolution.width}x${resolution.height}`,
     style: styleId,
     shotSize: shotSize.id,
@@ -68,7 +68,7 @@ function createImagePayload(
       steps: 20,
       shot_size: shotSize.label,
       seed: actualSeed,
-      generation_config_name: model.id,
+      generation_config_name: model.name, // Use model.name instead of model.id
       batch_size: 1,
       style_name: styleId,
       references: [],
@@ -95,7 +95,7 @@ export async function generateImage(
     
     console.log(`🚀 Starting image generation:`, {
       prompt: `${prompt.substring(0, 100)}...`,
-      model: model.label,
+      model: model.label || model.name,
       resolution: `${resolution.width}x${resolution.height}`,
       style: style.label,
       shotSize: shotSize.label,
@@ -106,7 +106,9 @@ export async function generateImage(
     // AICODE-NOTE: Skip project creation - let backend create new project automatically
     console.log(`🏗️ Generating image for chat: ${chatId} (new project will be auto-created)`);
 
-    const payload = createImagePayload(prompt, model, resolution, style, shotSize, null, seed);
+    // Add randomness to prevent 409 conflicts
+    const randomizedSeed = seed || Math.floor(Math.random() * 1000000000000);
+    const payload = createImagePayload(prompt, model, resolution, style, shotSize, null, randomizedSeed);
     
     console.log(`📦 Image generation payload:`, JSON.stringify(payload, null, 2));
 

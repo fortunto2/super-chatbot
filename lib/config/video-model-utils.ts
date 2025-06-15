@@ -1,7 +1,6 @@
 import { getAvailableVideoModels, } from './superduperai';
 import videoModelsConfig from './video-models.json';
-import { MediaResolution } from '@/lib/types/media-settings';
-import { VideoModel } from '@/lib/config/superduperai';
+import type { VideoModel } from '@/lib/config/superduperai';
 
 /**
  * Enhanced video model with metadata

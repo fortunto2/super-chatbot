@@ -57,7 +57,7 @@ export const imageDocumentHandler = createDocumentHandler<'image'>({
       let availableModels: ImageModel[] = [];
       try {
         availableModels = await getAvailableImageModels();
-        console.log('🎨 ✅ Loaded dynamic image models:', availableModels.map(m => m.id));
+        console.log('🎨 ✅ Loaded dynamic image models:', availableModels.map(m => `${m.label || m.name} (${m.name})`));
       } catch (error) {
         console.error('🎨 ❌ Failed to load dynamic models:', error);
         // Will use fallback models from getAvailableImageModels()

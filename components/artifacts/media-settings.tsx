@@ -1,7 +1,6 @@
 'use client';
 
-import React from 'react';
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -19,12 +18,10 @@ import type {
   VideoSettings,
   MediaResolution,
   MediaOption,
+  AdaptedModel,
 } from '@/lib/types/media-settings';
-import type { VideoModel, ImageModel } from '@/lib/config/superduperai';
 import { generateUUID } from '@/lib/utils';
 import type { UseChatHelpers } from '@ai-sdk/react';
-import { cn } from '@/lib/utils';
-import { ImageIcon, VideoIcon, Wand2 } from 'lucide-react';
 
 interface MediaSettingsProps {
   config: ImageGenerationConfig | VideoGenerationConfig;
@@ -54,7 +51,7 @@ export function MediaSettings({
   const [selectedShotSize, setSelectedShotSize] = useState<MediaOption>(
     config.defaultSettings.shotSize
   );
-  const [selectedModel, setSelectedModel] = useState<ImageModel | VideoModel>(
+  const [selectedModel, setSelectedModel] = useState<AdaptedModel>(
     config.defaultSettings.model
   );
   const [seed, setSeed] = useState<string>('');

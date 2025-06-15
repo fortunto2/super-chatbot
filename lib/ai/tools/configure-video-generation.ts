@@ -7,7 +7,7 @@ import type {
 import type { VideoModel } from '@/lib/config/superduperai';
 import { getStyles } from '../api/get-styles';
 import { findStyle } from './configure-image-generation';
-import { getAvailableVideoModels } from '@/lib/config/superduperai';
+import { createVideoMediaSettings } from '@/lib/config/media-settings-factory';
 import { VIDEO_RESOLUTIONS, SHOT_SIZES, VIDEO_FRAME_RATES, DEFAULT_VIDEO_RESOLUTION, DEFAULT_VIDEO_DURATION } from '@/lib/config/video-constants';
 
 // AICODE-NOTE: Now using unified VideoModel type from superduperai.ts
@@ -42,10 +42,10 @@ export const configureVideoGeneration = (params?: CreateVideoDocumentParams) => 
     const defaultStyle: MediaOption = {id: "flux_steampunk", label: "Steampunk", description: "Steampunk style"};
     const defaultShotSize = SHOT_SIZES.find(s => s.id === 'long-shot')!;
     
-    // AICODE-NOTE: Load models from our new dynamic system
-    console.log('🎬 Loading video models from SuperDuperAI API...');
-    const superDuperModels = await getAvailableVideoModels();
-    const availableModels = superDuperModels.map(convertToVideoModel);
+    // AICODE-NOTE: Load models using new factory pattern
+    console.log('🎬 Loading video models from SuperDuperAI API via factory...');
+    const videoSettings = await createVideoMediaSettings();
+    const availableModels = videoSettings.availableModels;
     
     console.log('🎬 ✅ Loaded video models:', availableModels.map(m => m.id));
     

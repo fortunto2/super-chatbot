@@ -35,8 +35,8 @@ export const getStyles = async () => {
 
     try {
       const config = getSuperduperAIConfig();
-      const token = config.apiToken;
-      const url = config.baseURL;
+      const token = config.token;
+      const url = config.url;
       
       console.log('🎨 Fetching styles from API...');
       const response = await fetch(`${url}/api/v1/style?order_by=name&order=descendent&limit=100`, {

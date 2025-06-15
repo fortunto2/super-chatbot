@@ -1,5 +1,15 @@
-// Base types for media settings system
-import type { VideoModel, ImageModel } from '@/lib/config/superduperai';
+
+import type { IGenerationConfigRead } from '@/lib/api/models/IGenerationConfigRead';
+
+// Extended model type with UI-friendly fields
+export interface AdaptedModel extends IGenerationConfigRead {
+  id: string;
+  label: string;
+  description: string;
+  value: string;
+  workflowPath: string;
+  price: number;
+}
 
 export interface MediaOption {
   id: string;
@@ -20,7 +30,7 @@ export interface ImageSettings {
   resolution: MediaResolution;
   style: MediaOption;
   shotSize: MediaOption;
-  model: ImageModel;
+  model: AdaptedModel;
   seed?: number;
 }
 
@@ -29,7 +39,7 @@ export interface ImageGenerationConfig {
   availableResolutions: MediaResolution[];
   availableStyles: MediaOption[];
   availableShotSizes: MediaOption[];
-  availableModels: ImageModel[];
+  availableModels: AdaptedModel[];
   defaultSettings: ImageSettings;
 }
 
@@ -38,7 +48,7 @@ export interface VideoSettings {
   resolution: MediaResolution;
   style: MediaOption;
   shotSize: MediaOption;
-  model: VideoModel;
+  model: AdaptedModel;
   frameRate: number;
   duration: number;
   negativePrompt?: string;
@@ -50,7 +60,7 @@ export interface VideoGenerationConfig {
   availableResolutions: MediaResolution[];
   availableStyles: MediaOption[];
   availableShotSizes: MediaOption[];
-  availableModels: VideoModel[];
+  availableModels: AdaptedModel[];
   availableFrameRates: { value: number; label: string }[];
   defaultSettings: VideoSettings;
 }
