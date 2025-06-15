@@ -3,6 +3,7 @@
 import { useState, useCallback, useRef } from 'react';
 import { toast } from 'sonner';
 import { generateImage } from '@/lib/ai/api/generate-image';
+import { getImageGenerationConfig } from '@/lib/config/media-settings-factory';
 import type { ImageGenerationFormData } from '../components/image-generator-form';
 import type { GenerationStatus } from '../components/generation-progress';
 import type { MediaOption, MediaResolution } from '@/lib/types/media-settings';
@@ -207,16 +208,31 @@ export function useImageGenerator(): UseImageGeneratorReturn {
 
       console.log('🎨 Starting image generation with data:', formData);
 
-      // AICODE-NOTE: Call existing SuperDuperAI API
-      const result = await generateImage({
-        prompt: formData.prompt,
-        style: formData.style || 'realistic',
-        resolution: formData.resolution || '1024x1024',
-        shotSize: formData.shotSize || 'medium-shot',
-        model: formData.model || 'comfyui/flux',
-        seed: formData.seed,
-        chatId: 'image-generator-tool', // Use tool identifier as chatId
-      });
+      // AICODE-NOTE: Load configuration to get proper objects for API call
+      const config = await getImageGenerationConfig();
+      
+      // Find the selected model
+      const selectedModel = config.availableModels.find(m => m.name === formData.model) || config.defaultSettings.model;
+      
+      // Find the selected resolution
+      const selectedResolution = config.availableResolutions.find(r => r.label === formData.resolution) || config.defaultSettings.resolution;
+      
+      // Find the selected style
+      const selectedStyle = config.availableStyles.find(s => s.id === formData.style) || config.defaultSettings.style;
+      
+      // Find the selected shot size
+      const selectedShotSize = config.availableShotSizes.find(s => s.id === formData.shotSize) || config.defaultSettings.shotSize;
+
+      // AICODE-NOTE: Call existing SuperDuperAI API with proper parameters
+      const result = await generateImage(
+        formData.prompt,
+        selectedModel,
+        selectedResolution,
+        selectedStyle,
+        selectedShotSize,
+        'image-generator-tool', // Use tool identifier as chatId
+        formData.seed
+      );
 
       console.log('🎨 ✅ Generation API response:', result);
 

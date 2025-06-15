@@ -1,5 +1,5 @@
 
-import { getSuperduperAIConfig, createAPIURL } from '@/lib/config/superduperai';
+import { getSuperduperAIConfig, createAPIURL, createAuthHeaders } from '@/lib/config/superduperai';
 
 export interface ImageGenerationResult {
     success: boolean;
@@ -12,14 +12,11 @@ export const getProject = async (
 ): Promise<ImageGenerationResult> => {
     try {
       const config = getSuperduperAIConfig();
-      const token = config.apiToken;
-  const url = createAPIURL('/api/v1/project', config);
-  const response = await fetch(url, {
+      const url = createAPIURL('/api/v1/project');
+      const headers = createAuthHeaders();
+      const response = await fetch(url, {
         method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          'Authorization': `Bearer ${token}`
-        },
+        headers,
         body: JSON.stringify({
           projectId: chatId,
         }),

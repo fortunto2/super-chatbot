@@ -17,8 +17,7 @@ import { Loader2, Video } from 'lucide-react';
 import { toast } from 'sonner';
 import { z } from 'zod';
 import { getVideoGenerationConfig } from '@/lib/config/media-settings-factory';
-import type { MediaOption, MediaResolution } from '@/lib/types/media-settings';
-import type { VideoModel } from '@/lib/config/superduperai';
+import type { MediaOption, MediaResolution, AdaptedModel } from '@/lib/types/media-settings';
 
 // AICODE-NOTE: Form validation schema for video generation parameters
 const videoGenerationSchema = z.object({
@@ -61,7 +60,7 @@ export function VideoGeneratorForm({
 
   // AICODE-NOTE: Configuration state loaded from SuperDuperAI API
   const [config, setConfig] = useState<{
-    availableModels: VideoModel[];
+    availableModels: AdaptedModel[];
     availableResolutions: MediaResolution[];
     availableStyles: MediaOption[];
     availableShotSizes: MediaOption[];

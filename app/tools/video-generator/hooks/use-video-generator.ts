@@ -3,6 +3,7 @@
 import { useState, useCallback, useRef } from 'react';
 import { toast } from 'sonner';
 import { generateVideo } from '@/lib/ai/api/generate-video';
+import { getVideoGenerationConfig } from '@/lib/config/media-settings-factory';
 import type { VideoGenerationFormData } from '../components/video-generator-form';
 import type { GenerationStatus } from '../../image-generator/components/generation-progress';
 
@@ -210,19 +211,33 @@ export function useVideoGenerator(): UseVideoGeneratorReturn {
 
       console.log('🎬 Starting video generation with data:', formData);
 
-      // AICODE-NOTE: Call existing SuperDuperAI video API
-      const result = await generateVideo({
-        prompt: formData.prompt,
-        negativePrompt: formData.negativePrompt || '',
-        style: formData.style || 'realistic',
-        resolution: formData.resolution || '1344x768',
-        shotSize: formData.shotSize || 'medium-shot',
-        model: formData.model || 'ltx',
-        frameRate: formData.frameRate || 30,
-        duration: formData.duration || 5,
-        seed: formData.seed,
-        chatId: 'video-generator-tool', // Use tool identifier as chatId
-      });
+      // AICODE-NOTE: Load configuration to get proper objects for API call
+      const config = await getVideoGenerationConfig();
+      
+      // Find the selected model
+      const selectedModel = config.availableModels.find(m => m.name === formData.model) || config.defaultSettings.model;
+      
+      // Find the selected resolution
+      const selectedResolution = config.availableResolutions.find(r => r.label === formData.resolution) || config.defaultSettings.resolution;
+      
+      // Find the selected style
+      const selectedStyle = config.availableStyles.find(s => s.id === formData.style) || config.defaultSettings.style;
+      
+      // Find the selected shot size
+      const selectedShotSize = config.availableShotSizes.find(s => s.id === formData.shotSize) || config.defaultSettings.shotSize;
+
+      // AICODE-NOTE: Call existing SuperDuperAI video API with proper parameters
+      const result = await generateVideo(
+        selectedStyle,
+        selectedResolution,
+        formData.prompt,
+        selectedModel,
+        selectedShotSize,
+        'video-generator-tool', // Use tool identifier as chatId
+        formData.negativePrompt,
+        formData.frameRate || 30,
+        formData.duration || 5
+      );
 
       console.log('🎬 ✅ Generation API response:', result);
 

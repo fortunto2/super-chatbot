@@ -210,7 +210,7 @@ export const generateImageWithProject = async (
 
   console.log(`🎨 Starting image generation with project:`, {
     prompt: `${prompt.substring(0, 50)}...`,
-    model: model.id,
+    model: model.name,
     style: styleId,
     resolution: `${resolution.width}x${resolution.height}`,
     shotSize: shotSize.label,
@@ -238,7 +238,7 @@ export const generateImageWithProject = async (
         steps: 20,
         shot_size: shotSize.label,
         seed: actualSeed,
-        generation_config_name: model.id,
+        generation_config_name: model.name,
         batch_size: 1,
         style_name: styleId,
         references: [],

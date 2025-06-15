@@ -41,8 +41,7 @@ export default function VideoGeneratorPage() {
           {/* Progress Indicator */}
           {(isGenerating || generationStatus.status !== 'idle') && (
             <GenerationProgress
-              status={generationStatus}
-              onClear={clearCurrentGeneration}
+              generationStatus={generationStatus}
             />
           )}
         </div>

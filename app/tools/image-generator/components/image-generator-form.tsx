@@ -17,8 +17,7 @@ import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { z } from 'zod';
 import { getImageGenerationConfig } from '@/lib/config/media-settings-factory';
-import type { MediaOption, MediaResolution } from '@/lib/types/media-settings';
-import type { ImageModel } from '@/lib/config/superduperai';
+import type { MediaOption, MediaResolution, AdaptedModel } from '@/lib/types/media-settings';
 
 // AICODE-NOTE: Form validation schema for image generation parameters
 const imageGenerationSchema = z.object({
@@ -55,7 +54,7 @@ export function ImageGeneratorForm({
 
   // AICODE-NOTE: Configuration state loaded from SuperDuperAI API
   const [config, setConfig] = useState<{
-    availableModels: ImageModel[];
+    availableModels: AdaptedModel[];
     availableResolutions: MediaResolution[];
     availableStyles: MediaOption[];
     availableShotSizes: MediaOption[];

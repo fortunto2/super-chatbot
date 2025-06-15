@@ -45,19 +45,19 @@ export const generateVideo = async (
       console.log('🎬 Model requested:', model);
       
       // Use our new dynamic model discovery system
-      let actualModelName = model.id;
+      let actualModelName = model.name;
       
       // Try to find the model in our dynamic system
-      const dynamicModel = await findVideoModel(model.id);
+      const dynamicModel = await findVideoModel(model.name);
       if (dynamicModel) {
-        actualModelName = dynamicModel.id;
+        actualModelName = dynamicModel.name;
         console.log('🎬 ✅ Found dynamic model:', actualModelName, 'with name:', dynamicModel.name);
       } else {
-        console.log('🎬 ⚠️ Model not found in dynamic system, using provided ID:', model.id);
+        console.log('🎬 ⚠️ Model not found in dynamic system, using provided name:', model.name);
         
         // Log available models for debugging
         const availableModels = await getAvailableVideoModels();
-        console.log('🎬 Available models:', availableModels.map(m => `${m.id} (${m.name})`));
+        console.log('🎬 Available models:', availableModels.map(m => `${m.name} (${m.name})`));
       }
       
       console.log('🎬 Final model ID for API:', actualModelName);
@@ -98,7 +98,7 @@ export const generateVideo = async (
               label: dynamicModel?.name || model.label,
               params: {
                 vip_required: true,
-                price_per_second: dynamicModel?.pricePerSecond || 2,
+                price_per_second: dynamicModel?.params?.price || 2,
                 arguments_template: `{"prompt": {{config.prompt|tojson}}, "image_url": "{{reference.source}}", "aspect_ratio": "{{config.aspect_ratio}}", "duration": {{config.duration|int}}, "fps": ${frameRate}, "enhance_prompt": true, "samples": {{config.batch_size|default(1)}}, "seed": {{config.seed|int}}, "negative_prompt": {{config.negative_prompt|tojson}}}`,
                 available_durations: [5, 6, 7, 8]
               },
@@ -161,7 +161,7 @@ export const generateVideo = async (
           return {
             success: false,
             requestId,
-            error: `Model "${actualModelName}" not found. Available models: ${(await getAvailableVideoModels()).map(m => m.id).join(', ')}`,
+            error: `Model "${actualModelName}" not found. Available models: ${(await getAvailableVideoModels()).map(m => m.name).join(', ')}`,
           };
         }
         
