@@ -363,26 +363,37 @@ async function generateVideo(params: VideoGenerationParams) {
 }
 ```
 
-### WebSocket Real-time Updates Pattern
-AI agents should implement WebSocket for real-time generation progress:
+### SSE Real-time Updates Pattern (Updated: June 15, 2025)
+AI agents should implement Server-Sent Events (SSE) for real-time generation progress:
 ```typescript
-// SuperDuperAI WebSocket integration
-function connectToGenerationUpdates(generationId: string) {
-  const ws = new WebSocket(`wss://dev-editor.superduperai.co/ws`)
+// AICODE-NOTE: SuperDuperAI SSE integration replacing WebSocket
+function connectToGenerationUpdates(projectId: string) {
+  const config = getSuperduperAIConfig()
+  const eventSource = new EventSource(`${config.url}/api/v1/events/project.${projectId}`)
   
-  ws.onmessage = (event) => {
+  eventSource.onopen = () => {
+    console.log('🔌 SSE connected for project:', projectId)
+  }
+  
+  eventSource.onmessage = (event) => {
     const message = JSON.parse(event.data)
     
     if (message.type === 'render_progress') {
       // Update progress in UI
-      updateGenerationProgress(generationId, message.object.progress)
+      updateGenerationProgress(projectId, message.object.progress)
     } else if (message.type === 'render_result') {
       // Generation completed
-      handleGenerationComplete(generationId, message.object)
+      handleGenerationComplete(projectId, message.object)
     }
   }
   
-  return ws
+  // AICODE-NOTE: Browser handles reconnection automatically
+  eventSource.onerror = (error) => {
+    console.error('❌ SSE error:', error)
+    console.log('🔄 Browser will handle SSE reconnection automatically')
+  }
+  
+  return eventSource
 }
 ```
 
@@ -894,4 +905,5 @@ The Super Chatbot project has migrated from manual API integration to auto-gener
 
 This Agents.md guide helps ensure AI agents work effectively with the Super Chatbot codebase while maintaining code quality, security, and performance standards when integrating with SuperDuperAI API. 
 
+**For comprehensive development methodology including implementation planning and persistent memory management, see [AI Development Methodology](./docs/ai-development-methodology.md).** 
 **For comprehensive development methodology including implementation planning and persistent memory management, see [AI Development Methodology](./docs/ai-development-methodology.md).** 

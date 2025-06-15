@@ -4,6 +4,7 @@ import { useState, useCallback, useRef } from 'react';
 import { toast } from 'sonner';
 import { generateVideo } from '@/lib/ai/api/generate-video';
 import { getVideoGenerationConfig } from '@/lib/config/media-settings-factory';
+import { getSuperduperAIConfig } from '@/lib/config/superduperai';
 import type { VideoGenerationFormData } from '../components/video-generator-form';
 import type { GenerationStatus } from '../../image-generator/components/generation-progress';
 
@@ -53,8 +54,8 @@ export function useVideoGenerator(): UseVideoGeneratorReturn {
   const [currentGeneration, setCurrentGeneration] = useState<GeneratedVideo | null>(null);
   const [generatedVideos, setGeneratedVideos] = useState<GeneratedVideo[]>([]);
   
-  // AICODE-NOTE: Refs for WebSocket and polling cleanup
-  const wsRef = useRef<WebSocket | null>(null);
+  // AICODE-NOTE: Refs for SSE connection and polling cleanup
+  const wsRef = useRef<EventSource | null>(null);
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
 
   const isGenerating = generationStatus.status === 'pending' || generationStatus.status === 'processing';
@@ -71,22 +72,23 @@ export function useVideoGenerator(): UseVideoGeneratorReturn {
     }
   }, []);
 
-  // AICODE-NOTE: WebSocket connection for real-time updates
-  const connectWebSocket = useCallback((projectId: string) => {
-    const wsUrl = `wss://dev-editor.superduperai.co/api/v1/ws/project.${projectId}`;
+  // AICODE-NOTE: SSE connection for real-time updates (replacing WebSocket)
+  const connectSSE = useCallback((projectId: string) => {
+    const config = getSuperduperAIConfig();
+    const sseUrl = `${config.url}/api/v1/events/project.${projectId}`;
     
     try {
-      const ws = new WebSocket(wsUrl);
-      wsRef.current = ws;
+      const eventSource = new EventSource(sseUrl);
+      wsRef.current = eventSource; // Keep same ref name for compatibility
 
-      ws.onopen = () => {
-        console.log('🔌 WebSocket connected for video project:', projectId);
+      eventSource.onopen = () => {
+        console.log('🔌 SSE connected for video project:', projectId);
       };
 
-      ws.onmessage = (event) => {
+      eventSource.onmessage = (event) => {
         try {
           const message = JSON.parse(event.data);
-          console.log('📡 Video WebSocket message:', message);
+          console.log('📡 Video SSE message:', message);
 
           if (message.type === 'render_progress') {
             setGenerationStatus(prev => ({
@@ -105,26 +107,25 @@ export function useVideoGenerator(): UseVideoGeneratorReturn {
             }
           }
         } catch (error) {
-          console.error('📡 ❌ WebSocket message parse error:', error);
+          console.error('📡 ❌ SSE message parse error:', error);
         }
       };
 
-      ws.onerror = (error) => {
-        console.error('📡 ❌ WebSocket error:', error);
-        // Fallback to polling
-        startPolling(projectId);
-      };
-
-      ws.onclose = () => {
-        console.log('📡 WebSocket closed for video project:', projectId);
-        wsRef.current = null;
+      eventSource.onerror = (error) => {
+        console.error('📡 ❌ SSE error:', error);
+        console.log('🔄 Browser will handle SSE reconnection automatically');
+        // Fallback to polling only if SSE completely fails
+        if (eventSource.readyState === EventSource.CLOSED) {
+          startPolling(projectId);
+        }
       };
 
     } catch (error) {
-      console.error('📡 ❌ WebSocket connection failed:', error);
+      console.error('📡 ❌ SSE connection failed:', error);
       // Fallback to polling
       startPolling(projectId);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // AICODE-NOTE: Polling fallback for generation status
@@ -148,6 +149,7 @@ export function useVideoGenerator(): UseVideoGeneratorReturn {
     };
 
     poll();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // AICODE-NOTE: Handle successful generation
@@ -249,8 +251,8 @@ export function useVideoGenerator(): UseVideoGeneratorReturn {
           requestId: result.requestId,
         }));
 
-        // Start WebSocket connection
-        connectWebSocket(result.projectId);
+        // Start SSE connection
+        connectSSE(result.projectId);
         
       } else {
         throw new Error(result.error || 'Failed to start generation');
@@ -260,7 +262,7 @@ export function useVideoGenerator(): UseVideoGeneratorReturn {
       console.error('🎬 ❌ Generation error:', error);
       handleGenerationError(error instanceof Error ? error.message : 'Unknown error');
     }
-  }, [isGenerating, connectWebSocket, handleGenerationError]);
+  }, [isGenerating, connectSSE, handleGenerationError]);
 
   // AICODE-NOTE: Clear current generation
   const clearCurrentGeneration = useCallback(() => {

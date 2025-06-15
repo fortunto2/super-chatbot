@@ -25,15 +25,50 @@ const modelCache = new Map<string, { data: IGenerationConfigRead[]; timestamp: n
 const CACHE_DURATION = 60 * 60 * 1000; // 1 hour
 
 export function getSuperduperAIConfig(): SuperduperAIConfig {
-  const url = process.env.SUPERDUPERAI_URL || 'https://dev-editor.superduperai.co';
-  const token = process.env.SUPERDUPERAI_TOKEN || process.env.SUPERDUPERAI_API_KEY || '';
-  const wsURL = url.replace('https://', 'wss://').replace('http://', 'ws://');
+  // For server-side usage
+  if (typeof window === 'undefined') {
+    const url = process.env.SUPERDUPERAI_URL || 'https://dev-editor.superduperai.co';
+    const token = process.env.SUPERDUPERAI_TOKEN || process.env.SUPERDUPERAI_API_KEY || '';
+    const wsURL = url.replace('https://', 'wss://').replace('http://', 'ws://');
 
-  if (!token) {
-    throw new Error('SUPERDUPERAI_TOKEN or SUPERDUPERAI_API_KEY environment variable is required');
+    if (!token) {
+      throw new Error('SUPERDUPERAI_TOKEN or SUPERDUPERAI_API_KEY environment variable is required');
+    }
+
+    return { url, token, wsURL };
   }
 
-  return { url, token, wsURL };
+  // For client-side usage - return default values
+  // Token should be handled by API routes, not exposed to client
+  const url = 'https://dev-editor.superduperai.co';
+  const wsURL = url.replace('https://', 'wss://');
+  
+  return { 
+    url, 
+    token: '', // Empty token for client - API routes handle authentication
+    wsURL 
+  };
+}
+
+// Client-side function to get config from API
+export async function getClientSuperduperAIConfig(): Promise<SuperduperAIConfig> {
+  try {
+    const response = await fetch('/api/config/superduperai');
+    if (!response.ok) {
+      throw new Error('Failed to get SuperDuperAI config');
+    }
+    const data = await response.json();
+    
+    return {
+      url: data.url,
+      token: '', // Token is handled server-side
+      wsURL: data.wsURL,
+    };
+  } catch (error) {
+    console.error('Failed to get client config:', error);
+    // Fallback to default
+    return getSuperduperAIConfig();
+  }
 }
 
 export function configureSuperduperAI(): SuperduperAIConfig {
@@ -48,8 +83,15 @@ export function configureSuperduperAI(): SuperduperAIConfig {
 
 /**
  * Get all available generation models from SuperDuperAI API
+ * This function should only be called server-side
  */
 export async function getAvailableModels(): Promise<IGenerationConfigRead[]> {
+  // This function should only run on server-side
+  if (typeof window !== 'undefined') {
+    console.error('getAvailableModels() called on client-side, use API endpoint instead');
+    return [];
+  }
+
   const cacheKey = 'all_models';
   const cached = modelCache.get(cacheKey);
   

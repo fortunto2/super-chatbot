@@ -99,10 +99,10 @@ async function testFullIntegration() {
     });
     
     // Validate expected types
-    const hasTextToImage = imageTypes['text_to_image'] > 0;
-    const hasImageToImage = imageTypes['image_to_image'] > 0;
-    const hasTextToVideo = videoTypes['text_to_video'] > 0;
-    const hasImageToVideo = videoTypes['image_to_video'] > 0;
+    const hasTextToImage = imageTypes.text_to_image > 0;
+    const hasImageToImage = imageTypes.image_to_image > 0;
+    const hasTextToVideo = videoTypes.text_to_video > 0;
+    const hasImageToVideo = videoTypes.image_to_video > 0;
     
     if (!hasTextToImage || !hasTextToVideo) {
       console.error('❌ Missing essential model types');

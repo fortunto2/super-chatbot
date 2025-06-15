@@ -109,6 +109,7 @@ export type { Zoom } from './models/Zoom';
 export { AuthService } from './services/AuthService';
 export { DataService } from './services/DataService';
 export { EntityService } from './services/EntityService';
+export { EventsService } from './services/EventsService';
 export { FileService } from './services/FileService';
 export { GenerationConfigService } from './services/GenerationConfigService';
 export { LoraService } from './services/LoraService';

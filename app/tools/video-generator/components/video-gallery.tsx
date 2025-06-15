@@ -13,7 +13,6 @@ import {
   X,
   Video
 } from 'lucide-react';
-import { toast } from 'sonner';
 import type { GeneratedVideo } from '../hooks/use-video-generator';
 
 interface VideoGalleryProps {

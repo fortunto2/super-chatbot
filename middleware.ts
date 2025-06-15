@@ -25,6 +25,11 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // Allow access to config API endpoints without authentication
+  if (pathname.startsWith('/api/config/')) {
+    return NextResponse.next();
+  }
+
   // Разрешаем доступ к отладочной странице без аутентификации
   if (pathname.startsWith('/debug')) {
     return NextResponse.next();

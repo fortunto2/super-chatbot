@@ -118,6 +118,7 @@ function VideoDisplay({
       <div className="flex items-center gap-2">
         <h3 className="text-lg font-semibold">Generated Video</h3>
         <button
+          type="button"
           onClick={onCopyUrl}
           className="p-1 hover:bg-gray-100 rounded"
           title="Copy video URL"

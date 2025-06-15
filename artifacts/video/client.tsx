@@ -157,6 +157,7 @@ const VideoArtifactWrapper = memo(function VideoArtifactWrapper(props: any) {
       <div className="flex items-center gap-2">
         <h3 className="text-lg font-semibold">Generated Video</h3>
         <button
+          type="button"
           onClick={async () => {
             try {
               await navigator.clipboard.writeText(videoUrl);

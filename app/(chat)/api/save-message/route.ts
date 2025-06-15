@@ -7,7 +7,7 @@ import postgres from 'postgres';
 import { message } from '@/lib/db/schema';
 
 // Initialize database connection
-const client = postgres(process.env.POSTGRES_URL!);
+const client = postgres(process.env.POSTGRES_URL || '');
 const db = drizzle(client);
 
 export async function POST(request: NextRequest) {

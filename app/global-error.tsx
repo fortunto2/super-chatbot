@@ -21,6 +21,7 @@ export default function GlobalError({
               An unexpected error has occurred. We&apos;ve been notified and are working to fix the issue.
             </p>
             <button
+              type="button"
               onClick={() => window.location.reload()}
               className="rounded-md bg-primary px-4 py-2 text-primary-foreground hover:bg-primary/90"
             >

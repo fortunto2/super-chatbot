@@ -45,18 +45,19 @@ export const videoDocumentHandler = createDocumentHandler<'video'>({
         console.error('🎬 ❌ Failed to load dynamic models:', error);
         // Fallback to default LTX model
         availableModels = [{
-          id: 'comfyui/ltx',
-          name: 'LTX Video',
+          name: 'comfyui/ltx',
           label: 'LTX Video',
-          description: 'LTX Video - High quality video generation',
-          maxDuration: 30,
-          maxResolution: { width: 1216, height: 704 },
-          supportedFrameRates: [30],
-          pricePerSecond: 0.4,
-          workflowPath: 'LTX/default.json',
-          supportedAspectRatios: ['16:9', '1:1', '9:16'],
-          supportedQualities: ['hd'],
           type: 'image_to_video' as any,
+          source: 'comfyui' as any,
+          params: {
+            price: 0.4,
+            workflow_path: 'LTX/default.json',
+            max_duration: 30,
+            max_resolution: { width: 1216, height: 704 },
+            supported_frame_rates: [30],
+            supported_aspect_ratios: ['16:9', '1:1', '9:16'],
+            supported_qualities: ['hd']
+          }
         } as VideoModel];
       }
 
@@ -176,19 +177,20 @@ export const videoDocumentHandler = createDocumentHandler<'video'>({
       } catch (error) {
         console.error('🎬 ❌ Failed to load dynamic models for update:', error);
         availableModels = [{
-          id: 'comfyui/ltx',
-          name: 'LTX Video',
+          name: 'comfyui/ltx',
           label: 'LTX Video',
-          description: 'LTX Video - High quality video generation',
-          maxDuration: 30,
-          maxResolution: { width: 1216, height: 704 },
-          supportedFrameRates: [30],
-          pricePerSecond: 0.4,
-          workflowPath: 'LTX/default.json',
-          supportedAspectRatios: ['16:9', '1:1', '9:16'],
-          supportedQualities: ['hd'],
           type: 'image_to_video' as any,
-        }];
+          source: 'comfyui' as any,
+          params: {
+            price: 0.4,
+            workflow_path: 'LTX/default.json',
+            max_duration: 30,
+            max_resolution: { width: 1216, height: 704 },
+            supported_frame_rates: [30],
+            supported_aspect_ratios: ['16:9', '1:1', '9:16'],
+            supported_qualities: ['hd']
+          }
+        } as VideoModel];
       }
 
       // Start new video generation

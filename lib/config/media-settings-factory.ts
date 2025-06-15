@@ -1,4 +1,4 @@
-import { getAvailableVideoModels, getAvailableImageModels, configureSuperduperAI, getDefaultImageModel, getDefaultVideoModel } from './superduperai';
+import { getAvailableVideoModels, getAvailableImageModels, configureSuperduperAI, getDefaultImageModel, } from './superduperai';
 import type { ImageGenerationConfig, VideoGenerationConfig } from '../types/media-settings';
 import type { IGenerationConfigRead } from '../api/models/IGenerationConfigRead';
 
@@ -36,15 +36,46 @@ export async function getImageGenerationConfig(): Promise<ImageGenerationConfig>
     return imageConfigCache;
   }
   
-  // Configure client
-  configureSuperduperAI();
+  // Get models from API endpoint (works on both client and server)
+  let imageModels: IGenerationConfigRead[] = [];
   
-  // Load image models from API
-  const imageModels = await getAvailableImageModels();
+  try {
+    if (typeof window !== 'undefined') {
+      // Client-side: fetch from API endpoint
+      const response = await fetch('/api/config/models');
+      const data = await response.json();
+      imageModels = data.imageModels || [];
+    } else {
+      // Server-side: direct function call
+      configureSuperduperAI();
+      imageModels = await getAvailableImageModels();
+    }
+  } catch (error) {
+    console.error('Failed to load image models:', error);
+    imageModels = [];
+  }
+  
   const adaptedImageModels = imageModels.map(adaptModelForMediaSettings);
   
-  // Get the default model using our priority system
-  const defaultModel = await getDefaultImageModel();
+  // Get the default model using priority system
+  let defaultModel: IGenerationConfigRead | undefined;
+  
+  try {
+    if (typeof window !== 'undefined') {
+      // Client-side: use priority fallback
+      const defaultPriority = ['comfyui/flux', 'comfyui/sdxl', 'flux-dev', 'sdxl'];
+      for (const modelName of defaultPriority) {
+        defaultModel = imageModels.find(m => m.name === modelName);
+        if (defaultModel) break;
+      }
+    } else {
+      // Server-side: use function
+      defaultModel = await getDefaultImageModel();
+    }
+  } catch (error) {
+    console.error('Failed to get default image model:', error);
+  }
+  
   const defaultAdaptedModel = defaultModel 
     ? adaptModelForMediaSettings(defaultModel)
     : adaptedImageModels.find(m => m.name === 'comfyui/flux') ||
@@ -107,11 +138,25 @@ export async function getVideoGenerationConfig(): Promise<VideoGenerationConfig>
     return videoConfigCache;
   }
   
-  // Configure client
-  configureSuperduperAI();
+  // Get models from API endpoint (works on both client and server)
+  let videoModels: IGenerationConfigRead[] = [];
   
-  // Load video models from API
-  const videoModels = await getAvailableVideoModels();
+  try {
+    if (typeof window !== 'undefined') {
+      // Client-side: fetch from API endpoint
+      const response = await fetch('/api/config/models');
+      const data = await response.json();
+      videoModels = data.videoModels || [];
+    } else {
+      // Server-side: direct function call
+      configureSuperduperAI();
+      videoModels = await getAvailableVideoModels();
+    }
+  } catch (error) {
+    console.error('Failed to load video models:', error);
+    videoModels = [];
+  }
+  
   const adaptedVideoModels = videoModels.map(adaptModelForMediaSettings);
   
   // Create configuration

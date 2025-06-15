@@ -329,7 +329,7 @@ export function VideoGeneratorForm({
                 value={formData.duration || ''}
                 onChange={(e) => {
                   const value = e.target.value;
-                  handleInputChange('duration', value ? parseInt(value) : undefined);
+                  handleInputChange('duration', value ? Number.parseInt(value) : undefined);
                 }}
                 disabled={disabled || isGenerating}
               />
@@ -345,7 +345,7 @@ export function VideoGeneratorForm({
               <Label htmlFor="frameRate">Frame Rate (FPS)</Label>
               <Select
                 value={formData.frameRate?.toString()}
-                onValueChange={(value) => handleInputChange('frameRate', parseInt(value))}
+                onValueChange={(value) => handleInputChange('frameRate', Number.parseInt(value))}
                 disabled={disabled || isGenerating}
               >
                 <SelectTrigger>
@@ -370,7 +370,7 @@ export function VideoGeneratorForm({
                 value={formData.seed || ''}
                 onChange={(e) => {
                   const value = e.target.value;
-                  handleInputChange('seed', value ? parseInt(value) : undefined);
+                  handleInputChange('seed', value ? Number.parseInt(value) : undefined);
                 }}
                 disabled={disabled || isGenerating}
               />

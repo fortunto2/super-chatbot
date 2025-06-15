@@ -152,6 +152,7 @@ const ImageArtifactWrapper = memo(function ImageArtifactWrapper(props: any) {
       <div className="flex items-center gap-2">
         <h3 className="text-lg font-semibold">Generated Image</h3>
         <button
+          type="button"
           onClick={async () => {
             try {
               await navigator.clipboard.writeText(imageUrl);
@@ -169,7 +170,7 @@ const ImageArtifactWrapper = memo(function ImageArtifactWrapper(props: any) {
       <div className="relative">
         <img
           src={imageUrl}
-          alt="Generated image"
+          alt="AI-generated artwork"
           className="w-full h-auto rounded-lg border"
           style={{ maxHeight: '70vh' }}
           onError={(e) => {

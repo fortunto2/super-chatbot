@@ -4,9 +4,9 @@ import { useState, useCallback, useRef } from 'react';
 import { toast } from 'sonner';
 import { generateImage } from '@/lib/ai/api/generate-image';
 import { getImageGenerationConfig } from '@/lib/config/media-settings-factory';
+import { getSuperduperAIConfig, getClientSuperduperAIConfig } from '@/lib/config/superduperai';
 import type { ImageGenerationFormData } from '../components/image-generator-form';
 import type { GenerationStatus } from '../components/generation-progress';
-import type { MediaOption, MediaResolution } from '@/lib/types/media-settings';
 
 // AICODE-NOTE: Generated image data structure
 export interface GeneratedImage {
@@ -32,6 +32,10 @@ export interface UseImageGeneratorReturn {
   generatedImages: GeneratedImage[];
   isGenerating: boolean;
   
+  // Connection state
+  isConnected: boolean;
+  connectionStatus: 'disconnected' | 'connecting' | 'connected';
+  
   // Actions
   generateImage: (formData: ImageGenerationFormData) => Promise<void>;
   clearCurrentGeneration: () => void;
@@ -52,8 +56,12 @@ export function useImageGenerator(): UseImageGeneratorReturn {
   const [currentGeneration, setCurrentGeneration] = useState<GeneratedImage | null>(null);
   const [generatedImages, setGeneratedImages] = useState<GeneratedImage[]>([]);
   
-  // AICODE-NOTE: Refs for WebSocket and polling cleanup
-  const wsRef = useRef<WebSocket | null>(null);
+  // AICODE-NOTE: Connection state for SSE  
+  const [isConnected, setIsConnected] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState<'disconnected' | 'connecting' | 'connected'>('disconnected');
+  
+  // AICODE-NOTE: Refs for SSE connection and polling cleanup
+  const wsRef = useRef<EventSource | null>(null);
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
 
   const isGenerating = generationStatus.status === 'pending' || generationStatus.status === 'processing';
@@ -70,22 +78,29 @@ export function useImageGenerator(): UseImageGeneratorReturn {
     }
   }, []);
 
-  // AICODE-NOTE: WebSocket connection for real-time updates
-  const connectWebSocket = useCallback((projectId: string) => {
-    const wsUrl = `wss://dev-editor.superduperai.co/api/v1/ws/project.${projectId}`;
+  // AICODE-NOTE: SSE connection for real-time updates (replacing WebSocket)
+  const connectSSE = useCallback(async (projectId: string) => {
+    const config = await getClientSuperduperAIConfig();
+    const sseUrl = `${config.url}/api/v1/events/project.${projectId}`;
+    
+    console.log('🔌 Connecting SSE to:', sseUrl);
+    setConnectionStatus('connecting');
+    setIsConnected(false);
     
     try {
-      const ws = new WebSocket(wsUrl);
-      wsRef.current = ws;
+      const eventSource = new EventSource(sseUrl);
+      wsRef.current = eventSource; // Keep same ref name for compatibility
 
-      ws.onopen = () => {
-        console.log('🔌 WebSocket connected for project:', projectId);
+      eventSource.onopen = () => {
+        console.log('🔌 ✅ SSE connected for project:', projectId);
+        setConnectionStatus('connected');
+        setIsConnected(true);
       };
 
-      ws.onmessage = (event) => {
+      eventSource.onmessage = (event) => {
         try {
           const message = JSON.parse(event.data);
-          console.log('📡 WebSocket message:', message);
+          console.log('📡 SSE message:', message);
 
           if (message.type === 'render_progress') {
             setGenerationStatus(prev => ({
@@ -104,26 +119,30 @@ export function useImageGenerator(): UseImageGeneratorReturn {
             }
           }
         } catch (error) {
-          console.error('📡 ❌ WebSocket message parse error:', error);
+          console.error('📡 ❌ SSE message parse error:', error);
         }
       };
 
-      ws.onerror = (error) => {
-        console.error('📡 ❌ WebSocket error:', error);
-        // Fallback to polling
-        startPolling(projectId);
-      };
-
-      ws.onclose = () => {
-        console.log('📡 WebSocket closed for project:', projectId);
-        wsRef.current = null;
+      eventSource.onerror = (error) => {
+        console.error('📡 ❌ SSE error:', error);
+        console.log('🔄 Browser will handle SSE reconnection automatically');
+        
+        if (eventSource.readyState === EventSource.CLOSED) {
+          setConnectionStatus('disconnected');
+          setIsConnected(false);
+          // Fallback to polling only if SSE completely fails
+          startPolling(projectId);
+        }
       };
 
     } catch (error) {
-      console.error('📡 ❌ WebSocket connection failed:', error);
+      console.error('📡 ❌ SSE connection failed:', error);
+      setConnectionStatus('disconnected');
+      setIsConnected(false);
       // Fallback to polling
       startPolling(projectId);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // AICODE-NOTE: Polling fallback for generation status
@@ -147,6 +166,7 @@ export function useImageGenerator(): UseImageGeneratorReturn {
     };
 
     poll();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // AICODE-NOTE: Handle successful generation
@@ -244,8 +264,8 @@ export function useImageGenerator(): UseImageGeneratorReturn {
           requestId: result.requestId,
         }));
 
-        // Start WebSocket connection
-        connectWebSocket(result.projectId);
+        // Start SSE connection
+        await connectSSE(result.projectId);
         
       } else {
         throw new Error(result.error || 'Failed to start generation');
@@ -255,7 +275,7 @@ export function useImageGenerator(): UseImageGeneratorReturn {
       console.error('🎨 ❌ Generation error:', error);
       handleGenerationError(error instanceof Error ? error.message : 'Unknown error');
     }
-  }, [isGenerating, connectWebSocket, handleGenerationError]);
+  }, [isGenerating, connectSSE, handleGenerationError]);
 
   // AICODE-NOTE: Clear current generation
   const clearCurrentGeneration = useCallback(() => {
@@ -321,6 +341,8 @@ export function useImageGenerator(): UseImageGeneratorReturn {
     currentGeneration,
     generatedImages,
     isGenerating,
+    isConnected,
+    connectionStatus,
     generateImage: handleGenerateImage,
     clearCurrentGeneration,
     deleteImage,

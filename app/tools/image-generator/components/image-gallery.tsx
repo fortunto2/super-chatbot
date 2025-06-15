@@ -12,7 +12,6 @@ import {
   Settings,
   X
 } from 'lucide-react';
-import { toast } from 'sonner';
 import type { GeneratedImage } from '../hooks/use-image-generator';
 
 interface ImageGalleryProps {

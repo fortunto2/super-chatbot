@@ -15,6 +15,8 @@ export default function ImageGeneratorPage() {
     currentGeneration,
     generatedImages,
     isGenerating,
+    isConnected,
+    connectionStatus,
     generateImage,
     clearCurrentGeneration,
     deleteImage,
@@ -34,6 +36,19 @@ export default function ImageGeneratorPage() {
           <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
             AI Image Generator
           </h1>
+          {/* Connection Status Indicator */}
+          <div className="flex items-center space-x-2 ml-4">
+            <div className={`w-3 h-3 rounded-full ${
+              isGenerating && connectionStatus === 'connected' ? 'bg-green-500' : 
+              isGenerating && connectionStatus === 'connecting' ? 'bg-yellow-500 animate-pulse' : 
+              isGenerating ? 'bg-red-500' : 'bg-gray-400'
+            }`} />
+            <span className="text-sm text-gray-500">
+              {isGenerating && connectionStatus === 'connected' ? 'Connected' : 
+               isGenerating && connectionStatus === 'connecting' ? 'Connecting...' : 
+               isGenerating ? 'Disconnected' : 'Idle'}
+            </span>
+          </div>
         </div>
         
         <p className="text-lg text-gray-600 max-w-2xl mx-auto">

@@ -301,7 +301,7 @@ export function ImageGeneratorForm({
                 value={formData.seed || ''}
                 onChange={(e) => {
                   const value = e.target.value;
-                  handleInputChange('seed', value ? parseInt(value) : undefined);
+                  handleInputChange('seed', value ? Number.parseInt(value) : undefined);
                 }}
                 disabled={disabled || isGenerating}
               />
