@@ -37,6 +37,7 @@ Glossary, FAQ, and quick reference materials.
 2. For images: [Image Generation Guide](./ai-capabilities/image-generation/README.md)
 3. **NEW**: [Standalone Image Generator Tool](./ai-capabilities/image-generation/image-generator-tool.md)
 4. For videos: [Video Models Guide](./ai-capabilities/video-generation/models-guide.md)
+5. **NEW**: [Standalone Video Generator Tool](./ai-capabilities/video-generation/video-generator-tool.md)
 
 ### API Integration Tasks
 1. Review [SuperDuperAI Integration](./api-integration/superduperai/README.md)

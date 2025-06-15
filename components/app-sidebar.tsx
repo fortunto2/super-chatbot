@@ -22,7 +22,7 @@ import {
 } from '@/components/ui/sidebar';
 import Link from 'next/link';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
-import { ImageIcon } from 'lucide-react';
+import { ImageIcon, Video } from 'lucide-react';
 
 export function AppSidebar({ user }: { user: User | undefined }) {
   const router = useRouter();
@@ -79,6 +79,18 @@ export function AppSidebar({ user }: { user: User | undefined }) {
                   >
                     <ImageIcon className="h-4 w-4" />
                     <span>Image Generator</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild>
+                  <Link 
+                    href="/tools/video-generator"
+                    onClick={() => setOpenMobile(false)}
+                    className="flex items-center gap-2"
+                  >
+                    <Video className="h-4 w-4" />
+                    <span>Video Generator</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
