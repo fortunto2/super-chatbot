@@ -120,9 +120,10 @@ AI agents should understand these core tools:
 - `diagnose-styles`: For UI/UX analysis and recommendations
 
 ### SuperDuperAI Backend Integration
-AI agents must use **SuperDuperAI API** as the primary backend for media generation:
+AI agents must use **SuperDuperAI API** with auto-generated OpenAPI client as the primary backend for media generation:
 - **Base URL**: `https://dev-editor.superduperai.co`
 - **Authentication**: Bearer token authentication required
+- **OpenAPI Client**: Auto-generated TypeScript client for type safety
 - **WebSocket**: Real-time updates for generation progress
 - **File Management**: Integrated file upload and download system
 
@@ -207,54 +208,103 @@ const blob = await put(filename, file, {
 
 ## SuperDuperAI API Integration Patterns
 
-### Authentication Pattern
-AI agents must authenticate with SuperDuperAI API:
-```typescript
-// SuperDuperAI API authentication
-const SUPERDUPERAI_BASE_URL = 'https://dev-editor.superduperai.co'
-const SUPERDUPERAI_TOKEN = process.env.SUPERDUPERAI_API_TOKEN
+### OpenAPI Client Setup
+AI agents must use the auto-generated OpenAPI client for SuperDuperAI API:
+```bash
+# Generate OpenAPI client (run when API schema changes)
+pnpm generate-api
+```
 
-const headers = {
-  'Authorization': `Bearer ${SUPERDUPERAI_TOKEN}`,
-  'Content-Type': 'application/json'
-}
+### Authentication Pattern
+AI agents must authenticate with SuperDuperAI API using the OpenAPI client:
+```typescript
+// SuperDuperAI API authentication with OpenAPI client
+import { OpenAPI } from '@/lib/api'
+
+// Configure OpenAPI client
+OpenAPI.BASE = process.env.SUPERDUPERAI_BASE_URL || 'https://dev-editor.superduperai.co'
+OpenAPI.TOKEN = process.env.SUPERDUPERAI_API_TOKEN
+
+// Or use dynamic configuration
+import { getSuperduperAIConfig } from '@/lib/config/superduperai'
+
+const config = getSuperduperAIConfig()
+OpenAPI.BASE = config.baseUrl
+OpenAPI.TOKEN = config.token
+```
+
+### Model Discovery Pattern
+AI agents should use OpenAPI-based model discovery:
+```typescript
+// Load available models using OpenAPI client
+import { GenerationConfigService, type IGenerationConfigRead } from '@/lib/api'
+import { getAvailableImageModels, getAvailableVideoModels } from '@/lib/config/superduperai'
+
+// Type aliases for compatibility
+export type ImageModel = IGenerationConfigRead
+export type VideoModel = IGenerationConfigRead
+
+// Get available models with caching
+const imageModels = await getAvailableImageModels()
+const videoModels = await getAvailableVideoModels()
+
+// Filter models by type
+const textToImageModels = imageModels.filter(model => 
+  model.type === 'text_to_image'
+)
+const imageToVideoModels = videoModels.filter(model => 
+  model.type === 'image_to_video'
+)
 ```
 
 ### Image Generation Pattern
-AI agents should use this pattern for image generation:
+AI agents should use this pattern for image generation with OpenAPI client:
 ```typescript
-// SuperDuperAI Image Generation
+// SuperDuperAI Image Generation with OpenAPI
+import { GenerationConfigService, GenerationService } from '@/lib/api'
+
 async function generateImage(params: ImageGenerationParams) {
-  // 1. Create generation request
-  const response = await fetch(`${SUPERDUPERAI_BASE_URL}/api/v1/generation/image`, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify({
+  // 1. Get available models
+  const models = await GenerationConfigService.generationConfigGetList({
+    type: 'text_to_image'
+  })
+  
+  // 2. Find selected model
+  const model = models.items?.find(m => m.name === params.model) || models.items?.[0]
+  
+  if (!model) {
+    throw new Error('No image generation models available')
+  }
+  
+  // 3. Create generation request using OpenAPI client
+  const generation = await GenerationService.generationCreateGenerationApiV1GenerationPost({
+    requestBody: {
       prompt: params.prompt,
       negative_prompt: params.negativePrompt,
-      model: params.model || 'flux', // flux or sdxl
-      width: params.width,
-      height: params.height,
-      quality: params.quality || 'hd', // hd, full_hd, sd
-      style: params.style,
-      shot_size: params.shotSize,
-      seed: params.seed
-    })
+      config_id: model.id,
+      params: {
+        width: params.width,
+        height: params.height,
+        quality: params.quality || 'hd',
+        style: params.style,
+        shot_size: params.shotSize,
+        seed: params.seed
+      }
+    }
   })
-
-  const generation = await response.json()
   
-  // 2. Poll for completion or use WebSocket
+  // 4. Poll for completion or use WebSocket
   return await pollGenerationStatus('image', generation.id)
 }
 
 async function pollGenerationStatus(type: 'image' | 'video', id: string) {
+  // Use OpenAPI client for status polling
+  import { GenerationService } from '@/lib/api'
+  
   while (true) {
-    const response = await fetch(
-      `${SUPERDUPERAI_BASE_URL}/api/v1/generation/${type}/${id}`,
-      { headers }
-    )
-    const result = await response.json()
+    const result = await GenerationService.generationGetGenerationApiV1GenerationGenerationIdGet({
+      generationId: id
+    })
     
     if (result.status === 'completed') {
       return result
@@ -269,34 +319,46 @@ async function pollGenerationStatus(type: 'image' | 'video', id: string) {
 ```
 
 ### Video Generation Pattern
-AI agents should use this pattern for video generation:
+AI agents should use this pattern for video generation with OpenAPI client:
 ```typescript
-// SuperDuperAI Video Generation
+// SuperDuperAI Video Generation with OpenAPI
+import { GenerationConfigService, GenerationService } from '@/lib/api'
+
 async function generateVideo(params: VideoGenerationParams) {
-  // 1. Create generation request
-  const response = await fetch(`${SUPERDUPERAI_BASE_URL}/api/v1/generation/video`, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify({
+  // 1. Get available video models
+  const models = await GenerationConfigService.generationConfigGetList({
+    type: 'text_to_video' // or 'image_to_video'
+  })
+  
+  // 2. Find selected model
+  const model = models.items?.find(m => m.name === params.model) || models.items?.[0]
+  
+  if (!model) {
+    throw new Error('No video generation models available')
+  }
+  
+  // 3. Create generation request using OpenAPI client
+  const generation = await GenerationService.generationCreateGenerationApiV1GenerationPost({
+    requestBody: {
       prompt: params.prompt,
       negative_prompt: params.negativePrompt,
-      model: params.model || 'veo3',
-      width: params.width,
-      height: params.height,
-      duration: params.duration || 10,
-      fps: params.frameRate || 30,
-      aspect_ratio: params.aspectRatio || '16:9',
-      style: params.style,
-      shot_size: params.shotSize,
-      seed: params.seed,
-      // Video-specific parameters
-      references: params.references || []
-    })
+      config_id: model.id,
+      params: {
+        width: params.width,
+        height: params.height,
+        duration: params.duration || 10,
+        fps: params.frameRate || 30,
+        aspect_ratio: params.aspectRatio || '16:9',
+        style: params.style,
+        shot_size: params.shotSize,
+        seed: params.seed,
+        // Video-specific parameters
+        references: params.references || []
+      }
+    }
   })
-
-  const generation = await response.json()
   
-  // 2. Poll for completion or use WebSocket
+  // 4. Poll for completion or use WebSocket
   return await pollGenerationStatus('video', generation.id)
 }
 ```
@@ -325,17 +387,22 @@ function connectToGenerationUpdates(generationId: string) {
 ```
 
 ### File Download Pattern
-AI agents should handle file downloads from SuperDuperAI:
+AI agents should handle file downloads from SuperDuperAI using OpenAPI client:
 ```typescript
-// Download generated media
+// Download generated media using OpenAPI client
+import { GenerationService } from '@/lib/api'
+
 async function downloadGeneratedMedia(type: 'image' | 'video', id: string) {
-  const response = await fetch(
-    `${SUPERDUPERAI_BASE_URL}/api/v1/generation/${type}/${id}/download`,
-    {
-      method: 'POST',
-      headers
-    }
-  )
+  const result = await GenerationService.generationDownloadGenerationApiV1GenerationGenerationIdDownloadPost({
+    generationId: id
+  })
+  
+  if (!result.file_url) {
+    throw new Error('No download URL available')
+  }
+  
+  // Fetch the actual file
+  const response = await fetch(result.file_url)
   
   if (!response.ok) {
     throw new Error(`Download failed: ${response.statusText}`)
@@ -683,17 +750,53 @@ date
 
 ## SuperDuperAI API Important Details
 
+### OpenAPI Client Architecture
+AI agents must use the auto-generated OpenAPI client based on the [SuperDuperAI OpenAPI specification](https://dev-editor.superduperai.co/openapi.json):
+
+#### Generated Client Structure
+- **Models**: Auto-generated TypeScript interfaces (`IGenerationConfigRead`, `GenerationTypeEnum`, etc.)
+- **Services**: Type-safe API service classes (`GenerationConfigService`, `GenerationService`, etc.)
+- **Core**: HTTP client infrastructure with authentication and error handling
+- **Type Aliases**: Compatibility types (`VideoModel = IGenerationConfigRead`, `ImageModel = IGenerationConfigRead`)
+
+#### Client Configuration
+```typescript
+import { OpenAPI } from '@/lib/api'
+import { getSuperduperAIConfig } from '@/lib/config/superduperai'
+
+// Configure OpenAPI client
+const config = getSuperduperAIConfig()
+OpenAPI.BASE = config.baseUrl
+OpenAPI.TOKEN = config.token
+```
+
 ### API Schema and Models
-Based on the [SuperDuperAI OpenAPI specification](https://dev-editor.superduperai.co/openapi.json), AI agents must understand:
+Based on the auto-generated OpenAPI client, AI agents must understand:
+
+#### Generation Config Types
+AI agents work with `IGenerationConfigRead` objects from the OpenAPI client:
+```typescript
+interface IGenerationConfigRead {
+  id: string
+  name: string
+  label?: string
+  type: GenerationTypeEnum // 'text_to_image', 'image_to_image', 'text_to_video', 'image_to_video', etc.
+  source: string
+  params: Record<string, any>
+  price?: number
+  workflowPath?: string
+}
+```
 
 #### Image Generation Models
-- **FLUX**: Primary model for high-quality image generation
-- **SDXL**: Alternative model for specific use cases
+- **Model Discovery**: Use `GenerationConfigService.generationConfigGetList({ type: 'text_to_image' })`
+- **Available Models**: FLUX Pro/Dev, Azure GPT Image, Google Imagen3/4, FAL AI models
 - **Quality Types**: `full_hd`, `hd`, `sd`
 - **Shot Sizes**: `Extreme Long Shot`, `Long Shot`, `Medium Shot`, `Medium Close-Up`, `Close-Up`, `Extreme Close-Up`, `Two-Shot`, `Detail Shot`
 
 #### Video Generation Models  
-- **Veo3**: Primary model for video generation (SuperDuperAI's flagship model)
+- **Model Discovery**: Use `GenerationConfigService.generationConfigGetList({ type: 'text_to_video' })`
+- **Available Models**: Google VEO2/VEO3, FAL AI KLING, ComfyUI LTX, Azure Sora
 - **Aspect Ratios**: `16:9`, `9:16`, `4:3`, `1:1`
 - **Quality Support**: Full HD, HD, SD resolutions
 - **Duration**: Configurable video length in seconds
@@ -712,11 +815,13 @@ AI agents must handle these status values:
 - `data`, `file`, `entity`, `scene`: Other data updates
 
 ### API Rate Limits and Best Practices
-- **Authentication**: Bearer token required for all generation endpoints
+- **Authentication**: Bearer token required, configured via OpenAPI client
+- **Model Caching**: Cache model lists for 1 hour to reduce API calls
 - **Polling Frequency**: Poll status every 2 seconds maximum
 - **Retry Logic**: Implement exponential backoff for failed requests
 - **File Handling**: Use proper download endpoints for generated media
 - **WebSocket**: Preferred for real-time updates over polling
+- **Type Safety**: Leverage OpenAPI-generated types for better error handling
 
 ### Error Handling Requirements
 AI agents must handle these specific error cases:
@@ -726,8 +831,11 @@ AI agents must handle these specific error cases:
 - **500 Internal Error**: SuperDuperAI service issues
 
 ### Integration Checklist for AI Agents
-- [ ] Authenticate with SuperDuperAI API using Bearer token
-- [ ] Validate all parameters before sending requests
+- [ ] Configure OpenAPI client with authentication
+- [ ] Use `GenerationConfigService` for model discovery
+- [ ] Cache model lists to reduce API overhead
+- [ ] Use type-safe `GenerationService` for generation requests
+- [ ] Validate all parameters using OpenAPI-generated types
 - [ ] Implement proper error handling and retry logic
 - [ ] Use WebSocket for real-time progress updates
 - [ ] Download and store generated media in Vercel Blob
@@ -752,11 +860,37 @@ AI agents must handle these specific error cases:
 - Share SuperDuperAI API response patterns and error handling
 
 ### SuperDuperAI Integration Guidelines
-- Always use the latest API version and endpoints
-- Implement proper authentication token management
+- Use auto-generated OpenAPI client for type safety and consistency
+- Regenerate client when API schema changes (`pnpm generate-api`)
+- Implement proper authentication token management via OpenAPI configuration
 - Monitor API usage and respect rate limits
+- Cache model discovery results for 1 hour to reduce API calls
 - Cache generation results to avoid redundant API calls
 - Implement proper error logging for debugging
+- Leverage TypeScript types from OpenAPI client for better development experience
+
+## OpenAPI Migration Summary (Updated: January 15, 2025)
+
+The Super Chatbot project has migrated from manual API integration to auto-generated OpenAPI client for SuperDuperAI API:
+
+### Key Changes for AI Agents
+- **Model Types**: `VideoModel` and `ImageModel` are now type aliases for `IGenerationConfigRead`
+- **Model Discovery**: Use `getAvailableImageModels()` and `getAvailableVideoModels()` functions with caching
+- **API Calls**: Use `GenerationConfigService` and `GenerationService` instead of manual fetch calls
+- **Type Safety**: Full TypeScript support with auto-generated interfaces
+- **Consistency**: Unified approach across the entire codebase
+
+### Migration Benefits
+- **Type Safety**: Compile-time validation of API parameters and responses
+- **Maintainability**: Automatic updates when API schema changes
+- **Performance**: Built-in caching and optimized request handling
+- **Developer Experience**: IntelliSense support and better error messages
+- **Consistency**: Same patterns used in SuperDuperApi/frontend project
+
+### Files Updated
+- `lib/config/superduperai.ts`: Centralized model discovery with OpenAPI client
+- `lib/api/`: Auto-generated OpenAPI client (89+ models, 15+ services)
+- `package.json`: Added OpenAPI generation script and dependencies
 
 This Agents.md guide helps ensure AI agents work effectively with the Super Chatbot codebase while maintaining code quality, security, and performance standards when integrating with SuperDuperAI API. 
 
