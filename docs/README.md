@@ -35,7 +35,8 @@ Glossary, FAQ, and quick reference materials.
 ### Working with AI Media Generation
 1. Check [AI Capabilities Overview](./ai-capabilities/overview.md)
 2. For images: [Image Generation Guide](./ai-capabilities/image-generation/README.md)
-3. For videos: [Video Models Guide](./ai-capabilities/video-generation/models-guide.md)
+3. **NEW**: [Standalone Image Generator Tool](./ai-capabilities/image-generation/image-generator-tool.md)
+4. For videos: [Video Models Guide](./ai-capabilities/video-generation/models-guide.md)
 
 ### API Integration Tasks
 1. Review [SuperDuperAI Integration](./api-integration/superduperai/README.md)
