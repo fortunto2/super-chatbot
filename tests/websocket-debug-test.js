@@ -26,10 +26,9 @@ function testWebSocketConnection() {
     console.log('🔌 Attempting WebSocket connection...');
     
     const ws = new WebSocket(wsUrl);
-    let connectionTimeout;
     
     // Set connection timeout
-    connectionTimeout = setTimeout(() => {
+    const connectionTimeout = setTimeout(() => {
       console.log('⏰ Connection timeout (10s)');
       ws.close();
       reject(new Error('Connection timeout'));

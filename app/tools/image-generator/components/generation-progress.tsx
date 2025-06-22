@@ -99,13 +99,13 @@ export function GenerationProgress({
   const getStatusIcon = () => {
     switch (generationStatus.status) {
       case 'pending':
-        return <Loader2 className="h-5 w-5 animate-spin text-blue-500" />;
+        return <Loader2 className="size-5 animate-spin text-blue-500" />;
       case 'processing':
-        return <Image className="h-5 w-5 text-blue-500" />;
+        return <Image className="size-5 text-blue-500" />;
       case 'completed':
-        return <CheckCircle className="h-5 w-5 text-green-500" />;
+        return <CheckCircle className="size-5 text-green-500" />;
       case 'error':
-        return <XCircle className="h-5 w-5 text-red-500" />;
+        return <XCircle className="size-5 text-red-500" />;
       default:
         return null;
     }

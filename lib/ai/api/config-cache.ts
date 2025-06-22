@@ -176,16 +176,18 @@ export const getBestVideoModel = async (
   }
   
   // Filter by price
-  if (preferences?.maxPrice) {
+  if (preferences?.maxPrice != null) {
+    const maxPrice = preferences.maxPrice;
     filtered = filtered.filter(c => 
-      (c.params.price_per_second || c.price) <= preferences.maxPrice!
+      (c.params.price_per_second || c.price) <= maxPrice
     );
   }
   
   // Filter by duration availability
-  if (preferences?.preferredDuration) {
+  if (preferences?.preferredDuration != null) {
+    const preferredDuration = preferences.preferredDuration;
     filtered = filtered.filter(c => 
-      c.params.available_durations?.includes(preferences.preferredDuration!) || 
+      c.params.available_durations?.includes(preferredDuration) || 
       !c.params.available_durations // If no duration limits specified
     );
   }

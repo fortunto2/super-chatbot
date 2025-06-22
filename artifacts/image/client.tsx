@@ -3,7 +3,7 @@ import { CopyIcon, RedoIcon, UndoIcon } from '@/components/icons';
 import { ImageEditor } from '@/components/image-editor';
 import { toast } from 'sonner';
 import { memo, useMemo, useEffect } from 'react';
-import { useArtifactWebSocket } from '@/hooks/use-artifact-websocket';
+import { useArtifactSSE } from '@/hooks/use-artifact-sse';
 
 // Import console helpers for debugging (auto-exposes in browser)
 import '@/lib/utils/console-helpers';
@@ -51,17 +51,22 @@ const ImageArtifactWrapper = memo(function ImageArtifactWrapper(props: any) {
     return state;
   }, [parsedContent]);
 
-  // Connect to WebSocket for real-time updates
-  const artifactWebSocket = useArtifactWebSocket({
+  // Connect to SSE for real-time updates
+  const artifactSSE = useArtifactSSE({
+    channel: parsedContent?.projectId ? `project.${parsedContent.projectId}` : '',
+    eventHandlers: parsedContent?.projectId ? [(message) => {
+      console.log('🎨 Artifact SSE message:', message);
+      // Handle artifact updates here if needed
+    }] : [],
     enabled: !!parsedContent?.projectId && !!parsedContent?.requestId
   });
 
-  // Debug WebSocket connection status
+  // Debug SSE connection status
   useEffect(() => {
-    if (parsedContent?.projectId && artifactWebSocket.isConnected) {
-      // WebSocket connected for artifact
+    if (parsedContent?.projectId && artifactSSE.isConnected) {
+      console.log('🔌 SSE connected for artifact project:', parsedContent.projectId);
     }
-  }, [artifactWebSocket.isConnected, artifactWebSocket.currentProjectId, parsedContent?.projectId, parsedContent?.status]);
+  }, [artifactSSE.isConnected, parsedContent?.projectId, parsedContent?.status]);
 
   // Auto-notify chat WebSocket about new projectId when artifact is created (fallback)
   useEffect(() => {

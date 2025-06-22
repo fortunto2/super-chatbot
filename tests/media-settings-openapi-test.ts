@@ -9,10 +9,12 @@ function adaptModelForMediaSettings(model: IGenerationConfigRead): IGenerationCo
   value: string;
   workflowPath: string;
   price: number;
+  label: string;
 } {
   return {
     ...model,
     id: model.name, // Use name as id for compatibility
+    label: model.label || model.name || 'Unknown Model', // Ensure label is always a string
     description: `${model.type} - ${model.source}`,
     value: model.name,
     workflowPath: model.params?.workflow_path || '',
@@ -49,12 +51,12 @@ async function testMediaSettingsWithOpenAPI() {
       ],
       availableShotSizes: [
         { id: 'close-up', label: 'Close-up', description: 'Close-up shot' },
-        { id: 'medium', label: 'Medium', description: 'Medium shot' }
+        { id: 'medium_shot', label: 'Medium', description: 'Medium shot' }
       ],
       defaultSettings: {
         resolution: { width: 1024, height: 1024, label: '1024x1024', aspectRatio: '1:1' },
         style: { id: 'realistic', label: 'Realistic', description: 'Photorealistic style' },
-        shotSize: { id: 'medium', label: 'Medium', description: 'Medium shot' },
+        shotSize: { id: 'medium_shot', label: 'Medium Shot', description: 'Medium shot' },
         model: adaptedImageModels[0] || {
           name: 'fallback',
           label: 'Fallback Model',

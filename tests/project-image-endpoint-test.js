@@ -34,7 +34,7 @@ async function testProjectImageEndpoint() {
   try {
     // Use the project/image endpoint that creates project AND generates image
     const payload = {
-      type: "image",
+      type: "media",
       template_name: null,
       config: {
         prompt: `Test image for chat ${chatId} - project auto-creation`,
@@ -46,7 +46,7 @@ async function testProjectImageEndpoint() {
         seed: Math.floor(Math.random() * 1000000000000),
         generation_config_name: "comfyui/flux",
         batch_size: 1,
-        style_name: "real_estate",
+        style_name: "flux_watercolor",
         references: [],
         entity_ids: [],
         model_type: null

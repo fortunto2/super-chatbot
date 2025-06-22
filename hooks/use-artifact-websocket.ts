@@ -80,7 +80,7 @@ export const useArtifactWebSocket = ({ enabled = true }: UseArtifactWebSocketOpt
             const isVideoArtifact = currentArtifact.kind === 'video';
             const isVideoMedia = mediaType === 'video';
             
-            let updatedContent;
+            let updatedContent: any;
             if (isVideoArtifact || isVideoMedia) {
               updatedContent = {
                 ...currentContent,

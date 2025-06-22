@@ -2,7 +2,7 @@ import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { generateImage, type ImageGenerationResult } from '@/lib/ai/api/generate-image';
 import type { MediaOption, MediaResolution } from '@/lib/types/media-settings';
 import type { ImageModel } from '@/lib/config/superduperai';
-import { useImageWebsocket } from './use-image-websocket';
+import { useImageSSE } from './use-image-sse';
 import { useImageEventHandler, } from './use-image-event-handler';
 
 export enum TaskStatusEnum {
@@ -91,11 +91,11 @@ export function useImageGeneration(chatId?: string): UseImageGenerationReturn {
       if (oldChatId) {
         console.log('🧹 Cleaning up old project immediately:', oldChatId);
         // Use the store directly for immediate cleanup
-        const { imageWebsocketStore } = require('@/lib/websocket/image-websocket-store');
-        imageWebsocketStore.cleanupProject(oldChatId);
+        const { imageSSEStore } = require('@/lib/websocket/image-sse-store');
+        imageSSEStore.cleanupProject(oldChatId);
         
         // Also remove any lingering handlers for the old project
-        imageWebsocketStore.removeProjectHandlers(oldChatId, []);
+        imageSSEStore.removeProjectHandlers(oldChatId, []);
       }
       
       stableChatIdRef.current = chatId;
@@ -159,20 +159,20 @@ export function useImageGeneration(chatId?: string): UseImageGenerationReturn {
       
       // Immediate cleanup without delays for React Strict Mode
       if (chatIdState) {
-        const { imageWebsocketStore } = require('@/lib/websocket/image-websocket-store');
-        imageWebsocketStore.cleanupProject(chatIdState);
+        const { imageSSEStore } = require('@/lib/websocket/image-sse-store');
+        imageSSEStore.cleanupProject(chatIdState);
         
         // Check for excessive handlers and force cleanup if needed
-        const debugInfo = imageWebsocketStore.getDebugInfo();
+        const debugInfo = imageSSEStore.getDebugInfo();
         if (debugInfo.totalHandlers > 8) {
           console.log('🧹 Force cleanup due to excessive handlers:', debugInfo.totalHandlers);
-          imageWebsocketStore.forceCleanup();
+          imageSSEStore.forceCleanup();
         }
       }
     };
   }, [chatIdState]); // Depend on chatIdState for proper cleanup
 
-  const { isConnected, connectionAttempts, maxAttempts, disconnect } = useImageWebsocket(websocketOptions);
+  const { isConnected, connectionAttempts, maxAttempts, disconnect } = useImageSSE(websocketOptions);
 
   // Only log WebSocket status if WebSocket is enabled
   if (chatIdState) {

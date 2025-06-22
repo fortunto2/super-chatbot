@@ -4,7 +4,7 @@ import { useState, useCallback, useRef } from 'react';
 import { toast } from 'sonner';
 import { generateImage } from '@/lib/ai/api/generate-image';
 import { getImageGenerationConfig } from '@/lib/config/media-settings-factory';
-import { getSuperduperAIConfig, getClientSuperduperAIConfig } from '@/lib/config/superduperai';
+import { getClientSuperduperAIConfig } from '@/lib/config/superduperai';
 import type { ImageGenerationFormData } from '../components/image-generator-form';
 import type { GenerationStatus } from '../components/generation-progress';
 

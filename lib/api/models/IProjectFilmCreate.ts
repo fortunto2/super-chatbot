@@ -3,16 +3,16 @@
 /* tslint:disable */
 /* eslint-disable */
 // @ts-nocheck
-import type { IProjectVideoConfig_Input } from './IProjectVideoConfig_Input';
-export type IProjectVideoCreate = {
-    config: IProjectVideoConfig_Input;
+import type { IProjectFilmConfig_Input } from './IProjectFilmConfig_Input';
+export type IProjectFilmCreate = {
+    config: IProjectFilmConfig_Input;
     thumbnail_url?: (string | null);
-    type?: IProjectVideoCreate.type;
+    type?: IProjectFilmCreate.type;
     template_name?: (string | null);
     style_name?: (string | null);
     music_id?: (string | null);
 };
-export namespace IProjectVideoCreate {
+export namespace IProjectFilmCreate {
     export enum type {
         FILM = 'film',
     }

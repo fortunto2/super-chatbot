@@ -41,7 +41,7 @@ async function testGlobalWebSocket() {
       seed: Math.floor(Math.random() * 1000000),
       generation_config_name: "comfyui/flux",
       batch_size: 1,
-      style_name: "real_estate",
+              style_name: "flux_watercolor",
       references: [],
       entity_ids: [],
       model_type: null

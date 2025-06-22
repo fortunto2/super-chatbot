@@ -144,6 +144,7 @@ export class FileService {
     }
     /**
      * Generate Image
+     * Legacy endpoint for generating images.
      * @returns IFileRead Successful Response
      * @throws ApiError
      */
@@ -164,6 +165,7 @@ export class FileService {
     }
     /**
      * Generate Video
+     * Legacy endpoint for generating videos.
      * @returns IFileRead Successful Response
      * @throws ApiError
      */

@@ -19,33 +19,35 @@ export const listVideoModels = tool({
       const allModels = await getAvailableVideoModels();
       let videoModels = allModels;
       
-      // Apply filters
+      // Apply filters based on params
       if (filterByPrice) {
-        videoModels = videoModels.filter(m => m.pricePerSecond <= filterByPrice);
+        videoModels = videoModels.filter(m => 
+          (m.params.price_per_second || m.params.price || 0) <= filterByPrice
+        );
       }
       
       if (filterByDuration) {
         videoModels = videoModels.filter(m => 
-          m.maxDuration >= filterByDuration
+          (m.params.max_duration || m.params.available_durations?.[0] || 60) >= filterByDuration
         );
       }
       
       if (excludeVip) {
-        videoModels = videoModels.filter(m => !m.isVip);
+        videoModels = videoModels.filter(m => !m.params.is_vip);
       }
       
       if (format === 'agent-friendly') {
         const agentInfo = {
           models: videoModels.map(m => ({
-            id: m.id,
+            id: m.name, // Use name as id
             name: m.name,
-            description: m.description,
-            price_per_second: m.pricePerSecond,
-            max_duration: m.maxDuration,
-            vip_required: m.isVip || false,
-            supported_resolutions: `${m.maxResolution.width}x${m.maxResolution.height}`,
-            frame_rates: m.supportedFrameRates,
-            aspect_ratios: m.supportedAspectRatios,
+            description: m.label || m.name,
+            price_per_second: m.params.price_per_second || m.params.price || 0,
+            max_duration: m.params.max_duration || 60,
+            vip_required: m.params.is_vip || false,
+            supported_resolutions: `${m.params.max_width || 1920}x${m.params.max_height || 1080}`,
+            frame_rates: m.params.frame_rates || [24, 30],
+            aspect_ratios: m.params.aspect_ratios || ["16:9"],
           })),
           usage_examples: [
             'Use model ID like "comfyui/ltx" when calling configureVideoGeneration',
@@ -64,11 +66,11 @@ export const listVideoModels = tool({
       
       if (format === 'simple') {
         const simpleList = videoModels.map(m => ({
-          id: m.id,
+          id: m.name,
           name: m.name,
-          price: m.pricePerSecond,
-          max_duration: m.maxDuration,
-          vip: m.isVip || false,
+          price: m.params.price_per_second || m.params.price || 0,
+          max_duration: m.params.max_duration || 60,
+          vip: m.params.is_vip || false,
         }));
         
         return {
@@ -81,17 +83,17 @@ export const listVideoModels = tool({
       
       // Detailed format
       const detailedList = videoModels.map(m => ({
-        id: m.id,
+        id: m.name,
         name: m.name,
-        description: m.description,
-        price_per_second: m.pricePerSecond,
-        max_duration: m.maxDuration,
-        max_resolution: m.maxResolution,
-        supported_frame_rates: m.supportedFrameRates,
-        supported_aspect_ratios: m.supportedAspectRatios,
-        supported_qualities: m.supportedQualities,
-        vip_required: m.isVip || false,
-        workflow_path: m.workflowPath,
+        description: m.label || m.name,
+        price_per_second: m.params.price_per_second || m.params.price || 0,
+        max_duration: m.params.max_duration || 60,
+        max_resolution: { width: m.params.max_width || 1920, height: m.params.max_height || 1080 },
+        supported_frame_rates: m.params.frame_rates || [24, 30],
+        supported_aspect_ratios: m.params.aspect_ratios || ["16:9"],
+        supported_qualities: m.params.qualities || ["hd"],
+        vip_required: m.params.is_vip || false,
+        workflow_path: m.params.workflow_path || "",
       }));
       
       return {
@@ -140,15 +142,19 @@ export const findBestVideoModel = tool({
       
       // Apply filters
       if (maxPrice) {
-        candidates = candidates.filter(m => m.pricePerSecond <= maxPrice);
+        candidates = candidates.filter(m => 
+          (m.params.price_per_second || m.params.price || 0) <= maxPrice
+        );
       }
       
       if (preferredDuration) {
-        candidates = candidates.filter(m => m.maxDuration >= preferredDuration);
+        candidates = candidates.filter(m => 
+          (m.params.max_duration || 60) >= preferredDuration
+        );
       }
       
       if (!vipAllowed) {
-        candidates = candidates.filter(m => !m.isVip);
+        candidates = candidates.filter(m => !m.params.is_vip);
       }
       
       if (candidates.length === 0) {
@@ -157,39 +163,43 @@ export const findBestVideoModel = tool({
           message: 'No video model found matching your criteria',
           suggestion: 'Try relaxing your requirements (higher price limit, allow VIP models, etc.)',
           available_models: allModels.map(m => ({
-            id: m.id,
+            id: m.name,
             name: m.name,
-            price: m.pricePerSecond,
-            max_duration: m.maxDuration,
-            vip: m.isVip || false,
+            price: m.params.price_per_second || m.params.price || 0,
+            max_duration: m.params.max_duration || 60,
+            vip: m.params.is_vip || false,
           })),
         };
       }
       
       // Sort by preference
-      let bestModel;
+      let bestModel: typeof candidates[0];
       if (prioritizeQuality) {
         // Sort by price descending (assuming higher price = better quality)
-        bestModel = candidates.sort((a, b) => b.pricePerSecond - a.pricePerSecond)[0];
+        bestModel = candidates.sort((a, b) => 
+          (b.params.price_per_second || b.params.price || 0) - (a.params.price_per_second || a.params.price || 0)
+        )[0];
       } else {
         // Sort by price ascending (cheapest first)
-        bestModel = candidates.sort((a, b) => a.pricePerSecond - b.pricePerSecond)[0];
+        bestModel = candidates.sort((a, b) => 
+          (a.params.price_per_second || a.params.price || 0) - (b.params.price_per_second || b.params.price || 0)
+        )[0];
       }
       
       return {
         success: true,
         data: {
-          id: bestModel.id,
+          id: bestModel.name,
           name: bestModel.name,
-          description: bestModel.description,
-          price_per_second: bestModel.pricePerSecond,
-          max_duration: bestModel.maxDuration,
-          max_resolution: bestModel.maxResolution,
-          vip_required: bestModel.isVip || false,
+          description: bestModel.label || bestModel.name,
+          price_per_second: bestModel.params.price_per_second || bestModel.params.price || 0,
+          max_duration: bestModel.params.max_duration || 60,
+          max_resolution: { width: bestModel.params.max_width || 1920, height: bestModel.params.max_height || 1080 },
+          vip_required: bestModel.params.is_vip || false,
           recommendation_reason: `Selected based on ${prioritizeQuality ? 'quality' : 'price'} optimization`,
         },
-        message: `Best model found: ${bestModel.name} at $${bestModel.pricePerSecond}/sec`,
-        usage_tip: `Use model ID "${bestModel.id}" when calling configureVideoGeneration`,
+        message: `Best model found: ${bestModel.name} at $${bestModel.params.price_per_second || bestModel.params.price || 0}/sec`,
+        usage_tip: `Use model ID "${bestModel.name}" when calling configureVideoGeneration`,
       };
       
     } catch (error: any) {

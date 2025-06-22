@@ -31,14 +31,14 @@ export default function ImageGeneratorPage() {
       <div className="text-center space-y-4">
         <div className="flex items-center justify-center space-x-2">
           <div className="p-3 rounded-full bg-blue-100">
-            <ImageIcon className="h-8 w-8 text-blue-600" />
+            <ImageIcon className="size-8 text-blue-600" />
           </div>
           <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
             AI Image Generator
           </h1>
           {/* Connection Status Indicator */}
           <div className="flex items-center space-x-2 ml-4">
-            <div className={`w-3 h-3 rounded-full ${
+            <div className={`size-3 rounded-full ${
               isGenerating && connectionStatus === 'connected' ? 'bg-green-500' : 
               isGenerating && connectionStatus === 'connecting' ? 'bg-yellow-500 animate-pulse' : 
               isGenerating ? 'bg-red-500' : 'bg-gray-400'
@@ -59,15 +59,15 @@ export default function ImageGeneratorPage() {
         {/* Feature highlights */}
         <div className="flex items-center justify-center space-x-8 text-sm text-gray-500">
           <div className="flex items-center space-x-2">
-            <Sparkles className="h-4 w-4" />
+            <Sparkles className="size-4" />
             <span>High Quality Models</span>
           </div>
           <div className="flex items-center space-x-2">
-            <Zap className="h-4 w-4" />
+            <Zap className="size-4" />
             <span>Real-time Progress</span>
           </div>
           <div className="flex items-center space-x-2">
-            <ImageIcon className="h-4 w-4" />
+            <ImageIcon className="size-4" />
             <span>Multiple Formats</span>
           </div>
         </div>

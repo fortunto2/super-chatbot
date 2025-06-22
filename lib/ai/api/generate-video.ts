@@ -111,7 +111,7 @@ export const generateVideo = async (
         apiPayload = {
           projectId: chatId,
           requestId: requestId,
-          type: "video",
+          type: "film",
           template_name: null,
           config: {
             prompt,
@@ -120,7 +120,7 @@ export const generateVideo = async (
             height: resolution.height,
             aspect_ratio: resolution.aspectRatio,
             qualityType: resolution.qualityType,
-            shot_size: shotSize.label,
+            shot_size: shotSize.id,
             seed: `${Math.floor(Math.random() * 1000000000000)}`,
             generation_config_name: actualModelName,
             batch_size: 1,

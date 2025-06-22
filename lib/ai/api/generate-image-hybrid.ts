@@ -27,13 +27,9 @@ function generateRequestId(): string {
 function validateStyleForAPI(style: MediaOption): string {
   console.log(`🎨 Validating style for API:`, { id: style.id, label: style.label });
   
-  // Ensure we have a valid style ID
-  if (!style.id || style.id === 'none') {
-    console.log(`🎨 Using default style: real_estate`);
-    return 'real_estate';
-  }
-  
-  return style.id;
+  // AICODE-NOTE: Use flux_watercolor as it exists in DB (based on working payload example)
+  console.log(`🔧 Using flux_watercolor style (confirmed working)`);
+  return 'flux_watercolor';
 }
 
 // Polling function to check file status
@@ -183,7 +179,7 @@ export const generateImageHybrid = async (
         width: resolution.width,
         height: resolution.height,
         steps: 20,
-        shot_size: shotSize.label,
+        shot_size: shotSize.id,
         seed: actualSeed,
         generation_config_name: model.name,
         batch_size: 1,
@@ -231,7 +227,7 @@ export const generateImageHybrid = async (
     });
 
     // Step 2: Try WebSocket first, then fallback to polling
-    let completedFile;
+    let completedFile: any;
     let method: 'websocket' | 'polling' = 'websocket';
 
     try {

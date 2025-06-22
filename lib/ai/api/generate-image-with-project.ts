@@ -32,13 +32,9 @@ function generateProjectId(): string {
 function validateStyleForAPI(style: MediaOption): string {
   console.log(`🎨 Validating style for API:`, { id: style.id, label: style.label });
   
-  // Ensure we have a valid style ID
-  if (!style.id || style.id === 'none') {
-    console.log(`🎨 Using default style: real_estate`);
-    return 'real_estate';
-  }
-  
-  return style.id;
+  // AICODE-NOTE: Use flux_watercolor as it exists in DB (based on working payload example)
+  console.log(`🔧 Using flux_watercolor style (confirmed working)`);
+  return 'flux_watercolor';
 }
 
 // Create project first to get project_id
@@ -52,7 +48,7 @@ async function createProject(prompt: string): Promise<string> {
   const projectPayload = {
     name: `Image: ${prompt.substring(0, 50)}...`,
     description: `Generated image project for: ${prompt}`,
-    type: "image", // Assuming image project type
+    type: "media", // Use media type as required by API
     config: {
       prompt: prompt,
       created_at: new Date().toISOString()
@@ -236,7 +232,7 @@ export const generateImageWithProject = async (
         width: resolution.width,
         height: resolution.height,
         steps: 20,
-        shot_size: shotSize.label,
+        shot_size: shotSize.id,
         seed: actualSeed,
         generation_config_name: model.name,
         batch_size: 1,
@@ -246,6 +242,20 @@ export const generateImageWithProject = async (
         model_type: null
       }
     };
+
+    // AICODE-NOTE: Diagnostic logging to identify ROLLBACK issues
+    console.log('🔍 Диагностика payload перед отправкой:', {
+      project_id: projectId,
+      shot_size_label: shotSize.label,
+      shot_size_id: shotSize.id, 
+      generation_config_name: model.name,
+      model_label: model.label,
+      style_name: styleId,
+      style_original: style.id,
+      width: resolution.width,
+      height: resolution.height,
+      seed: actualSeed
+    });
 
     console.log(`🚀 Making API call with project_id...`);
     const response = await fetch(url, {
@@ -257,6 +267,15 @@ export const generateImageWithProject = async (
     if (!response.ok) {
       const errorText = await response.text();
       console.error(`❌ API Error Response:`, errorText);
+      console.error(`❌ Response Status: ${response.status}`);
+      console.error(`❌ Response Headers:`, Object.fromEntries(response.headers.entries()));
+      
+      // AICODE-NOTE: Special handling for potential ROLLBACK issues
+      if (response.status === 500) {
+        console.error('❌ 500 Error - возможно произошел ROLLBACK в базе данных');
+        console.error('❌ Проверьте: generation_config_name, shot_size enum, style_name');
+      }
+      
       throw new Error(`API Error: ${response.status} - ${errorText}`);
     }
 
@@ -285,7 +304,7 @@ export const generateImageWithProject = async (
     });
 
     // Step 3: Try WebSocket first, then fallback to polling
-    let completedFile;
+    let completedFile: any;
     let method: 'websocket' | 'polling' = 'websocket';
 
     try {

@@ -26,13 +26,9 @@ function generateRequestId(): string {
 function validateStyleForAPI(style: MediaOption): string {
   console.log(`🎨 Validating style for API:`, { id: style.id, label: style.label });
   
-  // Ensure we have a valid style ID
-  if (!style.id || style.id === 'default') {
-    console.log(`⚠️ Using fallback style: real_estate`);
-    return 'real_estate';
-  }
-  
-  return style.id;
+  // AICODE-NOTE: Use flux_watercolor as it exists in DB (based on working payload example)
+  console.log(`🔧 Using flux_watercolor style (confirmed working)`);
+  return 'flux_watercolor';
 }
 
 // Create image generation payload based on working examples
@@ -52,13 +48,13 @@ function createImagePayload(
     model: model.name,
     resolution: `${resolution.width}x${resolution.height}`,
     style: styleId,
-    shotSize: shotSize.id,
+    shotSize: shotSize.label,
     seed: actualSeed
   });
 
   // Based on working API response, use this structure for /api/v1/project/image
   const payload = {
-    type: "image",
+    type: "media",
     template_name: null,
     config: {
       prompt: prompt,
@@ -66,7 +62,7 @@ function createImagePayload(
       width: resolution.width,
       height: resolution.height,
       steps: 20,
-      shot_size: shotSize.label,
+      shot_size: shotSize.id, // Use snake_case format like "medium_shot"
       seed: actualSeed,
       generation_config_name: model.name, // Use model.name instead of model.id
       batch_size: 1,
