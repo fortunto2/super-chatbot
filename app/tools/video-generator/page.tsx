@@ -15,6 +15,7 @@ export default function VideoGeneratorPage() {
     clearCurrentGeneration,
     deleteVideo,
     clearAllVideos,
+    forceCheckResults,
     downloadVideo,
     copyVideoUrl,
   } = useVideoGenerator();
@@ -43,6 +44,21 @@ export default function VideoGeneratorPage() {
             <GenerationProgress
               generationStatus={generationStatus}
             />
+          )}
+          
+          {/* Manual Check Button */}
+          {generationStatus.projectId && generationStatus.status === 'processing' && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <p className="text-sm text-blue-800 mb-3">
+                Video generation is in progress. If results don&apos;t appear automatically, you can check manually:
+              </p>
+              <button
+                onClick={forceCheckResults}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors"
+              >
+                Check for Results
+              </button>
+            </div>
           )}
         </div>
 

@@ -137,6 +137,20 @@ export const imageDocumentHandler = createDocumentHandler<'image'>({
     let draftContent = document.content;
 
     try {
+      // Check if document already has completed content - don't recreate if so
+      if (draftContent) {
+        try {
+          const existingContent = JSON.parse(draftContent);
+          if (existingContent.status === 'completed' && existingContent.imageUrl) {
+            console.log('🎨 ⚠️ Document already completed with image, skipping update to prevent reset');
+            return draftContent; // Return existing content without recreating
+          }
+        } catch (parseError) {
+          // If we can't parse existing content, proceed with update
+          console.log('🎨 ℹ️ Could not parse existing content, proceeding with update');
+        }
+      }
+
       // Extract chatId from document.id (which should be the chat ID)
       const chatId = document.id;
       

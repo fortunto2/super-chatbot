@@ -52,24 +52,25 @@ function createImagePayload(
     seed: actualSeed
   });
 
-  // Based on working API response, use this structure for /api/v1/project/image
+  // AICODE-NOTE: Fixed payload structure based on working example
+  // Key changes: aspectRatio, qualityType outside config, proper string formats
   const payload = {
     type: "media",
     template_name: null,
+    style_name: styleId, // Move style_name outside config
     config: {
       prompt: prompt,
-      negative_prompt: "",
-      width: resolution.width,
-      height: resolution.height,
-      steps: 20,
-      shot_size: shotSize.id, // Use snake_case format like "medium_shot"
-      seed: actualSeed,
-      generation_config_name: model.name, // Use model.name instead of model.id
-      batch_size: 1,
-      style_name: styleId,
-      references: [],
+      shot_size: shotSize.label, // Use label instead of id for shot_size
+      style_name: styleId, // Keep for backward compatibility
+      seed: String(actualSeed), // Convert to string
+      aspecRatio: resolution.aspectRatio || "16:9", // Add aspecRatio (typo in API, but correct)
+      batch_size: 3, // Use batch_size 3 like in working example
       entity_ids: [],
-      model_type: null
+      generation_config_name: model.name,
+      height: String(resolution.height), // Convert to string
+      qualityType: resolution.qualityType || "full_hd", // Add qualityType
+      references: [],
+      width: String(resolution.width), // Convert to string
     }
   };
 
@@ -109,7 +110,7 @@ export async function generateImage(
     console.log(`📦 Image generation payload:`, JSON.stringify(payload, null, 2));
 
     // Use the correct endpoint for project+image generation
-    const url = createAPIURL('/api/v1/project/image');
+    const url = createAPIURL('/api/v1/project/image', config);
     const headers = createAuthHeaders();
 
     console.log(`📡 Making request to: ${url}`);

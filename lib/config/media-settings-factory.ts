@@ -98,11 +98,12 @@ export async function getImageGenerationConfig(): Promise<ImageGenerationConfig>
     type: 'image-generation-settings',
     availableModels: adaptedImageModels,
     availableResolutions: [
-      { width: 1024, height: 1024, label: '1024x1024 (Square)', aspectRatio: '1:1' },
-      { width: 1024, height: 768, label: '1024x768 (Landscape)', aspectRatio: '4:3' },
-      { width: 768, height: 1024, label: '768x1024 (Portrait)', aspectRatio: '3:4' },
-      { width: 1280, height: 720, label: '1280x720 (HD)', aspectRatio: '16:9' },
-      { width: 512, height: 512, label: '512x512 (Small Square)', aspectRatio: '1:1' }
+      { width: 1024, height: 1024, label: '1024x1024 (Square)', aspectRatio: '1:1', qualityType: 'hd' },
+      { width: 1024, height: 768, label: '1024x768 (Landscape)', aspectRatio: '4:3', qualityType: 'hd' },
+      { width: 768, height: 1024, label: '768x1024 (Portrait)', aspectRatio: '3:4', qualityType: 'hd' },
+      { width: 1280, height: 720, label: '1280x720 (HD)', aspectRatio: '16:9', qualityType: 'hd' },
+      { width: 1920, height: 1080, label: '1920x1080 (Full HD)', aspectRatio: '16:9', qualityType: 'full_hd' },
+      { width: 512, height: 512, label: '512x512 (Small Square)', aspectRatio: '1:1', qualityType: 'hd' }
     ],
     availableStyles: [
       { id: 'flux_watercolor', label: 'Watercolor', description: 'Watercolor painting style' },
@@ -119,7 +120,7 @@ export async function getImageGenerationConfig(): Promise<ImageGenerationConfig>
       { id: 'extreme_wide_shot', label: 'Extreme Wide', description: 'Very wide panoramic shot' }
     ],
     defaultSettings: {
-      resolution: { width: 1024, height: 1024, label: '1024x1024 (Square)', aspectRatio: '1:1' },
+      resolution: { width: 1024, height: 1024, label: '1024x1024 (Square)', aspectRatio: '1:1', qualityType: 'hd' },
       style: { id: 'flux_watercolor', label: 'Watercolor', description: 'Watercolor painting style' },
       shotSize: { id: 'medium_shot', label: 'Medium Shot', description: 'Medium distance shot' },
       model: defaultAdaptedModel

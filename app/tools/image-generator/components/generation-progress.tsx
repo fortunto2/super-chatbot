@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Loader2, Image, CheckCircle, XCircle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Loader2, Image, CheckCircle, XCircle, RefreshCw } from 'lucide-react';
 
 // AICODE-NOTE: Simple Progress component since it's not available in UI library
 function Progress({ value, className }: { value: number; className?: string }) {
@@ -49,14 +50,17 @@ export interface GenerationStatus {
 interface GenerationProgressProps {
   generationStatus: GenerationStatus;
   prompt?: string;
+  onForceCheck?: () => Promise<void>;
 }
 
 export function GenerationProgress({ 
   generationStatus, 
-  prompt 
+  prompt,
+  onForceCheck
 }: GenerationProgressProps) {
   const [displayProgress, setDisplayProgress] = useState(0);
   const [elapsedTime, setElapsedTime] = useState(0);
+  const [isCheckingResults, setIsCheckingResults] = useState(false);
 
   // AICODE-NOTE: Animate progress bar smoothly
   useEffect(() => {
@@ -204,6 +208,38 @@ export function GenerationProgress({
               )}
             </div>
           </div>
+
+          {/* Force Check Button - only show during processing/pending */}
+          {onForceCheck && (generationStatus.status === 'processing' || generationStatus.status === 'pending') && (
+            <div className="pt-2 border-t">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={async () => {
+                  setIsCheckingResults(true);
+                  try {
+                    await onForceCheck();
+                  } finally {
+                    setIsCheckingResults(false);
+                  }
+                }}
+                disabled={isCheckingResults}
+                className="w-full"
+              >
+                {isCheckingResults ? (
+                  <>
+                    <Loader2 className="size-4 mr-2 animate-spin" />
+                    Checking results...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="size-4 mr-2" />
+                    Check for results
+                  </>
+                )}
+              </Button>
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>

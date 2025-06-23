@@ -39,6 +39,7 @@ export interface UseVideoGeneratorReturn {
   clearCurrentGeneration: () => void;
   deleteVideo: (videoId: string) => void;
   clearAllVideos: () => void;
+  forceCheckResults: () => Promise<void>; // AICODE-NOTE: Added manual check function
   
   // Utils
   downloadVideo: (video: GeneratedVideo) => Promise<void>;
@@ -105,9 +106,28 @@ export function useVideoGenerator(): UseVideoGeneratorReturn {
             } else {
               handleGenerationError('No video URL in result');
             }
+          } else if (message.type === 'file' && message.object?.url) {
+            // AICODE-NOTE: Fallback for different event format
+            console.log('📡 Video file event received:', message.object);
+            const videoUrl = message.object.url;
+            
+            // Check if it's a video file
+            if (videoUrl.match(/\.(mp4|mov|webm|avi|mkv)$/i) || 
+                message.object.contentType?.startsWith('video/')) {
+              console.log('🎬 ✅ Video completed via file event:', videoUrl);
+              handleGenerationSuccess(videoUrl, projectId);
+            }
+          } else if (message.type === 'task_status' && message.object?.status === 'COMPLETED') {
+            // AICODE-NOTE: Task completion event - trigger polling to get results
+            console.log('📡 Task completed, triggering polling check');
+            startPolling(projectId);
+          } else {
+            // Log all other events for debugging
+            console.log('📡 Other video SSE event:', message.type, message);
           }
         } catch (error) {
           console.error('📡 ❌ SSE message parse error:', error);
+          console.log('📡 Raw event data:', event.data);
         }
       };
 
@@ -116,9 +136,18 @@ export function useVideoGenerator(): UseVideoGeneratorReturn {
         console.log('🔄 Browser will handle SSE reconnection automatically');
         // Fallback to polling only if SSE completely fails
         if (eventSource.readyState === EventSource.CLOSED) {
+          console.log('📊 SSE connection closed, starting polling fallback');
           startPolling(projectId);
         }
       };
+
+      // AICODE-NOTE: Add safety timeout to start polling if SSE doesn't connect quickly
+      setTimeout(() => {
+        if (eventSource.readyState !== EventSource.OPEN) {
+          console.log('📊 SSE not connected after 10s, starting polling as backup');
+          startPolling(projectId);
+        }
+      }, 10000); // 10 second timeout
 
     } catch (error) {
       console.error('📡 ❌ SSE connection failed:', error);
@@ -134,17 +163,86 @@ export function useVideoGenerator(): UseVideoGeneratorReturn {
     
     const poll = async () => {
       try {
-        // AICODE-TODO: Implement proper polling API call
-        // For now, simulate with timeout
-        pollingRef.current = setTimeout(() => {
-          // This would be replaced with actual API call
-          console.log('📊 Polling video project status...');
-          poll();
-        }, 3000);
+        // AICODE-NOTE: Use Next.js API route for polling to avoid CORS issues
+        const { TaskStatusEnum } = await import('@/lib/api');
+        
+        const response = await fetch(`/api/project/${projectId}`);
+        if (!response.ok) {
+          throw new Error(`Failed to get project: ${response.status}`);
+        }
+        const project = await response.json();
+        console.log('📊 Polling video project:', project.id, 'tasks:', project.tasks?.length);
+
+        // Check task statuses to determine overall project status
+        const hasErrorTask = project.tasks?.some((task: any) => task.status === TaskStatusEnum.ERROR);
+        const allCompleted = project.tasks?.length > 0 && project.tasks.every((task: any) => task.status === TaskStatusEnum.COMPLETED);
+        
+        if (allCompleted) {
+          console.log('📊 All tasks completed, looking for video data...');
+          
+          // Look for video data in project.data
+          const videoData = project.data?.find((data: any) => {
+            if (data.value && typeof data.value === 'object') {
+              const value = data.value as Record<string, any>;
+              const hasUrl = !!value.url;
+              const isVideo = value.contentType?.startsWith('video/') ||
+                             value.url?.match(/\.(mp4|mov|webm|avi|mkv)$/i);
+              
+              console.log('📊 Checking data entry:', {
+                hasUrl,
+                isVideo,
+                contentType: value.contentType,
+                url: value.url ? `${value.url.substring(0, 50)}...` : 'none'
+              });
+              
+              return hasUrl && isVideo;
+            }
+            return false;
+          });
+          
+          if (videoData?.value && typeof videoData.value === 'object') {
+            const videoUrl = (videoData.value as Record<string, any>).url as string;
+            console.log('📊 ✅ Video generation completed:', videoUrl);
+            handleGenerationSuccess(videoUrl, projectId);
+            return; // Stop polling
+          }
+          
+          // Fallback: look for any data with URL and assume it might be video
+          const anyDataWithUrl = project.data?.find((data: any) => {
+            return data.value && typeof data.value === 'object' && (data.value as any).url;
+          });
+          
+          if (anyDataWithUrl?.value && typeof anyDataWithUrl.value === 'object') {
+            const url = (anyDataWithUrl.value as Record<string, any>).url as string;
+            console.log('📊 ✅ Video generation completed (fallback):', url);
+            console.log('📊 ⚠️ Content type unknown, assuming video');
+            handleGenerationSuccess(url, projectId);
+            return; // Stop polling
+          }
+          
+          // No data found but tasks completed - might be a delay
+          console.log('📊 ⚠️ Tasks completed but no data found, continuing to poll...');
+        }
+        
+        if (hasErrorTask) {
+          console.log('📊 ❌ Video generation failed: task error');
+          handleGenerationError('Video generation failed: task error');
+          return; // Stop polling
+        }
+        
+        // Continue polling if still in progress
+        const hasInProgress = project.tasks?.some((task: any) => task.status === TaskStatusEnum.IN_PROGRESS);
+        if (hasInProgress || project.tasks?.length === 0) {
+          pollingRef.current = setTimeout(poll, 3000); // Video polls every 3 seconds
+        } else {
+          // No tasks in progress but not all completed - something went wrong
+          console.log('📊 ❌ Video generation stalled:', project.tasks?.map((t: any) => t.status));
+          handleGenerationError('Video generation process stalled');
+        }
         
       } catch (error) {
-        console.error('📊 ❌ Polling error:', error);
-        handleGenerationError('Polling failed');
+        console.error('📊 ❌ Video polling error:', error);
+        handleGenerationError('Failed to check video generation status');
       }
     };
 
@@ -323,6 +421,97 @@ export function useVideoGenerator(): UseVideoGeneratorReturn {
     }
   }, []);
 
+  // AICODE-NOTE: Force check for completed videos manually
+  const forceCheckResults = useCallback(async () => {
+    const projectId = generationStatus.projectId;
+    
+    if (!projectId) {
+      toast.warning('No active video generation to check');
+      return;
+    }
+    
+    console.log('🔍 Force checking video results for project:', projectId);
+    toast.info('Checking for video results...');
+    
+    try {
+      // AICODE-NOTE: Use Next.js API route to check project status (avoids CORS and auth issues)
+      const { TaskStatusEnum } = await import('@/lib/api');
+      
+      const response = await fetch(`/api/project/${projectId}`);
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        throw new Error(errorData.error || `HTTP ${response.status}`);
+      }
+      
+      const project = await response.json();
+      console.log('🔍 Project check result:', {
+        id: project.id,
+        tasksCount: project.tasks?.length || 0,
+        dataCount: project.data?.length || 0,
+        taskStatuses: project.tasks?.map((t: any) => t.status) || []
+      });
+      
+      // Check if all tasks are completed
+      const allCompleted = project.tasks?.length > 0 && 
+                          project.tasks.every((task: any) => task.status === TaskStatusEnum.COMPLETED);
+      
+      if (allCompleted) {
+        // Look for video in project.data
+        const videoData = project.data?.find((data: any) => {
+          if (data.value && typeof data.value === 'object') {
+            const value = data.value as Record<string, any>;
+            return value.url && (
+              value.contentType?.startsWith('video/') ||
+              value.url.match(/\.(mp4|mov|webm|avi|mkv)$/i)
+            );
+          }
+          return false;
+        });
+        
+        if (videoData?.value && typeof videoData.value === 'object') {
+          const videoUrl = (videoData.value as Record<string, any>).url as string;
+          console.log('🔍 ✅ Video found manually:', videoUrl);
+          handleGenerationSuccess(videoUrl, projectId);
+          toast.success('Video results retrieved!');
+          return;
+        }
+        
+        // Fallback: any data with URL
+        const anyDataWithUrl = project.data?.find((data: any) => {
+          return data.value && typeof data.value === 'object' && (data.value as any).url;
+        });
+        
+        if (anyDataWithUrl?.value && typeof anyDataWithUrl.value === 'object') {
+          const url = (anyDataWithUrl.value as Record<string, any>).url as string;
+          console.log('🔍 ✅ Video found (fallback):', url);
+          handleGenerationSuccess(url, projectId);
+          toast.success('Video results retrieved (unconfirmed type)!');
+          return;
+        }
+        
+        toast.warning('Tasks completed but no video data found');
+      } else {
+        const hasErrors = project.tasks?.some((task: any) => task.status === TaskStatusEnum.ERROR);
+        const inProgress = project.tasks?.some((task: any) => task.status === TaskStatusEnum.IN_PROGRESS);
+        
+        if (hasErrors) {
+          toast.error('Video generation failed - check logs');
+        } else if (inProgress) {
+          toast.info('Video generation still in progress...');
+          // Restart polling
+          startPolling(projectId);
+        } else {
+          toast.warning('Video generation status unclear - check manually');
+        }
+      }
+      
+    } catch (error) {
+      console.error('🔍 ❌ Force check failed:', error);
+      toast.error('Failed to check video results');
+    }
+  }, [generationStatus.projectId, handleGenerationSuccess, startPolling]);
+
   return {
     generationStatus,
     currentGeneration,
@@ -332,6 +521,7 @@ export function useVideoGenerator(): UseVideoGeneratorReturn {
     clearCurrentGeneration,
     deleteVideo,
     clearAllVideos,
+    forceCheckResults,
     downloadVideo,
     copyVideoUrl,
   };

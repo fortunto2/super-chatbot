@@ -4,6 +4,7 @@ export interface ImageState {
   status?: string;
   prompt?: string;
   projectId?: string;
+  requestId?: string;
   imageUrl?: string;
   timestamp?: number;
   message?: string;
@@ -28,11 +29,11 @@ export const shouldShowSkeleton = (
   liveImageUrl?: string, 
   initialImageUrl?: string
 ) => {
-  if (liveImageUrl || initialImageUrl) {
-    return false;
-  }
+  const hasImage = liveImageUrl || initialImageUrl;
+  const shouldGenerate = initialState && isGenerating(initialState.status || '');
+  const result = hasImage ? false : shouldGenerate;
   
-  return initialState && isGenerating(initialState.status || '');
+  return result;
 };
 
 export const shouldShowImage = (liveImageUrl?: string, initialImageUrl?: string) => {

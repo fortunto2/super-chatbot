@@ -601,3 +601,96 @@ export async function getStreamIdsByChatId({ chatId }: { chatId: string }) {
     throw error;
   }
 }
+
+export async function getChatImageArtifacts({
+  chatId,
+  limit = 5,
+}: {
+  chatId: string;
+  limit?: number;
+}) {
+  try {
+    // AICODE-NOTE: Find recent image artifacts from chat messages for image-to-video
+    const recentMessages = await db
+      .select({
+        id: message.id,
+        parts: message.parts,
+        createdAt: message.createdAt,
+      })
+      .from(message)
+      .where(eq(message.chatId, chatId))
+      .orderBy(desc(message.createdAt))
+      .limit(50); // Look at more messages to find artifacts
+
+    // Extract image artifacts from message parts
+    const imageArtifacts: Array<{
+      id: string;
+      url: string;
+      prompt: string;
+      createdAt: Date;
+      projectId?: string;
+    }> = [];
+
+    for (const msg of recentMessages) {
+      if (msg.parts && Array.isArray(msg.parts)) {
+        for (const part of msg.parts) {
+          // Check if part contains image artifact
+          if (part && typeof part === 'object' && 'text' in part) {
+            const text = part.text as string;
+            
+            // Look for image artifacts in the text
+            if (text && (
+              text.includes('"kind":"image"') || 
+              text.includes("'kind':'image'") ||
+              text.includes('ImageArtifact')
+            )) {
+              try {
+                let artifactContent = null;
+                
+                // Try to parse JSON content
+                if (text.includes('```json')) {
+                  const jsonMatch = text.match(/```json\s*({[\s\S]*?})\s*```/);
+                  if (jsonMatch) {
+                    artifactContent = JSON.parse(jsonMatch[1]);
+                  }
+                } else if (text.startsWith('{') && text.endsWith('}')) {
+                  artifactContent = JSON.parse(text);
+                }
+                
+                if (artifactContent && 
+                    artifactContent.status === 'completed' && 
+                    artifactContent.imageUrl) {
+                  
+                  imageArtifacts.push({
+                    id: artifactContent.requestId || artifactContent.projectId || msg.id,
+                    url: artifactContent.imageUrl,
+                    prompt: artifactContent.prompt || 'Generated image',
+                    createdAt: msg.createdAt,
+                    projectId: artifactContent.projectId,
+                  });
+                  
+                  // Stop at limit
+                  if (imageArtifacts.length >= limit) {
+                    break;
+                  }
+                }
+              } catch (parseError) {
+                // Skip invalid JSON artifacts
+                continue;
+              }
+            }
+          }
+        }
+        
+        if (imageArtifacts.length >= limit) {
+          break;
+        }
+      }
+    }
+
+    return imageArtifacts;
+  } catch (error) {
+    console.error('Failed to get chat image artifacts from database');
+    throw error;
+  }
+}

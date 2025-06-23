@@ -21,6 +21,7 @@
 ## Core Features
 
 ### 🎨 **Image Generation**
+
 - **FLUX Pro/Dev Models**: Professional-grade image generation with exceptional quality
 - **Multiple Styles**: Photorealistic, cinematic, artistic, anime, cartoon, steampunk, sci-fi
 - **Flexible Resolutions**: Square, portrait, landscape, and custom aspect ratios
@@ -28,6 +29,7 @@
 - **Real-time Progress**: WebSocket-powered generation tracking
 
 ### 🎬 **Video Generation**
+
 - **SuperDuperAI Veo3**: Cutting-edge video synthesis technology
 - **Multiple Formats**: 16:9, 9:16, 4:3, 1:1 aspect ratios for all platforms
 - **Frame Rate Control**: 24fps cinematic to 120fps high-speed
@@ -35,6 +37,7 @@
 - **Professional Quality**: Full HD, HD, and SD output options
 
 ### 📝 **Screenplay Creation**
+
 - **Industry-Standard Format**: Professional screenplay formatting
 - **Character Development**: Consistent character voices and story arcs
 - **Genre Expertise**: Comedy, drama, thriller, sci-fi, documentary styles
@@ -42,6 +45,7 @@
 - **Collaborative Editing**: Real-time multi-user screenplay development
 
 ### 🎯 **Storyboard Design**
+
 - **Visual Planning**: Convert scripts into detailed visual panels
 - **Camera Notation**: Professional shot types, angles, and movements
 - **Scene Visualization**: Consistent character and environment design
@@ -49,6 +53,7 @@
 - **Export Options**: PDF, image sequences, and digital formats
 
 ### 🔧 **Technical Foundation**
+
 - [Next.js 15](https://nextjs.org) App Router with React 19
   - Advanced routing and React Server Components
   - Server Actions for optimal performance
@@ -67,16 +72,19 @@
 ## AI Models
 
 ### Image Generation
+
 - **FLUX Pro**: Commercial-grade photorealistic images
 - **FLUX Dev**: Creative exploration and artistic styles
 - **SDXL**: Alternative high-quality image synthesis
 
-### Video Generation  
+### Video Generation
+
 - **SuperDuperAI Veo3**: Primary video generation model
 - **Runway Gen-3**: Advanced motion and scene understanding
 - **Stable Video Diffusion**: Consistent video synthesis
 
 ### Text Generation
+
 - **GPT-4**: Advanced language understanding and creative writing
 - **Claude**: Sophisticated dialogue and narrative creation
 - **xAI Grok**: Real-time information and creative assistance
@@ -109,6 +117,7 @@ Your AI media creation platform will be running on [localhost:3000](http://local
 This application is built with a modern, scalable architecture designed for professional content creation:
 
 ### 📚 Documentation
+
 - **[AI Media Capabilities](docs/ai-media-capabilities.md)** - Comprehensive overview of AI features
 - **[Prompt Examples](docs/prompt-examples.md)** - Proven prompts for optimal results
 - **[Technical Specifications](docs/TECHNICAL_SPECIFICATIONS.md)** - Implementation details
@@ -116,6 +125,7 @@ This application is built with a modern, scalable architecture designed for prof
 - **[AGENTS.md](AGENTS.md)** - AI agent development guide
 
 ### 🏗️ Core Components
+
 - **Creative Interface**: Intuitive design for media generation workflows
 - **AI Engine**: Multi-modal AI integration with streaming capabilities
 - **Media Pipeline**: Professional-grade asset processing and storage
@@ -123,6 +133,7 @@ This application is built with a modern, scalable architecture designed for prof
 - **Export System**: Professional format output and integration
 
 ### 🤖 AI Integration
+
 - **SuperDuperAI API**: Primary media generation backend
 - **WebSocket Updates**: Real-time generation progress tracking
 - **Batch Processing**: Efficient multi-asset generation
@@ -130,6 +141,7 @@ This application is built with a modern, scalable architecture designed for prof
 - **Quality Control**: Multi-tier output options for different needs
 
 ### 🔧 Development Features
+
 - **Type Safety**: Full TypeScript implementation
 - **Code Quality**: Biome for linting and formatting
 - **Testing**: Comprehensive E2E testing with Playwright
@@ -139,12 +151,14 @@ This application is built with a modern, scalable architecture designed for prof
 ## Use Cases
 
 ### Content Creation
+
 - **Marketing Campaigns**: Complete visual campaigns from concept to completion
 - **Social Media**: Platform-optimized content across all formats
 - **Educational Materials**: Instructional videos and visual aids
 - **Entertainment**: Short films, commercials, and promotional content
 
 ### Professional Production
+
 - **Pre-Production**: Complete pre-visualization for film and video projects
 - **Concept Art**: Visual development for games, films, and products
 - **Client Presentations**: Professional pitch materials and mockups
@@ -155,23 +169,82 @@ This application is built with a modern, scalable architecture designed for prof
 ### Quick Examples
 
 **Generate an Image:**
+
 ```
 "Create a cinematic wide shot of a futuristic cityscape at sunset with flying cars, photorealistic style"
 ```
 
 **Create a Video:**
+
 ```
 "Generate a 10-second video of ocean waves crashing on a beach at golden hour, 30fps, cinematic"
 ```
 
 **Write a Screenplay:**
+
 ```
 "Write a 3-page comedy screenplay about two robots learning to dance"
 ```
 
 **Design a Storyboard:**
+
 ```
 "Create a 6-panel storyboard for a smartphone commercial with camera angles and transitions"
 ```
 
 For detailed examples and advanced techniques, see our [Prompt Examples Guide](docs/prompt-examples.md).
+
+## 🐛 Image Generation Debugging
+
+If generated images don't appear in chat, follow these steps:
+
+### 1. Open Browser Console
+
+- Press F12 or right-click → Inspect → Console tab
+
+### 2. Generate an Image
+
+- Use the chat to request image generation (e.g., "generate image of a cat")
+
+### 3. Monitor Debug Logs
+
+Look for this sequence in console:
+
+```
+🎨 ✅ Image completed via SSE file event: [URL]
+🔄 ImageArtifactWrapper memo: content changed, triggering re-render
+🔧 ImageArtifactWrapper: initial state updated
+🎯 ImageEditor: initialState updated
+🎯 ImageEditor display state: { showImage: true, displayImageUrl: [URL] }
+```
+
+### 4. Quick Fix Commands
+
+If image doesn't appear, try these console commands:
+
+```javascript
+quickImageFix(); // Apply last generated image
+imageSystem.debug(); // Check system health
+checkCurrentArtifact(); // Check artifact state
+```
+
+### 5. Save Images Permanently
+
+To keep generated images accessible after closing artifacts:
+
+```javascript
+addImageToChat(); // Add last generated image to chat history
+addImageToChat("https://your-image-url.com"); // Add specific image URL
+```
+
+**Why this is needed:** After closing an artifact, images disappear from the interface. The `addImageToChat()` function adds images to the chat message history where they remain permanently accessible.
+
+### 6. Report Issues
+
+When reporting problems, include:
+
+- Which debug log step is missing/failing
+- Full console output with timestamps
+- Browser and version information
+
+---

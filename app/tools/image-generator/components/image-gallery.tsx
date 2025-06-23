@@ -56,11 +56,11 @@ export function ImageGallery({
   // AICODE-NOTE: Image preview modal
   const ImagePreviewModal = ({ image }: { image: GeneratedImage }) => (
     <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
-      <div className="relative max-w-4xl max-h-full">
+      <div className="relative max-w-4xl h-full">
         <Button
           variant="outline"
           size="sm"
-          className="absolute top-2 right-2 z-10 bg-white"
+          className="absolute top-2 right-2 z-10 "
           onClick={() => setSelectedImage(null)}
         >
           <X className="size-4" />
@@ -69,7 +69,7 @@ export function ImageGallery({
         <img
           src={image.url}
           alt={image.prompt}
-          className="max-w-full max-h-full object-contain rounded-lg"
+          className="size-full object-contain rounded-lg"
           onError={() => handleImageError(image.id)}
         />
         
@@ -91,10 +91,12 @@ export function ImageGallery({
       <Card className={`group relative overflow-hidden ${isCurrent ? 'ring-2 ring-blue-500' : ''}`}>
         <div className="aspect-square relative">
           {hasError ? (
-            <div className="size-full bg-gray-100 flex items-center justify-center">
+            <div className="size-full bg-gray-50 flex items-center justify-center border-2 border-dashed border-gray-300">
               <div className="text-center text-gray-500">
-                <Settings className="size-8 mx-auto mb-2" />
-                <p className="text-sm">Failed to load</p>
+                <div className="bg-red-100 rounded-full p-3 w-14 h-14 mx-auto mb-2 flex items-center justify-center">
+                  <Settings className="size-6 text-red-400" />
+                </div>
+                <p className="text-sm font-medium">Failed to load</p>
               </div>
             </div>
           ) : (
@@ -108,36 +110,36 @@ export function ImageGallery({
           )}
           
           {/* Overlay with actions */}
-          <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition-all duration-200 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-60 transition-all duration-200 flex items-center justify-center">
             <div className="opacity-0 group-hover:opacity-100 transition-opacity space-x-2">
               <Button
                 size="sm"
-                variant="outline"
-                className="bg-white/90 hover:bg-white"
+                variant="secondary"
+                className="bg-gray-800/90 hover:bg-gray-700 text-white border-gray-600 shadow-lg"
                 onClick={() => setSelectedImage(image)}
               >
                 <ZoomIn className="size-4" />
               </Button>
               <Button
                 size="sm"
-                variant="outline"
-                className="bg-white/90 hover:bg-white"
+                variant="secondary"
+                className="bg-gray-800/90 hover:bg-gray-700 text-white border-gray-600 shadow-lg"
                 onClick={() => onDownloadImage(image)}
               >
                 <Download className="size-4" />
               </Button>
               <Button
                 size="sm"
-                variant="outline"
-                className="bg-white/90 hover:bg-white"
+                variant="secondary"
+                className="bg-gray-800/90 hover:bg-gray-700 text-white border-gray-600 shadow-lg"
                 onClick={() => onCopyImageUrl(image)}
               >
                 <Copy className="size-4" />
               </Button>
               <Button
                 size="sm"
-                variant="outline"
-                className="bg-white/90 hover:bg-white text-red-600 hover:text-red-700"
+                variant="secondary"
+                className="bg-red-600/90 hover:bg-red-700 text-white border-red-500 shadow-lg"
                 onClick={() => onDeleteImage(image.id)}
               >
                 <Trash2 className="size-4" />
@@ -182,10 +184,12 @@ export function ImageGallery({
           <CardTitle>Generated Images</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-center py-8 text-gray-500">
-            <Settings className="size-12 mx-auto mb-4 opacity-50" />
-            <p className="text-lg font-medium mb-2">No images generated yet</p>
-            <p className="text-sm">
+          <div className="text-center py-8 text-gray-600">
+            <div className="bg-gray-100 rounded-full p-4 w-20 h-20 mx-auto mb-4 flex items-center justify-center">
+              <Settings className="size-8 text-gray-400" />
+            </div>
+            <p className="text-lg font-medium mb-2 text-gray-700">No images generated yet</p>
+            <p className="text-sm text-gray-500">
               Start by entering a prompt and clicking &quot;Generate Image&quot;
             </p>
           </div>
@@ -205,7 +209,7 @@ export function ImageGallery({
                 variant="outline"
                 size="sm"
                 onClick={onClearAll}
-                className="text-red-600 hover:text-red-700"
+                className="text-red-600 hover:text-red-700 border-red-200 hover:border-red-300 hover:bg-red-50"
               >
                 <Trash2 className="size-4 mr-2" />
                 Clear All

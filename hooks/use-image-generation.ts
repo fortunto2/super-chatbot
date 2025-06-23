@@ -55,6 +55,7 @@ export interface UseImageGenerationActions {
   ) => Promise<void>;
   resetState: () => void;
   startTracking: (projectId: string, requestId?: string) => void;
+  forceCheckResults: () => Promise<void>;
 }
 
 export interface UseImageGenerationReturn extends UseImageGenerationState, UseImageGenerationActions {
@@ -135,14 +136,21 @@ export function useImageGeneration(chatId?: string): UseImageGenerationReturn {
   
   // Use stable chatIdState for useMemo to properly trigger recreations
   const eventHandlers = useMemo(() => {
-    console.log('🎮 Creating event handlers array for chatId:', chatIdState, 'requestId:', currentRequestId);
+    // Only log on first creation or chat change
+    if (typeof window !== 'undefined' && chatIdState) {
+      const logKey = `img_handlers_${chatIdState}`;
+      if (!(window as any)[logKey]) {
+        console.log('🎮 Creating event handlers for chat:', chatIdState);
+        (window as any)[logKey] = true;
+      }
+    }
     return chatIdState ? [imageEventHandler] : [];
   }, [imageEventHandler, chatIdState, currentRequestId]);
 
   // Create stable WebSocket options with chatIdState dependency
   const websocketOptions = useMemo(() => {
     const shouldConnect = !!chatIdState && mountedRef.current;
-    console.log('🎮 Should connect WebSocket:', shouldConnect, 'chatId:', chatIdState);
+    // Reduce WebSocket logging
     
     return {
       projectId: chatIdState || '',
@@ -174,10 +182,19 @@ export function useImageGeneration(chatId?: string): UseImageGenerationReturn {
 
   const { isConnected, connectionAttempts, maxAttempts, disconnect } = useImageSSE(websocketOptions);
 
-  // Only log WebSocket status if WebSocket is enabled
-  if (chatIdState) {
-    console.log('🎮 WebSocket connection status:', { isConnected, connectionAttempts, maxAttempts });
-  }
+  // Only log WebSocket status changes, not every render
+  useEffect(() => {
+    if (chatIdState && typeof window !== 'undefined') {
+      const statusKey = `ws_status_${chatIdState}`;
+      const lastStatus = (window as any)[statusKey];
+      const currentStatus = { isConnected, connectionAttempts, maxAttempts };
+      
+      if (!lastStatus || JSON.stringify(lastStatus) !== JSON.stringify(currentStatus)) {
+        console.log('🎮 WebSocket status changed:', currentStatus);
+        (window as any)[statusKey] = currentStatus;
+      }
+    }
+  }, [chatIdState, isConnected, connectionAttempts, maxAttempts]);
 
   const startTracking = useCallback((projectId: string, requestId?: string) => {
     if (!mountedRef.current) return;
@@ -201,7 +218,7 @@ export function useImageGeneration(chatId?: string): UseImageGenerationReturn {
       requestId
     }));
     
-    console.log('🎯 State updated for tracking');
+    // Reduced tracking logging
   }, []);
 
   const resetState = useCallback(() => {
@@ -272,6 +289,110 @@ export function useImageGeneration(chatId?: string): UseImageGenerationReturn {
     }
   }, []);
 
+  // Force check for completed images manually
+  const forceCheckResults = useCallback(async () => {
+    const projectId = state.projectId;
+    
+    if (!projectId) {
+      console.warn('⚠️ No active image generation to check');
+      return;
+    }
+    
+    console.log('🔍 Force checking image results for project:', projectId);
+    
+    try {
+      // Use Next.js API route to check project status (avoids CORS and auth issues)
+      const response = await fetch(`/api/project/${projectId}`);
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        throw new Error(errorData.error || `HTTP ${response.status}`);
+      }
+      
+      const project = await response.json();
+      console.log('🔍 Project check result:', {
+        id: project.id,
+        tasksCount: project.tasks?.length || 0,
+        dataCount: project.data?.length || 0,
+        taskStatuses: project.tasks?.map((t: any) => t.status) || []
+      });
+      
+      // Look for image data in project.data first (regardless of task status)
+      const imageData = project.data?.find((data: any) => {
+        if (data.value && typeof data.value === 'object') {
+          const value = data.value as Record<string, any>;
+          const hasUrl = !!value.url;
+          const isImage = value.url?.match(/\.(jpg|jpeg|png|webp|gif|bmp|svg)$/i);
+          
+          return hasUrl && isImage;
+        }
+        return false;
+      });
+      
+      if (imageData?.value && typeof imageData.value === 'object') {
+        const imageUrl = (imageData.value as Record<string, any>).url as string;
+        console.log('🔍 ✅ Image found manually:', imageUrl);
+        handleStateUpdate({
+          status: 'completed',
+          imageUrl,
+          progress: 100,
+          isGenerating: false
+        });
+        return;
+      }
+      
+      // Handle file_id case in project data  
+      const fileIdData = project.data?.find((data: any) => {
+        return data.value && typeof data.value === 'object' && (data.value as any).file_id;
+      });
+      
+      if (fileIdData?.value && typeof fileIdData.value === 'object') {
+        const fileId = (fileIdData.value as Record<string, any>).file_id as string;
+        console.log('🔍 Found file_id manually, resolving:', fileId);
+        
+        // Import and resolve file_id to URL
+        const { FileService, FileTypeEnum } = await import('@/lib/api');
+        const fileResponse = await FileService.fileGetById({ id: fileId });
+        
+        if (fileResponse && fileResponse.url && fileResponse.type === FileTypeEnum.IMAGE) {
+          console.log('🔍 ✅ File ID resolved to image URL manually:', fileResponse.url);
+          handleStateUpdate({
+            status: 'completed',
+            imageUrl: fileResponse.url,
+            progress: 100,
+            isGenerating: false
+          });
+          return;
+        }
+      }
+      
+      // Check task statuses for error handling
+      const hasErrors = project.tasks?.some((task: any) => task.status === TaskStatusEnum.ERROR);
+      const inProgress = project.tasks?.some((task: any) => task.status === TaskStatusEnum.IN_PROGRESS);
+      
+      if (hasErrors) {
+        console.log('🔍 ❌ Generation failed - task errors found');
+        handleStateUpdate({
+          status: 'failed',
+          error: 'Image generation failed - check logs',
+          isGenerating: false
+        });
+      } else if (inProgress) {
+        console.log('🔍 ⏳ Generation still in progress...');
+      } else {
+        console.log('🔍 ⚠️ No image data found but no clear error state');
+      }
+      
+    } catch (error) {
+      console.error('🔍 ❌ Force check failed:', error);
+      handleStateUpdate({
+        status: 'failed',
+        error: 'Failed to check image results',
+        isGenerating: false
+      });
+    }
+  }, [state.projectId, handleStateUpdate]);
+
   return {
     ...state,
     isConnected,
@@ -280,6 +401,7 @@ export function useImageGeneration(chatId?: string): UseImageGenerationReturn {
     startTracking,
     resetState,
     generateImageAsync,
+    forceCheckResults,
     disconnect
   };
 } 

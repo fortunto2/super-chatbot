@@ -172,21 +172,24 @@ export const generateImageHybrid = async (
     const url = createAPIURL(API_ENDPOINTS.GENERATE_IMAGE, config);
     const headers = createAuthHeaders();
 
+    // AICODE-NOTE: Fixed payload structure to match working API format
     const payload = {
+      type: "media",
+      template_name: null,
+      style_name: styleId, // Move style_name outside config
       config: {
         prompt: prompt,
-        negative_prompt: "",
-        width: resolution.width,
-        height: resolution.height,
-        steps: 20,
-        shot_size: shotSize.id,
-        seed: actualSeed,
-        generation_config_name: model.name,
-        batch_size: 1,
-        style_name: styleId,
-        references: [],
+        shot_size: shotSize.label, // Use label instead of id
+        style_name: styleId, // Keep for backward compatibility
+        seed: String(actualSeed), // Convert to string
+        aspecRatio: resolution.aspectRatio || "16:9", // Add aspecRatio (typo in API)
+        batch_size: 3, // Use batch_size 3 like in working example
         entity_ids: [],
-        model_type: null
+        generation_config_name: model.name,
+        height: String(resolution.height), // Convert to string
+        qualityType: resolution.qualityType || "full_hd", // Add qualityType
+        references: [],
+        width: String(resolution.width), // Convert to string
       }
     };
 

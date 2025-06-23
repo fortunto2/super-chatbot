@@ -21,6 +21,7 @@ export default function ImageGeneratorPage() {
     clearCurrentGeneration,
     deleteImage,
     clearAllImages,
+    forceCheckResults,
     downloadImage,
     copyImageUrl,
   } = useImageGenerator();
@@ -90,6 +91,7 @@ export default function ImageGeneratorPage() {
           <GenerationProgress
             generationStatus={generationStatus}
             prompt={generationStatus.message}
+            onForceCheck={forceCheckResults}
           />
         </div>
 
