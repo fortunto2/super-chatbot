@@ -1,12 +1,22 @@
 import { getAvailableVideoModels, } from './superduperai';
 import videoModelsConfig from './video-models.json';
 import type { VideoModel } from '@/lib/config/superduperai';
+import { GenerationTypeEnum } from '@/lib/api/models/GenerationTypeEnum';
 
 /**
  * Enhanced video model with metadata
  * AICODE-NOTE: Combines dynamic API data with static metadata
  */
 export interface EnhancedVideoModel extends VideoModel {
+  id?: string;
+  description?: string;
+  maxDuration?: number;
+  maxResolution?: { width: number; height: number };
+  supportedFrameRates?: number[];
+  pricePerSecond?: number;
+  workflowPath?: string;
+  supportedAspectRatios?: string[];
+  supportedQualities?: string[];
   category: 'text_to_video' | 'image_to_video' | 'video_to_video';
   uiLabel: string;
   uiDescription: string;
@@ -28,13 +38,14 @@ export async function getEnhancedVideoModels(): Promise<EnhancedVideoModel[]> {
     
     // Enhance with metadata
     const enhancedModels: EnhancedVideoModel[] = apiModels.map(apiModel => {
-      const metadata = videoModelsConfig.model_metadata[apiModel.id as keyof typeof videoModelsConfig.model_metadata];
+      const model = apiModel as any; // Temporary type assertion
+      const metadata = videoModelsConfig.model_metadata[model.id as keyof typeof videoModelsConfig.model_metadata];
       
       // Determine price tier
       let priceTier: 'budget' | 'standard' | 'premium' | 'luxury' = 'standard';
-      if (apiModel.pricePerSecond <= 0.5) priceTier = 'budget';
-      else if (apiModel.pricePerSecond <= 1.5) priceTier = 'standard';
-      else if (apiModel.pricePerSecond <= 2.5) priceTier = 'premium';
+      if (model.pricePerSecond <= 0.5) priceTier = 'budget';
+      else if (model.pricePerSecond <= 1.5) priceTier = 'standard';
+      else if (model.pricePerSecond <= 2.5) priceTier = 'premium';
       else priceTier = 'luxury';
       
       // Determine category from metadata or model name
@@ -43,9 +54,9 @@ export async function getEnhancedVideoModels(): Promise<EnhancedVideoModel[]> {
         category = metadata.category as any;
       } else {
         // Fallback: detect from model name
-        if (apiModel.id.includes('image-to-video') || apiModel.id.includes('veo') || apiModel.id.includes('kling')) {
+        if (model.id.includes('image-to-video') || model.id.includes('veo') || model.id.includes('kling')) {
           category = 'image_to_video';
-        } else if (apiModel.id.includes('lip-sync') || apiModel.id.includes('video-to-video')) {
+        } else if (model.id.includes('lip-sync') || model.id.includes('video-to-video')) {
           category = 'video_to_video';
         }
       }
@@ -54,7 +65,7 @@ export async function getEnhancedVideoModels(): Promise<EnhancedVideoModel[]> {
         ...apiModel,
         category,
         uiLabel: metadata?.ui_label || apiModel.name,
-        uiDescription: metadata?.ui_description || apiModel.description,
+        uiDescription: metadata?.ui_description || model.description,
         recommendedSettings: metadata?.recommended_settings || {},
         bestFor: metadata?.best_for || [],
         priceTier,
@@ -80,7 +91,9 @@ export async function getEnhancedVideoModels(): Promise<EnhancedVideoModel[]> {
       workflowPath: 'LTX/default.json',
       supportedAspectRatios: ['16:9', '1:1', '9:16'],
       supportedQualities: ['hd'],
-      type: 'image_to_video',
+      type: GenerationTypeEnum.IMAGE_TO_VIDEO,
+      source: 'local' as any,
+      params: {},
       category: 'image_to_video',
       uiLabel: 'LTX Video',
       uiDescription: 'Budget-friendly image-to-video generation',

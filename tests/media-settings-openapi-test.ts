@@ -3,16 +3,11 @@ import type { ImageGenerationConfig, VideoGenerationConfig } from '../lib/types/
 import type { IGenerationConfigRead } from '../lib/api/models/IGenerationConfigRead';
 
 // Adapter function to convert OpenAPI model to MediaSettings format
-function adaptModelForMediaSettings(model: IGenerationConfigRead): IGenerationConfigRead & {
-  id: string;
-  description: string;
-  value: string;
-  workflowPath: string;
-  price: number;
-} {
+function adaptModelForMediaSettings(model: IGenerationConfigRead): any {
   return {
     ...model,
     id: model.name, // Use name as id for compatibility
+    label: model.label || model.name, // Ensure label is always defined
     description: `${model.type} - ${model.source}`,
     value: model.name,
     workflowPath: model.params?.workflow_path || '',
