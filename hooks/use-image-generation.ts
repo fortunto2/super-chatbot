@@ -153,7 +153,7 @@ export function useImageGeneration(chatId?: string): UseImageGenerationReturn {
     // Reduce WebSocket logging
     
     return {
-      projectId: chatIdState || '',
+      fileId: chatIdState || '',
       eventHandlers,
       enabled: shouldConnect,
     };
