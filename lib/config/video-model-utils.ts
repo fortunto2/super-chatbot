@@ -8,6 +8,15 @@ import type { VideoModel } from '@/lib/config/superduperai';
  * AICODE-NOTE: Combines dynamic API data with static metadata
  */
 export interface EnhancedVideoModel extends VideoModel {
+  id?: string;
+  description?: string;
+  maxDuration?: number;
+  maxResolution?: { width: number; height: number };
+  supportedFrameRates?: number[];
+  pricePerSecond?: number;
+  workflowPath?: string;
+  supportedAspectRatios?: string[];
+  supportedQualities?: string[];
   category: 'text_to_video' | 'image_to_video' | 'video_to_video';
   uiLabel: string;
   uiDescription: string;

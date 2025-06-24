@@ -5,6 +5,8 @@ import type { MediaOption } from '@/lib/types/media-settings';
 import type { VideoModel } from '@/lib/config/superduperai';
 import { getAvailableVideoModels } from '@/lib/config/superduperai';
 import { VIDEO_RESOLUTIONS, SHOT_SIZES, VIDEO_FRAME_RATES, DEFAULT_VIDEO_RESOLUTION, DEFAULT_VIDEO_DURATION } from '@/lib/config/video-constants';
+import { GenerationTypeEnum } from '@/lib/api/models/GenerationTypeEnum';
+import { GenerationSourceEnum } from '@/lib/api/models/GenerationSourceEnum';
 
 // AICODE-NOTE: Now using unified VideoModel type from superduperai.ts
 function convertToVideoModel(sdModel: VideoModel): VideoModel {
@@ -47,8 +49,8 @@ export const videoDocumentHandler = createDocumentHandler<'video'>({
         availableModels = [{
           name: 'comfyui/ltx',
           label: 'LTX Video',
-          type: 'image_to_video' as any,
-          source: 'comfyui' as any,
+          type: GenerationTypeEnum.IMAGE_TO_VIDEO,
+          source: GenerationSourceEnum.LOCAL,
           params: {
             price: 0.4,
             workflow_path: 'LTX/default.json',
@@ -58,7 +60,7 @@ export const videoDocumentHandler = createDocumentHandler<'video'>({
             supported_aspect_ratios: ['16:9', '1:1', '9:16'],
             supported_qualities: ['hd']
           }
-        } as VideoModel];
+        }];
       }
 
       // Get available styles from API
@@ -179,8 +181,8 @@ export const videoDocumentHandler = createDocumentHandler<'video'>({
         availableModels = [{
           name: 'comfyui/ltx',
           label: 'LTX Video',
-          type: 'image_to_video' as any,
-          source: 'comfyui' as any,
+          type: GenerationTypeEnum.IMAGE_TO_VIDEO,
+          source: GenerationSourceEnum.LOCAL,
           params: {
             price: 0.4,
             workflow_path: 'LTX/default.json',
@@ -190,7 +192,7 @@ export const videoDocumentHandler = createDocumentHandler<'video'>({
             supported_aspect_ratios: ['16:9', '1:1', '9:16'],
             supported_qualities: ['hd']
           }
-        } as VideoModel];
+        }];
       }
 
       // Start new video generation
