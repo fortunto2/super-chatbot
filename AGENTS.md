@@ -214,15 +214,22 @@ AI agents must follow the **Typed Proxy Architecture** where frontend never make
 
 #### Architecture Overview
 ```
-Frontend → Internal API Routes → OpenAPI Client → SuperDuperAI API
+Current Implementation:
+Frontend → Internal API Routes → OpenAPI Client → SuperDuperAI Python Backend (API requests)
+Frontend → Direct SSE Connection → SuperDuperAI Python Backend SSE (Real-time events)
+
+Future Plan:
+Frontend → Internal API Routes → OpenAPI Client → SuperDuperAI Python Backend (API requests)
+Frontend → Internal SSE Proxy → SuperDuperAI Python Backend SSE (Optional for some use cases)
 ```
 
 **Key Principles:**
 - **Security**: External API tokens never exposed to frontend
 - **Type Safety**: OpenAPI models used throughout the stack
-- **Consistency**: Unified error handling and response format
+- **Consistency**: Unified error handling and response format for API requests
 - **Performance**: Server-side caching and optimization
 - **Maintainability**: Single source of truth for API integration
+- **Real-time Performance**: SSE events use direct connections for optimal latency (may add proxy option in future)
 
 ### OpenAPI Client Setup
 AI agents must use the auto-generated OpenAPI client for SuperDuperAI API:
@@ -467,15 +474,93 @@ export async function POST(request: Request) {
 ```
 
 ### SSE Real-time Updates Pattern (Updated: June 15, 2025)
-AI agents should implement Server-Sent Events (SSE) for real-time generation progress:
+AI agents should implement Server-Sent Events (SSE) for real-time generation progress. SuperDuperAI Python backend supports three types of SSE channels:
+
+#### SSE Channel Types (SuperDuperAI Python Backend)
+1. **File-based events** (Default): `${config.url}/api/v1/events/file.{fileId}` - Recommended for generators
+2. **Project-based events** (Legacy): `${config.url}/api/v1/events/project.{projectId}` - Legacy approach
+3. **User-based events**: `${config.url}/api/v1/events/user.{userId}` - Global user notifications
+
+#### Current Implementation Status
+**✅ Currently**: SSE connections go **directly** to SuperDuperAI Python backend (e.g., `https://dev-editor.superduperai.co/api/v1/events/file.{fileId}`)
+
+**🔮 Future Plan**: SSE events may be optionally proxied through Next.js API routes for additional security/transformation when needed
+
+**Note**: Regular API requests (generation, models) are already proxied through Next.js backend, but SSE events currently use direct connections for real-time performance.
+
+#### File-based SSE Pattern (Recommended - Current Implementation)
 ```typescript
-// AICODE-NOTE: SuperDuperAI SSE integration replacing WebSocket
-function connectToGenerationUpdates(projectId: string) {
+// AICODE-NOTE: File-based SSE is the default pattern for generators (direct connection)
+function connectToFileUpdates(fileId: string) {
   const config = getSuperduperAIConfig()
+  // Direct connection to SuperDuperAI Python backend SSE endpoint
+  const eventSource = new EventSource(`${config.url}/api/v1/events/file.${fileId}`)
+  
+  eventSource.onopen = () => {
+    console.log('🔌 SSE connected for file:', fileId)
+  }
+  
+  eventSource.onmessage = (event) => {
+    const message = JSON.parse(event.data)
+    
+    if (message.type === 'render_progress') {
+      // Update progress in UI
+      updateGenerationProgress(fileId, message.object.progress)
+    } else if (message.type === 'render_result') {
+      // Generation completed
+      handleGenerationComplete(fileId, message.object)
+    } else if (message.type === 'task') {
+      // Task status updates
+      handleTaskStatusUpdate(fileId, message.object)
+    }
+  }
+  
+  // AICODE-NOTE: Browser handles reconnection automatically
+  eventSource.onerror = (error) => {
+    console.error('❌ SSE error:', error)
+    console.log('🔄 Browser will handle SSE reconnection automatically')
+  }
+  
+  return eventSource
+}
+
+// AICODE-NOTE: Future plan - File-based SSE through Next.js proxy (not implemented yet)
+function connectToFileUpdatesViaProxy(fileId: string) {
+  // TODO: This is a planned feature - SSE proxy through Next.js API routes
+  // Currently all SSE connections go directly to SuperDuperAI backend
+  const eventSource = new EventSource(`/api/events/file/${fileId}`) // ← This endpoint does not exist yet
+  
+  eventSource.onopen = () => {
+    console.log('🔌 SSE connected for file via proxy:', fileId)
+  }
+  
+  eventSource.onmessage = (event) => {
+    const message = JSON.parse(event.data)
+    
+    if (message.type === 'render_progress') {
+      updateGenerationProgress(fileId, message.object.progress)
+    } else if (message.type === 'render_result') {
+      handleGenerationComplete(fileId, message.object)
+    } else if (message.type === 'task') {
+      handleTaskStatusUpdate(fileId, message.object)
+    }
+  }
+  
+  eventSource.onerror = (error) => {
+    console.error('❌ SSE proxy error:', error)
+  }
+  
+  return eventSource
+}
+
+// AICODE-NOTE: Project-based SSE (Legacy) - avoid in new implementations
+function connectToProjectUpdates(projectId: string) {
+  const config = getSuperduperAIConfig()
+  // Legacy project-based SSE channel
   const eventSource = new EventSource(`${config.url}/api/v1/events/project.${projectId}`)
   
   eventSource.onopen = () => {
-    console.log('🔌 SSE connected for project:', projectId)
+    console.log('🔌 SSE connected for project (legacy):', projectId)
   }
   
   eventSource.onmessage = (event) => {
@@ -490,7 +575,30 @@ function connectToGenerationUpdates(projectId: string) {
     }
   }
   
-  // AICODE-NOTE: Browser handles reconnection automatically
+  eventSource.onerror = (error) => {
+    console.error('❌ SSE error:', error)
+    console.log('🔄 Browser will handle SSE reconnection automatically')
+  }
+  
+  return eventSource
+}
+
+// AICODE-NOTE: User-based SSE for global notifications
+function connectToUserUpdates(userId: string) {
+  const config = getSuperduperAIConfig()
+  const eventSource = new EventSource(`${config.url}/api/v1/events/user.${userId}`)
+  
+  eventSource.onopen = () => {
+    console.log('🔌 SSE connected for user:', userId)
+  }
+  
+  eventSource.onmessage = (event) => {
+    const message = JSON.parse(event.data)
+    
+    // Handle user-wide notifications
+    handleUserNotification(userId, message)
+  }
+  
   eventSource.onerror = (error) => {
     console.error('❌ SSE error:', error)
     console.log('🔄 Browser will handle SSE reconnection automatically')
@@ -943,11 +1051,18 @@ AI agents must handle these status values:
 - `completed`: Generation finished successfully
 - `error`: Generation failed
 
-#### WebSocket Message Types
-- `task`: Task status updates
-- `render_progress`: Real-time progress updates
-- `render_result`: Final generation results
-- `data`, `file`, `entity`, `scene`: Other data updates
+#### SSE Message Types
+AI agents must handle these SSE message types across all channel types:
+- `task`: Task status updates (available on file and project channels)
+- `render_progress`: Real-time progress updates (available on file and project channels)
+- `render_result`: Final generation results (available on file and project channels)
+- `data`, `file`, `entity`, `scene`: Other data updates (channel-specific)
+
+#### SSE Channel Selection Guidelines
+- **Use file-based SSE** (`file.{fileId}`) for new generators - this is the default approach
+- **Avoid project-based SSE** (`project.{projectId}`) - legacy pattern, projects are optional parameters
+- **Use user-based SSE** (`user.{userId}`) for global notifications and cross-session updates
+- **File generation flow**: File ID is primary, project ID is optional legacy parameter
 
 ### API Rate Limits and Best Practices
 - **Authentication**: Bearer token required, configured via OpenAPI client
