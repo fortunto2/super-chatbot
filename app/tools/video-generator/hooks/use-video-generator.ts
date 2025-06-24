@@ -15,6 +15,7 @@ export interface GeneratedVideo {
   timestamp: number;
   projectId?: string;
   requestId?: string;
+  fileId?: string;
   settings: {
     model: string;
     style: string;
@@ -215,8 +216,8 @@ export function useVideoGenerator(): UseVideoGeneratorReturn {
   }, [cleanup]);
 
   // AICODE-NOTE: SSE connection for real-time updates (matching image generator pattern)
-  const connectSSE = useCallback(async (projectId: string) => {
-    console.log('🎬 Connecting SSE for video project:', projectId);
+  const connectSSE = useCallback(async (connectionId: string, fileId?: string) => {
+    console.log('🎬 Connecting SSE for video:', { connectionId, fileId });
     
     try {
       // Force SuperDuperAI config (avoid localhost routing)
@@ -226,7 +227,12 @@ export function useVideoGenerator(): UseVideoGeneratorReturn {
         token: process.env.NEXT_PUBLIC_SUPERDUPERAI_TOKEN || '',
         wsURL: baseUrl.replace('https://', 'wss://').replace('http://', 'ws://')
       };
-      const sseUrl = `${config.url}/api/v1/events/project.${projectId}`;
+      
+      // Use fileId if available, otherwise fall back to connectionId (projectId)
+      const eventId = fileId || connectionId;
+      const sseUrl = `${config.url}/api/v1/events/file.${eventId}`;
+      
+      console.log('🎬 SSE URL constructed:', sseUrl);
       
       setConnectionStatus('connecting');
       setIsConnected(false);
@@ -235,7 +241,7 @@ export function useVideoGenerator(): UseVideoGeneratorReturn {
       wsRef.current = eventSource; // Keep same ref name for compatibility
 
       eventSource.onopen = () => {
-        console.log('🎬 SSE connected for video project:', projectId);
+        console.log('🎬 SSE connected for video:', { connectionId, fileId });
         setConnectionStatus('connected');
         setIsConnected(true);
       };
@@ -243,7 +249,7 @@ export function useVideoGenerator(): UseVideoGeneratorReturn {
       eventSource.onmessage = (event) => {
         try {
           const message = JSON.parse(event.data);
-          console.log('🎬 Video SSE event received:', message.type, 'for project:', projectId);
+          console.log('🎬 Video SSE event received:', message.type, 'for connection:', connectionId);
 
           if (message.type === 'render_progress') {
             setGenerationStatus(prev => ({
@@ -255,7 +261,7 @@ export function useVideoGenerator(): UseVideoGeneratorReturn {
           } else if (message.type === 'render_result') {
             const videoUrl = message.object?.url || message.object?.file_url;
             if (videoUrl) {
-              handleGenerationSuccess(videoUrl, projectId);
+              handleGenerationSuccess(videoUrl, connectionId);
             } else {
               handleGenerationError('No video URL in result');
             }
@@ -266,11 +272,13 @@ export function useVideoGenerator(): UseVideoGeneratorReturn {
             if (videoUrl.match(/\.(mp4|mov|webm|avi|mkv)$/i) || 
                 message.object.contentType?.startsWith('video/')) {
               console.log('🎬 ✅ Video completed via file event:', videoUrl);
-              handleGenerationSuccess(videoUrl, projectId);
+              handleGenerationSuccess(videoUrl, connectionId);
             }
           } else if (message.type === 'task_status' && message.object?.status === 'COMPLETED') {
             console.log('📡 Task completed, triggering polling check');
-            startPolling(projectId);
+            startPolling(connectionId);
+          } else {
+            console.log('🎬 SSE event not handled:', message.type);
           }
         } catch (error) {
           console.error('🎬 SSE message parse error:', error);
@@ -283,7 +291,7 @@ export function useVideoGenerator(): UseVideoGeneratorReturn {
         if (eventSource.readyState === EventSource.CLOSED) {
           setConnectionStatus('disconnected');
           setIsConnected(false);
-          startPolling(projectId);
+          startPolling(connectionId);
         }
       };
 
@@ -291,7 +299,7 @@ export function useVideoGenerator(): UseVideoGeneratorReturn {
       setTimeout(() => {
         if (eventSource.readyState !== EventSource.OPEN) {
           console.log('🎬 SSE connection timeout, falling back to polling');
-          startPolling(projectId);
+          startPolling(connectionId);
         }
       }, 60000);
 
@@ -299,7 +307,7 @@ export function useVideoGenerator(): UseVideoGeneratorReturn {
       console.error('🎬 SSE connection failed:', error);
       setConnectionStatus('disconnected');
       setIsConnected(false);
-      startPolling(projectId);
+      startPolling(connectionId);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -353,14 +361,17 @@ export function useVideoGenerator(): UseVideoGeneratorReturn {
       console.log('🎬 ✅ Generation API response:', result);
 
       if (result.success && result.projectId) {
-        setGenerationStatus(prev => ({
-          ...prev,
-          status: 'processing',
-          projectId: result.projectId,
-          requestId: result.requestId,
-        }));
+              setGenerationStatus(prev => ({
+        ...prev,
+        status: 'processing',
+        projectId: result.projectId,
+        requestId: result.requestId,
+        fileId: result.fileId,
+      }));
 
-        await connectSSE(result.projectId);
+      // Use fileId for SSE connection if available, fallback to projectId
+      const connectionId = result.fileId || result.projectId;
+      await connectSSE(connectionId, result.fileId);
         
       } else {
         throw new Error(result.error || 'Failed to start generation');

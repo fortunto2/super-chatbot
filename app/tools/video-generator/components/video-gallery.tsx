@@ -69,10 +69,11 @@ export function VideoGallery({
         <Button
           variant="outline"
           size="sm"
-          className="absolute top-2 right-2 z-10 bg-white"
+          className="absolute top-2 right-2 z-10 bg-gray-900/90 hover:bg-gray-800 text-white border-gray-600 h-8 w-8 p-0"
           onClick={() => setSelectedVideo(null)}
+          title="Close"
         >
-          <X className="size-4" />
+          <X className="size-3" />
         </Button>
         
         <video
@@ -104,7 +105,7 @@ export function VideoGallery({
           {hasError ? (
             <div className="size-full bg-gray-100 flex items-center justify-center">
               <div className="text-center text-gray-500">
-                <Video className="size-8 mx-auto mb-2" />
+                <Video className="size-6 mx-auto mb-2" />
                 <p className="text-sm">Failed to load</p>
               </div>
             </div>
@@ -135,39 +136,43 @@ export function VideoGallery({
               <Button
                 size="lg"
                 variant="outline"
-                className="bg-white/90 hover:bg-white rounded-full"
+                className="bg-gray-900/90 hover:bg-gray-800 text-white border-gray-600 rounded-full h-14 w-14 p-0"
                 onClick={() => setSelectedVideo(video)}
+                title="Play video"
               >
-                <Play className="size-6" />
+                <Play className="size-5" />
               </Button>
             </div>
           </div>
           
           {/* Action buttons */}
-          <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity space-x-1">
+          <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
             <Button
               size="sm"
               variant="outline"
-              className="bg-white/90 hover:bg-white"
+              className="bg-gray-900/80 hover:bg-gray-800 text-white border-gray-600 h-8 w-8 p-0"
               onClick={() => onDownloadVideo(video)}
+              title="Download video"
             >
-              <Download className="size-4" />
+              <Download className="size-3" />
             </Button>
             <Button
               size="sm"
               variant="outline"
-              className="bg-white/90 hover:bg-white"
+              className="bg-gray-900/80 hover:bg-gray-800 text-white border-gray-600 h-8 w-8 p-0"
               onClick={() => onCopyVideoUrl(video)}
+              title="Copy video URL"
             >
-              <Copy className="size-4" />
+              <Copy className="size-3" />
             </Button>
             <Button
               size="sm"
               variant="outline"
-              className="bg-white/90 hover:bg-white text-red-600 hover:text-red-700"
+              className="bg-red-600/80 hover:bg-red-700 text-white border-red-500 h-8 w-8 p-0"
               onClick={() => onDeleteVideo(video.id)}
+              title="Delete video"
             >
-              <Trash2 className="size-4" />
+              <Trash2 className="size-3" />
             </Button>
           </div>
           
@@ -219,7 +224,7 @@ export function VideoGallery({
         </CardHeader>
         <CardContent>
           <div className="text-center py-8 text-gray-500">
-            <Video className="size-12 mx-auto mb-4 opacity-50" />
+            <Video className="size-8 mx-auto mb-4 opacity-50" />
             <p className="text-lg font-medium mb-2">No videos generated yet</p>
             <p className="text-sm">
               Start by entering a prompt and clicking &quot;Generate Video&quot;
@@ -241,9 +246,9 @@ export function VideoGallery({
                 variant="outline"
                 size="sm"
                 onClick={onClearAll}
-                className="text-red-600 hover:text-red-700"
+                className="text-red-600 hover:text-red-700 border-red-200 hover:border-red-300"
               >
-                <Trash2 className="size-4 mr-2" />
+                <Trash2 className="size-3 mr-2" />
                 Clear All
               </Button>
             )}
