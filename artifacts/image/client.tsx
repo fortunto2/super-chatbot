@@ -3,10 +3,44 @@ import { CopyIcon, RedoIcon, UndoIcon } from '@/components/icons';
 import { ImageEditor } from '@/components/image-editor';
 import { toast } from 'sonner';
 import { memo, useMemo, useEffect } from 'react';
-import { useArtifactWebSocket } from '@/hooks/use-artifact-websocket';
+import { useArtifactSSE } from '@/hooks/use-artifact-sse';
 
 // Import console helpers for debugging (auto-exposes in browser)
 import '@/lib/utils/console-helpers';
+
+// Function to save artifact updates to database
+const saveArtifactToDatabase = async (id: string | undefined, title: string, content: string) => {
+  // Skip saving if no valid ID
+  if (!id || id === 'undefined') {
+    console.log('💾 ⚠️ Skipping database save - no valid artifact ID');
+    return;
+  }
+  
+  try {
+    console.log('💾 Saving updated artifact to database:', id);
+    
+    const response = await fetch(`/api/document?id=${encodeURIComponent(id)}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        title,
+        content,
+        kind: 'image'
+      }),
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => 'Unknown error');
+      throw new Error(`Failed to save artifact: ${response.status} - ${errorText}`);
+    }
+    
+    console.log('💾 ✅ Artifact saved to database successfully');
+  } catch (error) {
+    console.error('💾 ❌ Failed to save artifact to database:', error);
+  }
+};
 
 // Wrapper component that handles the artifact content for ImageEditor
 const ImageArtifactWrapper = memo(function ImageArtifactWrapper(props: any) {
@@ -47,21 +81,182 @@ const ImageArtifactWrapper = memo(function ImageArtifactWrapper(props: any) {
       imageUrl: parsedContent.imageUrl, // Pass imageUrl from completed state
     };
     
-    // Created initial state
+    // Debug initial state creation
+    console.log('🔧 ImageArtifactWrapper: initial state updated', {
+      projectId: state.projectId || 'none',
+      status: state.status || 'none',
+      imageUrl: state.imageUrl ? `${state.imageUrl.substring(0, 50)}...` : 'none'
+    });
+    
     return state;
   }, [parsedContent]);
 
-  // Connect to WebSocket for real-time updates
-  const artifactWebSocket = useArtifactWebSocket({
+  // Connect to SSE for real-time updates
+  const artifactSSE = useArtifactSSE({
+    channel: parsedContent?.projectId ? `project.${parsedContent.projectId}` : '',
+    eventHandlers: parsedContent?.projectId ? [(message) => {
+      console.log('🎨 Artifact SSE message:', message);
+      
+      // Handle file events for image completion
+      if (message.type === 'file' && message.object) {
+        const fileObject = message.object;
+        
+        // Handle direct URL in file object
+        if (fileObject.url && (fileObject.type === 'image' || fileObject.contentType?.startsWith('image/'))) {
+          console.log('🎨 ✅ Image completed via SSE file event:', fileObject.url);
+          
+          // Update artifact content with completed image
+          setArtifact((prev: any) => {
+            try {
+              console.log('🎨 📄 Artifact state before update:', { 
+                id: prev.id, 
+                documentId: prev.documentId, 
+                title: prev.title 
+              });
+              
+              const currentContent = JSON.parse(prev.content || '{}');
+              const updatedContent = {
+                ...currentContent,
+                status: 'completed',
+                imageUrl: fileObject.url,
+                progress: 100
+              };
+              
+              // Save updated content to database (use documentId which is the actual ID)
+              saveArtifactToDatabase(prev.documentId || prev.id, prev.title, JSON.stringify(updatedContent));
+              
+              return {
+                ...prev,
+                content: JSON.stringify(updatedContent)
+              };
+            } catch (error) {
+              console.error('🎨 ❌ Failed to update artifact content:', error);
+              return prev;
+            }
+          });
+        }
+        // Handle file_id case - need to resolve to URL
+        else if (fileObject.file_id) {
+          console.log('🎨 File ID received via SSE, resolving:', fileObject.file_id);
+          
+          // Import FileService dynamically to resolve file_id to URL
+          import('@/lib/api').then(async ({ FileService, FileTypeEnum }) => {
+            try {
+              const fileResponse = await FileService.fileGetById({ id: fileObject.file_id });
+              
+              if (fileResponse && fileResponse.url && fileResponse.type === FileTypeEnum.IMAGE) {
+                console.log('🎨 ✅ File ID resolved to image URL via SSE:', fileResponse.url);
+                
+                // Update artifact content with completed image
+                setArtifact((prev: any) => {
+                  try {
+                    const currentContent = JSON.parse(prev.content || '{}');
+                    const updatedContent = {
+                      ...currentContent,
+                      status: 'completed',
+                      imageUrl: fileResponse.url,
+                      progress: 100
+                    };
+                    
+                    // Save updated content to database (use documentId which is the actual ID)
+                    saveArtifactToDatabase(prev.documentId || prev.id, prev.title, JSON.stringify(updatedContent));
+                    
+                    return {
+                      ...prev,
+                      content: JSON.stringify(updatedContent)
+                    };
+                  } catch (error) {
+                    console.error('🎨 ❌ Failed to update artifact content with file_id:', error);
+                    return prev;
+                  }
+                });
+              } else {
+                console.log('🎨 ⚠️ File ID resolved to non-image file via SSE:', fileResponse?.type);
+              }
+            } catch (error) {
+              console.error('🎨 ❌ Failed to resolve file ID via SSE:', error);
+            }
+          });
+        }
+      }
+      
+      // Handle render_progress events
+      if (message.type === 'render_progress' && message.object?.progress !== undefined) {
+        console.log('🎨 Render progress via SSE:', message.object.progress);
+        
+        setArtifact((prev: any) => {
+          try {
+            const currentContent = JSON.parse(prev.content || '{}');
+            const updatedContent = {
+              ...currentContent,
+              status: 'processing',
+              progress: message.object.progress
+            };
+            return {
+              ...prev,
+              content: JSON.stringify(updatedContent)
+            };
+          } catch (error) {
+            console.error('🎨 ❌ Failed to update progress:', error);
+            return prev;
+          }
+        });
+      }
+      
+      // Handle render_result events
+      if (message.type === 'render_result' && (message.object?.url || message.object?.file_url)) {
+        const imageUrl = message.object.url || message.object.file_url;
+        console.log('🎨 ✅ Render result via SSE:', imageUrl);
+        
+        setArtifact((prev: any) => {
+          try {
+            const currentContent = JSON.parse(prev.content || '{}');
+            const updatedContent = {
+              ...currentContent,
+              status: 'completed',
+              imageUrl,
+              progress: 100
+            };
+            
+            // Save updated content to database (use documentId which is the actual ID)
+            saveArtifactToDatabase(prev.documentId || prev.id, prev.title, JSON.stringify(updatedContent));
+            
+            return {
+              ...prev,
+              content: JSON.stringify(updatedContent)
+            };
+          } catch (error) {
+            console.error('🎨 ❌ Failed to update render result:', error);
+            return prev;
+          }
+        });
+      }
+    }] : [],
     enabled: !!parsedContent?.projectId && !!parsedContent?.requestId
   });
 
-  // Debug WebSocket connection status
+  // Debug SSE connection status and expose globally
   useEffect(() => {
-    if (parsedContent?.projectId && artifactWebSocket.isConnected) {
-      // WebSocket connected for artifact
+    // Only log connection once, not on every reconnect
+    if (parsedContent?.projectId && artifactSSE.isConnected) {
+      const key = `sse_logged_${parsedContent.projectId}`;
+      if (typeof window !== 'undefined' && !(window as any)[key]) {
+        console.log('🔌 SSE connected for artifact project:', parsedContent.projectId);
+        (window as any)[key] = true;
+      }
     }
-  }, [artifactWebSocket.isConnected, artifactWebSocket.currentProjectId, parsedContent?.projectId, parsedContent?.status]);
+    
+    // Expose SSE connection status globally for ImageEditor
+    if (typeof window !== 'undefined') {
+      const globalWindow = window as any;
+      if (!globalWindow.artifactSSEStatus) {
+        globalWindow.artifactSSEStatus = {};
+      }
+      if (parsedContent?.projectId) {
+        globalWindow.artifactSSEStatus[parsedContent.projectId] = artifactSSE.isConnected;
+      }
+    }
+  }, [artifactSSE.isConnected, parsedContent?.projectId, parsedContent?.status]);
 
   // Auto-notify chat WebSocket about new projectId when artifact is created (fallback)
   useEffect(() => {
@@ -224,7 +419,21 @@ const ImageArtifactWrapper = memo(function ImageArtifactWrapper(props: any) {
     changes.availableShotSizes ||
     changes.availableModels;
   
-  // Check if should re-render
+  // Debug memo comparison
+  if (contentChanged) {
+    try {
+      const prevParsed = JSON.parse(prevProps.content || '{}');
+      const nextParsed = JSON.parse(nextProps.content || '{}');
+      console.log('🔄 ImageArtifactWrapper memo: content changed, triggering re-render', {
+        prevImageUrl: prevParsed.imageUrl ? `${prevParsed.imageUrl.substring(0, 50)}...` : 'none',
+        nextImageUrl: nextParsed.imageUrl ? `${nextParsed.imageUrl.substring(0, 50)}...` : 'none',
+        prevStatus: prevParsed.status || 'none',
+        nextStatus: nextParsed.status || 'none'
+      });
+    } catch (e) {
+      console.log('🔄 ImageArtifactWrapper memo: content changed (not JSON)');
+    }
+  }
   
   return !shouldRerender; // Return false to re-render, true to skip
 });

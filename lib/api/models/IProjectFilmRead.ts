@@ -5,11 +5,12 @@
 // @ts-nocheck
 import type { IDataRead } from './IDataRead';
 import type { IMusicRead } from './IMusicRead';
+import type { IProjectFilmConfig_Output } from './IProjectFilmConfig_Output';
 import type { IStyleRead } from './IStyleRead';
 import type { ITaskRead } from './ITaskRead';
 import type { ProjectTypeEnum } from './ProjectTypeEnum';
-export type IProjectImageRead = {
-    config?: Record<string, any>;
+export type IProjectFilmRead = {
+    config: IProjectFilmConfig_Output;
     thumbnail_url?: (string | null);
     id: string;
     type: ProjectTypeEnum;

@@ -19,10 +19,9 @@ import type { Session } from 'next-auth';
 import { useSearchParams } from 'next/navigation';
 import { useChatVisibility } from '@/hooks/use-chat-visibility';
 import { useAutoResume } from '@/hooks/use-auto-resume';
-import { useChatImageWebSocket } from '@/hooks/use-chat-image-websocket';
+import { useChatImageSSE } from '@/hooks/use-chat-image-sse';
 import { ChatWebSocketCleanup } from '@/lib/utils/chat-websocket-cleanup';
 import { LoaderIcon } from './icons';
-import { PreviewMessage, ThinkingMessage } from './message';
 
 function ChatContent({
   id,
@@ -147,7 +146,7 @@ function ChatContent({
   }, [id]);
 
   // Global WebSocket connection for image generation
-  const chatImageWebSocket = useChatImageWebSocket({
+  const chatImageSSE = useChatImageSSE({
     chatId: id,
     messages,
     setMessages,
@@ -164,9 +163,9 @@ function ChatContent({
           globalWindow.chatWebSocketInstance = {};
         }
         
-        // Update with current WebSocket data while preserving lastImageUrl
+        // Update with current SSE data while preserving lastImageUrl
         Object.assign(globalWindow.chatWebSocketInstance, {
-          ...chatImageWebSocket,
+          ...chatImageSSE,
           messages,
           lastImageUrl: globalWindow.chatWebSocketInstance.lastImageUrl // Preserve existing URL
         });
@@ -174,7 +173,7 @@ function ChatContent({
         // Debugging instance stored silently
       }
     }
-  }, [chatImageWebSocket, messages]);
+  }, [chatImageSSE, messages]);
 
   return (
     <>
@@ -240,32 +239,7 @@ function ChatContent({
         selectedChatModel={initialChatModel}
       />
 
-      <div className="pb-48 pt-4 md:pt-8">
-        {initialMessages?.length ? (
-          <>
-            {messages.map((message) => (
-              <PreviewMessage
-                key={message.id}
-                chatId={id}
-                message={message}
-                vote={votes?.find((vote) => vote.messageId === message.id)}
-                isLoading={status === 'streaming'}
-                setMessages={setMessages}
-                reload={reload}
-                isReadonly={isReadonly}
-                requiresScrollPadding={
-                  message.id === messages[messages.length - 1].id &&
-                  message.role === 'assistant'
-                }
-                selectedChatModel={initialChatModel}
-                selectedVisibilityType={visibilityType}
-                append={append}
-              />
-            ))}
-            {status === 'streaming' && <ThinkingMessage />}
-          </>
-        ) : null}
-      </div>
+
     </>
   );
 }

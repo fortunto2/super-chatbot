@@ -4,7 +4,7 @@ import { useState, useCallback, useRef } from 'react';
 import { toast } from 'sonner';
 import { generateImage } from '@/lib/ai/api/generate-image';
 import { getImageGenerationConfig } from '@/lib/config/media-settings-factory';
-import { getSuperduperAIConfig, getClientSuperduperAIConfig } from '@/lib/config/superduperai';
+import { getClientSuperduperAIConfig } from '@/lib/config/superduperai';
 import type { ImageGenerationFormData } from '../components/image-generator-form';
 import type { GenerationStatus } from '../components/generation-progress';
 
@@ -41,6 +41,7 @@ export interface UseImageGeneratorReturn {
   clearCurrentGeneration: () => void;
   deleteImage: (imageId: string) => void;
   clearAllImages: () => void;
+  forceCheckResults: () => Promise<void>; // AICODE-NOTE: Added manual check function
   
   // Utils
   downloadImage: (image: GeneratedImage) => Promise<void>;
@@ -83,7 +84,6 @@ export function useImageGenerator(): UseImageGeneratorReturn {
     const config = await getClientSuperduperAIConfig();
     const sseUrl = `${config.url}/api/v1/events/project.${projectId}`;
     
-    console.log('🔌 Connecting SSE to:', sseUrl);
     setConnectionStatus('connecting');
     setIsConnected(false);
     
@@ -92,7 +92,6 @@ export function useImageGenerator(): UseImageGeneratorReturn {
       wsRef.current = eventSource; // Keep same ref name for compatibility
 
       eventSource.onopen = () => {
-        console.log('🔌 ✅ SSE connected for project:', projectId);
         setConnectionStatus('connected');
         setIsConnected(true);
       };
@@ -100,7 +99,6 @@ export function useImageGenerator(): UseImageGeneratorReturn {
       eventSource.onmessage = (event) => {
         try {
           const message = JSON.parse(event.data);
-          console.log('📡 SSE message:', message);
 
           if (message.type === 'render_progress') {
             setGenerationStatus(prev => ({
@@ -110,58 +108,125 @@ export function useImageGenerator(): UseImageGeneratorReturn {
               message: message.object?.message,
             }));
           } else if (message.type === 'render_result') {
-            // Generation completed
             const imageUrl = message.object?.url || message.object?.file_url;
             if (imageUrl) {
               handleGenerationSuccess(imageUrl, projectId);
             } else {
               handleGenerationError('No image URL in result');
             }
+          } else if (message.type === 'file' && message.object?.url) {
+            const imageUrl = message.object.url;
+            
+            if (imageUrl.match(/\.(jpg|jpeg|png|webp|gif|bmp|svg)$/i) || 
+                message.object.contentType?.startsWith('image/')) {
+              handleGenerationSuccess(imageUrl, projectId);
+            }
+          } else if (message.type === 'task_status' && message.object?.status === 'COMPLETED') {
+            startPolling(projectId);
           }
         } catch (error) {
-          console.error('📡 ❌ SSE message parse error:', error);
+          console.error('SSE message parse error:', error);
         }
       };
 
       eventSource.onerror = (error) => {
-        console.error('📡 ❌ SSE error:', error);
-        console.log('🔄 Browser will handle SSE reconnection automatically');
+        console.error('SSE error:', error);
         
         if (eventSource.readyState === EventSource.CLOSED) {
           setConnectionStatus('disconnected');
           setIsConnected(false);
-          // Fallback to polling only if SSE completely fails
           startPolling(projectId);
         }
       };
 
+      setTimeout(() => {
+        if (eventSource.readyState !== EventSource.OPEN) {
+          startPolling(projectId);
+        }
+      }, 10000);
+
     } catch (error) {
-      console.error('📡 ❌ SSE connection failed:', error);
+      console.error('SSE connection failed:', error);
       setConnectionStatus('disconnected');
       setIsConnected(false);
-      // Fallback to polling
       startPolling(projectId);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // AICODE-NOTE: Polling fallback for generation status
   const startPolling = useCallback((projectId: string) => {
-    console.log('📊 Starting polling for project:', projectId);
-    
     const poll = async () => {
       try {
-        // AICODE-TODO: Implement proper polling API call
-        // For now, simulate with timeout
-        pollingRef.current = setTimeout(() => {
-          // This would be replaced with actual API call
-          console.log('📊 Polling project status...');
-          poll();
-        }, 2000);
+        const { ProjectService, TaskStatusEnum } = await import('@/lib/api');
+        const project = await ProjectService.projectGetById({ id: projectId });
+
+        if (project.data && project.data.length > 0) {
+          const imageData = project.data?.find(data => {
+            if (data.value && typeof data.value === 'object') {
+              const value = data.value as Record<string, any>;
+              return value.url && (
+                value.contentType?.startsWith('image/') ||
+                value.url.match(/\.(jpg|jpeg|png|webp|gif)$/i)
+              );
+            }
+            return false;
+          });
+          
+          if (imageData?.value && typeof imageData.value === 'object') {
+            const imageUrl = (imageData.value as Record<string, any>).url as string;
+            handleGenerationSuccess(imageUrl, projectId);
+            return;
+          }
+          
+          const fileIdData = project.data?.find(data => {
+            return data.type === 'image' && data.value && typeof data.value === 'object' && (data.value as any).file_id;
+          });
+          
+          if (fileIdData?.value && typeof fileIdData.value === 'object') {
+            const fileId = (fileIdData.value as Record<string, any>).file_id as string;
+            
+            try {
+              const { FileService } = await import('@/lib/api');
+              const fileDetails = await FileService.fileGetById({ id: fileId });
+              
+              if (fileDetails.url) {
+                handleGenerationSuccess(fileDetails.url, projectId);
+                return;
+              }
+            } catch (error) {
+              console.error('Failed to fetch file details:', error);
+            }
+          }
+          
+          const anyDataWithUrl = project.data?.find(data => {
+            return data.value && typeof data.value === 'object' && (data.value as any).url;
+          });
+          
+          if (anyDataWithUrl?.value && typeof anyDataWithUrl.value === 'object') {
+            const url = (anyDataWithUrl.value as Record<string, any>).url as string;
+            handleGenerationSuccess(url, projectId);
+            return;
+          }
+        }
+        
+        const hasErrorTask = project.tasks?.some(task => task.status === TaskStatusEnum.ERROR);
+        const allCompleted = project.tasks?.length > 0 && project.tasks.every(task => task.status === TaskStatusEnum.COMPLETED);
+        
+        if (hasErrorTask) {
+          handleGenerationError('Generation failed: task error');
+          return;
+        }
+        
+        const hasInProgress = project.tasks?.some(task => task.status === TaskStatusEnum.IN_PROGRESS);
+        if (hasInProgress || project.tasks?.length === 0) {
+          pollingRef.current = setTimeout(poll, 2000);
+        } else {
+          handleGenerationError('Generation process stalled');
+        }
         
       } catch (error) {
-        console.error('📊 ❌ Polling error:', error);
-        handleGenerationError('Polling failed');
+        console.error('Polling error:', error);
+        handleGenerationError('Failed to check generation status');
       }
     };
 
@@ -226,9 +291,7 @@ export function useImageGenerator(): UseImageGeneratorReturn {
 
       setCurrentGeneration(null);
 
-      console.log('🎨 Starting image generation with data:', formData);
-
-      // AICODE-NOTE: Load configuration to get proper objects for API call
+      // Load configuration to get proper objects for API call
       const config = await getImageGenerationConfig();
       
       // Find the selected model
@@ -243,18 +306,15 @@ export function useImageGenerator(): UseImageGeneratorReturn {
       // Find the selected shot size
       const selectedShotSize = config.availableShotSizes.find(s => s.id === formData.shotSize) || config.defaultSettings.shotSize;
 
-      // AICODE-NOTE: Call existing SuperDuperAI API with proper parameters
       const result = await generateImage(
         formData.prompt,
         selectedModel,
         selectedResolution,
         selectedStyle,
         selectedShotSize,
-        'image-generator-tool', // Use tool identifier as chatId
+        'image-generator-tool',
         formData.seed
       );
-
-      console.log('🎨 ✅ Generation API response:', result);
 
       if (result.success && result.projectId) {
         setGenerationStatus(prev => ({
@@ -264,7 +324,6 @@ export function useImageGenerator(): UseImageGeneratorReturn {
           requestId: result.requestId,
         }));
 
-        // Start SSE connection
         await connectSSE(result.projectId);
         
       } else {
@@ -272,7 +331,7 @@ export function useImageGenerator(): UseImageGeneratorReturn {
       }
 
     } catch (error) {
-      console.error('🎨 ❌ Generation error:', error);
+      console.error('Generation error:', error);
       handleGenerationError(error instanceof Error ? error.message : 'Unknown error');
     }
   }, [isGenerating, connectSSE, handleGenerationError]);
@@ -336,6 +395,104 @@ export function useImageGenerator(): UseImageGeneratorReturn {
     }
   }, []);
 
+  const forceCheckResults = useCallback(async () => {
+    const projectId = generationStatus.projectId;
+    
+    if (!projectId) {
+      toast.warning('No active image generation to check');
+      return;
+    }
+    
+    toast.info('Checking for image results...');
+    
+    try {
+      const { TaskStatusEnum } = await import('@/lib/api');
+      
+      const response = await fetch(`/api/project/${projectId}`);
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        throw new Error(errorData.error || `HTTP ${response.status}`);
+      }
+      
+      const project = await response.json();
+      
+      if (project.data && project.data.length > 0) {
+        const imageData = project.data?.find((data: any) => {
+          if (data.value && typeof data.value === 'object') {
+            const value = data.value as Record<string, any>;
+            return value.url && (
+              value.contentType?.startsWith('image/') ||
+              value.url.match(/\.(jpg|jpeg|png|webp|gif|bmp|svg)$/i)
+            );
+          }
+          return false;
+        });
+        
+        if (imageData?.value && typeof imageData.value === 'object') {
+          const imageUrl = (imageData.value as Record<string, any>).url as string;
+          handleGenerationSuccess(imageUrl, projectId);
+          toast.success('Image results retrieved!');
+          return;
+        }
+        
+        const fileIdData = project.data?.find((data: any) => {
+          return data.type === 'image' && data.value && typeof data.value === 'object' && (data.value as any).file_id;
+        });
+        
+        if (fileIdData?.value && typeof fileIdData.value === 'object') {
+          const fileId = (fileIdData.value as Record<string, any>).file_id as string;
+          
+          try {
+            const { FileService } = await import('@/lib/api');
+            const fileDetails = await FileService.fileGetById({ id: fileId });
+            
+            if (fileDetails.url) {
+              handleGenerationSuccess(fileDetails.url, projectId);
+              toast.success('Image results retrieved!');
+              return;
+            }
+          } catch (error) {
+            console.error('Failed to fetch file details:', error);
+          }
+        }
+        
+        const anyDataWithUrl = project.data?.find((data: any) => {
+          return data.value && typeof data.value === 'object' && (data.value as any).url;
+        });
+        
+        if (anyDataWithUrl?.value && typeof anyDataWithUrl.value === 'object') {
+          const url = (anyDataWithUrl.value as Record<string, any>).url as string;
+          handleGenerationSuccess(url, projectId);
+          toast.success('Image results retrieved!');
+          return;
+        }
+      }
+      
+      const allCompleted = project.tasks?.length > 0 && 
+                          project.tasks.every((task: any) => task.status === TaskStatusEnum.COMPLETED);
+      const hasErrors = project.tasks?.some((task: any) => task.status === TaskStatusEnum.ERROR);
+      const inProgress = project.tasks?.some((task: any) => task.status === TaskStatusEnum.IN_PROGRESS);
+      
+      if (hasErrors) {
+        toast.error('Image generation failed');
+      } else if (inProgress) {
+        toast.info('Image generation still in progress...');
+        startPolling(projectId);
+      } else if (allCompleted) {
+        toast.warning('Tasks completed but no image data found');
+      } else if (project.tasks?.length === 0) {
+        toast.warning('No tasks or data found - generation might still be starting');
+      } else {
+        toast.warning('Image generation status unclear');
+      }
+      
+    } catch (error) {
+      console.error('Force check failed:', error);
+      toast.error('Failed to check image results');
+    }
+  }, [generationStatus.projectId, handleGenerationSuccess, startPolling]);
+
   return {
     generationStatus,
     currentGeneration,
@@ -347,6 +504,7 @@ export function useImageGenerator(): UseImageGeneratorReturn {
     clearCurrentGeneration,
     deleteImage,
     clearAllImages,
+    forceCheckResults,
     downloadImage,
     copyImageUrl,
   };

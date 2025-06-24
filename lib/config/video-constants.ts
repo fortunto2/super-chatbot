@@ -21,14 +21,14 @@ export const VIDEO_RESOLUTIONS: MediaResolution[] = [
 ];
 
 export const SHOT_SIZES: MediaOption[] = [
-  { id: 'extreme-long-shot', label: 'Extreme Long Shot', description: 'Shows vast landscapes or cityscapes with tiny subjects' },
-  { id: 'long-shot', label: 'Long Shot', description: 'Shows full body of subject with surrounding environment' },
-  { id: 'medium-shot', label: 'Medium Shot', description: 'Shows subject from waist up, good for conversations' },
-  { id: 'medium-close-up', label: 'Medium Close-Up', description: 'Shows subject from chest up, good for portraits' },
-  { id: 'close-up', label: 'Close-Up', description: 'Shows a subject\'s face or a small object in detail' },
-  { id: 'extreme-close-up', label: 'Extreme Close-Up', description: 'Shows extreme detail of a subject, like eyes or small objects' },
-  { id: 'two-shot', label: 'Two-Shot', description: 'Shows two subjects in frame, good for interactions' },
-  { id: 'detail-shot', label: 'Detail Shot', description: 'Focuses on a specific object or part of a subject' },
+  { id: 'extreme_long_shot', label: 'Extreme Long Shot', description: 'Shows vast landscapes or cityscapes with tiny subjects' },
+  { id: 'long_shot', label: 'Long Shot', description: 'Shows full body of subject with surrounding environment' },
+  { id: 'medium_shot', label: 'Medium Shot', description: 'Shows subject from waist up, good for conversations' },
+  { id: 'medium_close_up', label: 'Medium Close-Up', description: 'Shows subject from chest up, good for portraits' },
+  { id: 'close_up', label: 'Close-Up', description: 'Shows a subject\'s face or a small object in detail' },
+  { id: 'extreme_close_up', label: 'Extreme Close-Up', description: 'Shows extreme detail of a subject, like eyes or small objects' },
+  { id: 'two_shot', label: 'Two-Shot', description: 'Shows two subjects in frame, good for interactions' },
+  { id: 'detail_shot', label: 'Detail Shot', description: 'Focuses on a specific object or part of a subject' },
 ];
 
 export const VIDEO_FRAME_RATES = [

@@ -85,7 +85,7 @@ async function mockGenerateVideo(
         height: resolution.height,
         aspect_ratio: resolution.aspectRatio,
         qualityType: resolution.qualityType,
-        shot_size: shotSize.label,
+                  shot_size: "Medium Shot",
         seed: `${Math.floor(Math.random() * 1000000000000)}`,
         generation_config_name: model.id,
         batch_size: 1,

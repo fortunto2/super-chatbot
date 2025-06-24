@@ -334,6 +334,7 @@ if (typeof window !== 'undefined') {
   console.log('  forceUpdateArtifact(imageUrl, projectId, requestId) - Force update artifact with image');
   console.log('  applyLastImageUrl() - Apply the last received image URL to current artifact');
   console.log('  quickImageFix() - Quick fix to apply the last generated image from console logs');
+  console.log('  addImageToChat(url?) - Add image to chat history (persistent after artifact closed)');
   
   // Expose helper to store chat WebSocket instance for debugging
   (window as any).setChatWebSocketInstance = (instance: any) => {
@@ -665,5 +666,75 @@ if (typeof window !== 'undefined') {
      console.log('💡 Then call: forceUpdateArtifact("YOUR_CORRECT_URL_HERE")');
      
      (window as any).forceUpdateArtifact(lastSeenUrl);
+   };
+
+   // Global function to add current image to chat history
+   (window as any).addImageToChat = (imageUrl?: string) => {
+     console.log('💬 Adding image to chat history...');
+     
+     const chatSSEInstance = (window as any).chatSSEInstance || (window as any).chatWebSocketInstance;
+     let effectiveImageUrl = imageUrl || chatSSEInstance?.lastImageUrl;
+     
+     // If no URL provided, try to get from current artifact
+     if (!effectiveImageUrl) {
+       const artifactInstance = (window as any).artifactInstance;
+       if (artifactInstance?.artifact?.content) {
+         try {
+           const content = JSON.parse(artifactInstance.artifact.content);
+           if (content.imageUrl) {
+             effectiveImageUrl = content.imageUrl;
+             console.log('💡 Using image URL from current artifact:', effectiveImageUrl.substring(0, 50) + '...');
+           }
+         } catch (error) {
+           // Silent fail
+         }
+       }
+     }
+     
+     if (!effectiveImageUrl) {
+       console.log('❌ No image URL found');
+       console.log('💡 Usage: addImageToChat("https://your-image-url.com/image.jpg")');
+       console.log('💡 Or: generate an image first, then call addImageToChat()');
+       console.log('💡 Or: copy URL from console logs and call addImageToChat("URL")');
+       return;
+     }
+     
+     const setMessages = chatSSEInstance?.setMessages;
+     
+     if (!setMessages) {
+       console.log('❌ No setMessages function available');
+       console.log('💡 Make sure you are in an active chat');
+       return;
+     }
+     
+     try {
+       const imageAttachment = {
+         name: `generated-image-${Date.now()}.webp`,
+         url: effectiveImageUrl,
+         contentType: 'image/webp',
+       };
+
+       const newMessage = {
+         id: `img-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+         role: 'assistant' as const,
+         content: 'Generated image added to chat history',
+         parts: [
+           {
+             type: 'text' as const,
+             text: 'Generated image added to chat history'
+           }
+         ],
+         experimental_attachments: [imageAttachment],
+         createdAt: new Date(),
+       };
+
+       setMessages((prev: any[]) => [...prev, newMessage]);
+       
+       console.log('✅ Image added to chat history successfully!');
+       console.log('🔗 Image URL:', effectiveImageUrl);
+       console.log('💡 Now you can see the image in chat even after closing the artifact');
+     } catch (error) {
+       console.error('❌ Error adding image to chat:', error);
+     }
    };
  } 

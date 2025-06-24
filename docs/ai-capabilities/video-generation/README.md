@@ -48,8 +48,21 @@ The video generation system consists of:
 - **WebSocket System** (`hooks/use-artifact-websocket.ts`) - Real-time progress updates
 - **Artifact System** (`artifacts/video/`) - UI components and server handlers
 
+## Recent Updates
+
+- ✅ Fixed WebSocket to SSE migration issues
+- ✅ Added comprehensive video model integration
+- ✅ Enhanced error handling and debugging
+- ✅ Improved user experience and progress tracking
+- ✅ **Fixed video results not appearing in frontend** (SSE + polling improvements)
+- ✅ Added manual check functionality for video generation results
+
+### Latest Improvements
+
+- **[SSE Polling Improvement](./sse-polling-improvement.md)** - Comprehensive fix for video results not appearing in frontend interface
+
 ## Related Documentation
 
 - [AI Capabilities Overview](../README.md)
 - [API Integration](../../api-integration/superduperai/)
-- [WebSocket Architecture](../../architecture/websocket-architecture.md) 
+- [WebSocket Architecture](../../architecture/websocket-architecture.md)

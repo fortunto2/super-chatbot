@@ -136,8 +136,9 @@ export function MediaSettings({
 
       {/* Prompt Input Section */}
       <div className="mb-4 sm:mb-6 space-y-2">
-        <label className="text-xs sm:text-sm font-medium">Prompt *</label>
+        <label htmlFor="prompt-input" className="text-xs sm:text-sm font-medium">Prompt *</label>
         <Textarea
+          id="prompt-input"
           placeholder={`Describe the ${mediaTypeLabel.toLowerCase()} you want to generate...`}
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
@@ -153,7 +154,7 @@ export function MediaSettings({
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-4 sm:mb-6">
         {/* Resolution Selector */}
         <div className="space-y-2">
-          <label className="text-xs sm:text-sm font-medium">Resolution</label>
+          <label htmlFor="resolution-select" className="text-xs sm:text-sm font-medium">Resolution</label>
           <Select
             value={`${selectedResolution.width}x${selectedResolution.height}`}
             onValueChange={(value) => {
@@ -190,7 +191,7 @@ export function MediaSettings({
 
         {/* Style Selector */}
         <div className="space-y-2">
-          <label className="text-xs sm:text-sm font-medium">Style</label>
+          <label htmlFor="style-select" className="text-xs sm:text-sm font-medium">Style</label>
           <Select
             value={selectedStyle.id}
             onValueChange={(value) => {
@@ -222,7 +223,7 @@ export function MediaSettings({
 
         {/* Shot Size Selector */}
         <div className="space-y-2">
-          <label className="text-xs sm:text-sm font-medium">Shot Size</label>
+          <label htmlFor="shot-size-select" className="text-xs sm:text-sm font-medium">Shot Size</label>
           <Select
             value={selectedShotSize.id}
             onValueChange={(value) => {
@@ -254,7 +255,7 @@ export function MediaSettings({
 
         {/* Model Selector */}
         <div className="space-y-2">
-          <label className="text-xs sm:text-sm font-medium">Model</label>
+          <label htmlFor="model-select" className="text-xs sm:text-sm font-medium">Model</label>
           <Select
             value={selectedModel.id}
             onValueChange={(value) => {
@@ -290,7 +291,7 @@ export function MediaSettings({
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-4 sm:mb-6">
           {/* Frame Rate Selector */}
           <div className="space-y-2">
-            <label className="text-xs sm:text-sm font-medium">Frame Rate</label>
+            <label htmlFor="frame-rate-select" className="text-xs sm:text-sm font-medium">Frame Rate</label>
             <Select
               value={selectedFrameRate.toString()}
               onValueChange={(value) => setSelectedFrameRate(Number.parseInt(value))}
@@ -310,8 +311,9 @@ export function MediaSettings({
 
           {/* Duration Input */}
           <div className="space-y-2">
-            <label className="text-xs sm:text-sm font-medium">Duration (seconds)</label>
+            <label htmlFor="duration-input" className="text-xs sm:text-sm font-medium">Duration (seconds)</label>
             <Input
+              id="duration-input"
               type="number"
               placeholder="Duration in seconds"
               value={duration}
@@ -324,8 +326,9 @@ export function MediaSettings({
 
           {/* Negative Prompt */}
           <div className="space-y-2 sm:col-span-2 lg:col-span-1">
-            <label className="text-xs sm:text-sm font-medium">Negative Prompt (Optional)</label>
+            <label htmlFor="negative-prompt-input" className="text-xs sm:text-sm font-medium">Negative Prompt (Optional)</label>
             <Input
+              id="negative-prompt-input"
               placeholder="What you don't want to see..."
               value={negativePrompt}
               onChange={(e) => setNegativePrompt(e.target.value)}
@@ -338,9 +341,10 @@ export function MediaSettings({
       {/* Seed Input - Compact */}
       <div className="mb-4 sm:mb-6">
         <div className="space-y-2">
-          <label className="text-xs sm:text-sm font-medium">Seed (Optional)</label>
+          <label htmlFor="seed-input" className="text-xs sm:text-sm font-medium">Seed (Optional)</label>
           <div className='flex flex-col sm:flex-row items-start sm:items-center gap-2'>
             <Input
+              id="seed-input"
               type="number"
               placeholder="Enter seed number for reproducible results"
               value={seed}

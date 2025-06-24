@@ -40,7 +40,7 @@ export const configureVideoGeneration = (params?: CreateVideoDocumentParams) => 
     // AICODE-NOTE: Use economical defaults
     const defaultResolution = DEFAULT_VIDEO_RESOLUTION;
     const defaultStyle: MediaOption = {id: "flux_steampunk", label: "Steampunk", description: "Steampunk style"};
-    const defaultShotSize = SHOT_SIZES.find(s => s.id === 'long-shot')!;
+    const defaultShotSize = SHOT_SIZES.find(s => s.id === 'long-shot') || SHOT_SIZES[0];
     
     // AICODE-NOTE: Load models using new factory pattern
     console.log('🎬 Loading video models from SuperDuperAI API via factory...');

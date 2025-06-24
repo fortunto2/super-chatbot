@@ -23,20 +23,22 @@ if (!SUPERDUPERAI_TOKEN) {
 async function testSimpleImageGeneration() {
   const payload = {
     // No project_id - let's see what happens
+    type: "media",
+    template_name: null,
+    style_name: "flux_watercolor", // Move style_name outside config
     config: {
       prompt: "A simple test image without project ID",
-      negative_prompt: "",
-      width: 1024,
-      height: 1024,
-      steps: 20,
-      shot_size: "Medium Shot",
-      seed: Math.floor(Math.random() * 1000000000000),
-      generation_config_name: "comfyui/flux",
-      batch_size: 1,
-      style_name: "real_estate",
-      references: [],
+      shot_size: "Medium Shot", // Use label format
+      style_name: "flux_watercolor", // Keep for backward compatibility
+      seed: String(Math.floor(Math.random() * 1000000000000)), // Convert to string
+      aspecRatio: "1:1", // Add aspecRatio (typo in API)
+      batch_size: 3, // Use batch_size 3 like in working example
       entity_ids: [],
-      model_type: null
+      generation_config_name: "comfyui/flux",
+      height: "1024", // Convert to string
+      qualityType: "hd", // Add qualityType
+      references: [],
+      width: "1024", // Convert to string
     }
   };
 

@@ -5,7 +5,7 @@
 // @ts-nocheck
 import axios from 'axios';
 import type { AxiosError, AxiosRequestConfig, AxiosResponse, AxiosInstance } from 'axios';
-// Using built-in browser FormData instead of Node.js form-data package
+// Note: Using browser's built-in FormData instead of 'form-data' package
 
 import { ApiError } from './ApiError';
 import type { ApiRequestOptions } from './ApiRequestOptions';
@@ -150,7 +150,7 @@ export const getHeaders = async (config: OpenAPIConfig, options: ApiRequestOptio
     const username = await resolve(options, config.USERNAME);
     const password = await resolve(options, config.PASSWORD);
     const additionalHeaders = await resolve(options, config.HEADERS);
-    // Browser FormData doesn't have getHeaders() method, only Node.js form-data does
+    // Browser FormData doesn't have getHeaders() method - headers are set automatically
     const formHeaders = {}
 
     const headers = Object.entries({

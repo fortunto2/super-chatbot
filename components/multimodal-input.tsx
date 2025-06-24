@@ -21,6 +21,7 @@ import { PreviewAttachment } from './preview-attachment';
 import { Button } from './ui/button';
 import { Textarea } from './ui/textarea';
 import { SuggestedActions } from './suggested-actions';
+import { ChatImageHistory } from './chat-image-history';
 import equal from 'fast-deep-equal';
 import type { UseChatHelpers } from '@ai-sdk/react';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -191,6 +192,7 @@ function PureMultimodalInput({
   );
 
   const { isAtBottom, scrollToBottom } = useScrollToBottom();
+  const [showImageHistory, setShowImageHistory] = useState(false);
 
   useEffect(() => {
     if (status === 'submitted') {
@@ -268,6 +270,30 @@ function PureMultimodalInput({
         </div>
       )}
 
+      {showImageHistory && (
+        <ChatImageHistory
+          chatId={chatId}
+          isVisible={showImageHistory}
+          onImageSelect={(imageUrl) => {
+            // When user selects an image, add it to input
+            const imageReference = `![Generated Image](${imageUrl})`;
+            setInput(prevInput => {
+              const newInput = prevInput + (prevInput ? '\n\n' : '') + imageReference;
+              return newInput;
+            });
+            // Optionally close the history after selection
+            setShowImageHistory(false);
+            // Focus textarea
+            if (textareaRef.current) {
+              textareaRef.current.focus();
+              setTimeout(() => {
+                adjustHeight();
+              }, 0);
+            }
+          }}
+        />
+      )}
+
       <Textarea
         data-testid="multimodal-input"
         ref={textareaRef}
@@ -297,8 +323,13 @@ function PureMultimodalInput({
         }}
       />
 
-      <div className="absolute bottom-0 p-2 w-fit flex flex-row justify-start">
+      <div className="absolute bottom-0 p-2 w-fit flex flex-row justify-start gap-1">
         <AttachmentsButton fileInputRef={fileInputRef} status={status} />
+        <ImageHistoryButton 
+          showImageHistory={showImageHistory}
+          setShowImageHistory={setShowImageHistory}
+          status={status}
+        />
       </div>
 
       <div className="absolute bottom-0 right-0 p-2 w-fit flex flex-row justify-end">
@@ -408,3 +439,47 @@ const SendButton = memo(PureSendButton, (prevProps, nextProps) => {
   if (prevProps.input !== nextProps.input) return false;
   return true;
 });
+
+function PureImageHistoryButton({
+  showImageHistory,
+  setShowImageHistory,
+  status,
+}: {
+  showImageHistory: boolean;
+  setShowImageHistory: (show: boolean) => void;
+  status: UseChatHelpers['status'];
+}) {
+  return (
+    <Button
+      data-testid="image-history-button"
+      className={cx(
+        "rounded-md p-[7px] h-fit dark:border-zinc-700 hover:dark:bg-zinc-900 hover:bg-zinc-200",
+        showImageHistory && "bg-zinc-200 dark:bg-zinc-900"
+      )}
+      onClick={(event) => {
+        event.preventDefault();
+        setShowImageHistory(!showImageHistory);
+      }}
+      disabled={status !== 'ready'}
+      variant="ghost"
+      title={showImageHistory ? "Hide image history" : "Show image history"}
+    >
+      <svg 
+        width={14} 
+        height={14} 
+        viewBox="0 0 24 24" 
+        fill="none" 
+        stroke="currentColor" 
+        strokeWidth="2" 
+        strokeLinecap="round" 
+        strokeLinejoin="round"
+      >
+        <rect width="18" height="18" x="3" y="3" rx="2" ry="2"/>
+        <circle cx="9" cy="9" r="2"/>
+        <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>
+      </svg>
+    </Button>
+  );
+}
+
+const ImageHistoryButton = memo(PureImageHistoryButton);

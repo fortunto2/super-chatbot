@@ -136,7 +136,7 @@ export function ImageGeneratorForm({
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-center py-8">
-            <Loader2 className="h-8 w-8 animate-spin" />
+            <Loader2 className="size-8 animate-spin" />
             <span className="ml-2">Loading image generation models...</span>
           </div>
         </CardContent>
@@ -320,7 +320,7 @@ export function ImageGeneratorForm({
           >
             {isGenerating ? (
               <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                <Loader2 className="mr-2 size-4 animate-spin" />
                 Generating Image...
               </>
             ) : (

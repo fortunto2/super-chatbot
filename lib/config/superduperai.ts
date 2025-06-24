@@ -26,9 +26,11 @@ const CACHE_DURATION = 60 * 60 * 1000; // 1 hour
 
 export function getSuperduperAIConfig(): SuperduperAIConfig {
   // For server-side usage
+  const url = process.env.NEXT_PUBLIC_SUPERDUPERAI_URL || 'https://dev-editor.superduperai.co';
+    const token = process.env.NEXT_PUBLIC_SUPERDUPERAI_TOKEN || process.env.SUPERDUPERAI_API_KEY || '';
+    const wsURL = url.replace('https://', 'wss://').replace('http://', 'ws://');
+
   if (typeof window === 'undefined') {
-    const url = process.env.SUPERDUPERAI_URL || 'https://dev-editor.superduperai.co';
-    const token = process.env.SUPERDUPERAI_TOKEN || process.env.SUPERDUPERAI_API_KEY || '';
     const wsURL = url.replace('https://', 'wss://').replace('http://', 'ws://');
 
     if (!token) {
@@ -37,15 +39,12 @@ export function getSuperduperAIConfig(): SuperduperAIConfig {
 
     return { url, token, wsURL };
   }
-
   // For client-side usage - return default values
   // Token should be handled by API routes, not exposed to client
-  const url = 'https://dev-editor.superduperai.co';
-  const wsURL = url.replace('https://', 'wss://');
   
   return { 
     url, 
-    token: '', // Empty token for client - API routes handle authentication
+    token, // Empty token for client - API routes handle authentication
     wsURL 
   };
 }

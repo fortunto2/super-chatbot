@@ -1,23 +1,53 @@
 'use client';
 
+import { useState } from 'react';
+import { useChat } from '@ai-sdk/react';
 import { VideoGeneratorForm } from './components/video-generator-form';
 import { VideoGallery } from './components/video-gallery';
 import { GenerationProgress } from '../image-generator/components/generation-progress'; // Reuse from image generator
 import { useVideoGenerator } from './hooks/use-video-generator';
+import { useVideoEffects } from '@/hooks/use-video-effects';
 
 export default function VideoGeneratorPage() {
+  const [prompt, setPrompt] = useState('');
+  const [hasInitialized, setHasInitialized] = useState(false);
+  
+  // AICODE-NOTE: Initialize chat for video persistence  
+  const { messages, setMessages } = useChat({
+    id: 'video-generator-tool',
+    initialMessages: [],
+  });
+  
   const {
     generationStatus,
     currentGeneration,
     generatedVideos,
     isGenerating,
+    isConnected,
+    connectionStatus,
     generateVideo,
     clearCurrentGeneration,
     deleteVideo,
     clearAllVideos,
+    forceCheckResults,
     downloadVideo,
     copyVideoUrl,
   } = useVideoGenerator();
+
+  // AICODE-NOTE: Video effects hook for auto-saving and side effects management
+  useVideoEffects({
+    videoUrl: currentGeneration?.url,
+    status: generationStatus.status,
+    prompt,
+    hasInitialized,
+    chatId: 'video-generator-tool',
+    resetState: () => {
+      setPrompt('');
+      setHasInitialized(false);
+    },
+    setPrompt,
+    setMessages, // ✅ Now passing setMessages for chat persistence
+  });
 
   return (
     <div className="space-y-6">
@@ -34,7 +64,11 @@ export default function VideoGeneratorPage() {
         {/* Left Column: Form */}
         <div className="space-y-4">
           <VideoGeneratorForm
-            onGenerate={generateVideo}
+            onGenerate={(formData) => {
+              setPrompt(formData.prompt);
+              setHasInitialized(true);
+              generateVideo(formData);
+            }}
             isGenerating={isGenerating}
           />
           
@@ -43,6 +77,36 @@ export default function VideoGeneratorPage() {
             <GenerationProgress
               generationStatus={generationStatus}
             />
+          )}
+          
+          {/* Connection Status */}
+          {isGenerating && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <div className="flex items-center gap-2 text-sm">
+                <div className={`size-2 rounded-full ${
+                  isConnected ? 'bg-green-500' : 'bg-yellow-500'
+                }`} />
+                <span className="text-blue-800">
+                  SSE Connection: {connectionStatus}
+                  {isConnected && ' ✓'}
+                </span>
+              </div>
+            </div>
+          )}
+          
+          {/* Manual Check Button */}
+          {generationStatus.projectId && generationStatus.status === 'processing' && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <p className="text-sm text-blue-800 mb-3">
+                Video generation is in progress. If results don&apos;t appear automatically, you can check manually:
+              </p>
+              <button
+                onClick={forceCheckResults}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors"
+              >
+                Check for Results
+              </button>
+            </div>
           )}
         </div>
 

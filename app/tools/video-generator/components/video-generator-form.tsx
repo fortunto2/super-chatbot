@@ -142,7 +142,7 @@ export function VideoGeneratorForm({
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-center py-8">
-            <Loader2 className="h-8 w-8 animate-spin" />
+            <Loader2 className="size-8 animate-spin" />
             <span className="ml-2">Loading video generation models...</span>
           </div>
         </CardContent>
@@ -180,7 +180,7 @@ export function VideoGeneratorForm({
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <Video className="h-5 w-5" />
+          <Video className="size-5" />
           AI Video Generator
         </CardTitle>
         <p className="text-sm text-muted-foreground">
@@ -389,12 +389,12 @@ export function VideoGeneratorForm({
           >
             {isGenerating ? (
               <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                <Loader2 className="mr-2 size-4 animate-spin" />
                 Generating Video...
               </>
             ) : (
               <>
-                <Video className="mr-2 h-4 w-4" />
+                <Video className="mr-2 size-4" />
                 Generate Video
               </>
             )}

@@ -14,7 +14,7 @@ export type IProjectVideoCreate = {
 };
 export namespace IProjectVideoCreate {
     export enum type {
-        VIDEO = 'video',
+        FILM = 'film',
     }
 }
 

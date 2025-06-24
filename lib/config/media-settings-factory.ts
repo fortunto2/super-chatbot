@@ -98,30 +98,31 @@ export async function getImageGenerationConfig(): Promise<ImageGenerationConfig>
     type: 'image-generation-settings',
     availableModels: adaptedImageModels,
     availableResolutions: [
-      { width: 1024, height: 1024, label: '1024x1024 (Square)', aspectRatio: '1:1' },
-      { width: 1024, height: 768, label: '1024x768 (Landscape)', aspectRatio: '4:3' },
-      { width: 768, height: 1024, label: '768x1024 (Portrait)', aspectRatio: '3:4' },
-      { width: 1280, height: 720, label: '1280x720 (HD)', aspectRatio: '16:9' },
-      { width: 512, height: 512, label: '512x512 (Small Square)', aspectRatio: '1:1' }
+      { width: 1024, height: 1024, label: '1024x1024 (Square)', aspectRatio: '1:1', qualityType: 'hd' },
+      { width: 1024, height: 768, label: '1024x768 (Landscape)', aspectRatio: '4:3', qualityType: 'hd' },
+      { width: 768, height: 1024, label: '768x1024 (Portrait)', aspectRatio: '3:4', qualityType: 'hd' },
+      { width: 1280, height: 720, label: '1280x720 (HD)', aspectRatio: '16:9', qualityType: 'hd' },
+      { width: 1920, height: 1080, label: '1920x1080 (Full HD)', aspectRatio: '16:9', qualityType: 'full_hd' },
+      { width: 512, height: 512, label: '512x512 (Small Square)', aspectRatio: '1:1', qualityType: 'hd' }
     ],
     availableStyles: [
-      { id: 'realistic', label: 'Realistic', description: 'Photorealistic style' },
+      { id: 'flux_watercolor', label: 'Watercolor', description: 'Watercolor painting style' },
       { id: 'artistic', label: 'Artistic', description: 'Artistic interpretation' },
       { id: 'cartoon', label: 'Cartoon', description: 'Cartoon/animated style' },
       { id: 'abstract', label: 'Abstract', description: 'Abstract art style' },
       { id: 'vintage', label: 'Vintage', description: 'Vintage/retro style' }
     ],
     availableShotSizes: [
-      { id: 'extreme-close-up', label: 'Extreme Close-up', description: 'Very tight shot' },
-      { id: 'close-up', label: 'Close-up', description: 'Close-up shot' },
-      { id: 'medium', label: 'Medium Shot', description: 'Medium distance shot' },
-      { id: 'wide', label: 'Wide Shot', description: 'Wide establishing shot' },
-      { id: 'extreme-wide', label: 'Extreme Wide', description: 'Very wide panoramic shot' }
+      { id: 'extreme_close_up', label: 'Extreme Close-up', description: 'Very tight shot' },
+      { id: 'close_up', label: 'Close-up', description: 'Close-up shot' },
+      { id: 'medium_shot', label: 'Medium Shot', description: 'Medium distance shot' },
+      { id: 'wide_shot', label: 'Wide Shot', description: 'Wide establishing shot' },
+      { id: 'extreme_wide_shot', label: 'Extreme Wide', description: 'Very wide panoramic shot' }
     ],
     defaultSettings: {
-      resolution: { width: 1024, height: 1024, label: '1024x1024 (Square)', aspectRatio: '1:1' },
-      style: { id: 'realistic', label: 'Realistic', description: 'Photorealistic style' },
-      shotSize: { id: 'medium', label: 'Medium Shot', description: 'Medium distance shot' },
+      resolution: { width: 1024, height: 1024, label: '1024x1024 (Square)', aspectRatio: '1:1', qualityType: 'hd' },
+      style: { id: 'flux_watercolor', label: 'Watercolor', description: 'Watercolor painting style' },
+      shotSize: { id: 'medium_shot', label: 'Medium Shot', description: 'Medium distance shot' },
       model: defaultAdaptedModel
     }
   };
@@ -174,15 +175,15 @@ export async function getVideoGenerationConfig(): Promise<VideoGenerationConfig>
       { id: 'cinematic', label: 'Cinematic', description: 'Movie-like style' },
       { id: 'documentary', label: 'Documentary', description: 'Documentary style' },
       { id: 'animated', label: 'Animated', description: 'Animation style' },
-      { id: 'realistic', label: 'Realistic', description: 'Photorealistic style' },
+      { id: 'flux_watercolor', label: 'Watercolor', description: 'Watercolor painting style' },
       { id: 'artistic', label: 'Artistic', description: 'Artistic interpretation' }
     ],
     availableShotSizes: [
-      { id: 'extreme-close-up', label: 'Extreme Close-up', description: 'Very tight shot' },
-      { id: 'close-up', label: 'Close-up', description: 'Close-up shot' },
-      { id: 'medium', label: 'Medium Shot', description: 'Medium distance shot' },
-      { id: 'wide', label: 'Wide Shot', description: 'Wide establishing shot' },
-      { id: 'extreme-wide', label: 'Extreme Wide', description: 'Very wide panoramic shot' }
+      { id: 'extreme_close_up', label: 'Extreme Close-up', description: 'Very tight shot' },
+      { id: 'close_up', label: 'Close-up', description: 'Close-up shot' },
+      { id: 'medium_shot', label: 'Medium Shot', description: 'Medium distance shot' },
+      { id: 'wide_shot', label: 'Wide Shot', description: 'Wide establishing shot' },
+      { id: 'extreme_wide_shot', label: 'Extreme Wide', description: 'Very wide panoramic shot' }
     ],
     availableFrameRates: [
       { value: 24, label: '24 FPS (Cinematic)' },
@@ -192,7 +193,7 @@ export async function getVideoGenerationConfig(): Promise<VideoGenerationConfig>
     defaultSettings: {
       resolution: { width: 1280, height: 720, label: '1280x720 (HD)', aspectRatio: '16:9' },
       style: { id: 'cinematic', label: 'Cinematic', description: 'Movie-like style' },
-      shotSize: { id: 'wide', label: 'Wide Shot', description: 'Wide establishing shot' },
+      shotSize: { id: 'wide_shot', label: 'Wide Shot', description: 'Wide establishing shot' },
       model: adaptedVideoModels.find(m => m.type === 'text_to_video') || adaptedVideoModels[0] || {
         name: 'fallback',
         label: 'Fallback Model',

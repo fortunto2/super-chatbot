@@ -20,14 +20,14 @@ const RESOLUTIONS: MediaResolution[] = [
 ];
 
 const SHOT_SIZES: MediaOption[] = [
-  { id: 'extreme-long-shot', label: 'Extreme Long Shot', description: 'Shows vast landscapes or cityscapes with tiny subjects' },
-  { id: 'long-shot', label: 'Long Shot', description: 'Shows full body of subject with surrounding environment' },
-  { id: 'medium-shot', label: 'Medium Shot', description: 'Shows subject from waist up, good for conversations' },
-  { id: 'medium-close-up', label: 'Medium Close-Up', description: 'Shows subject from chest up, good for portraits' },
-  { id: 'close-up', label: 'Close-Up', description: 'Shows a subject\'s face or a small object in detail' },
-  { id: 'extreme-close-up', label: 'Extreme Close-Up', description: 'Shows extreme detail of a subject, like eyes or small objects' },
-  { id: 'two-shot', label: 'Two-Shot', description: 'Shows two subjects in frame, good for interactions' },
-  { id: 'detail-shot', label: 'Detail Shot', description: 'Focuses on a specific object or part of a subject' },
+  { id: 'extreme_long_shot', label: 'Extreme Long Shot', description: 'Shows vast landscapes or cityscapes with tiny subjects' },
+  { id: 'long_shot', label: 'Long Shot', description: 'Shows full body of subject with surrounding environment' },
+  { id: 'medium_shot', label: 'Medium Shot', description: 'Shows subject from waist up, good for conversations' },
+  { id: 'medium_close_up', label: 'Medium Close-Up', description: 'Shows subject from chest up, good for portraits' },
+  { id: 'close_up', label: 'Close-Up', description: 'Shows a subject\'s face or a small object in detail' },
+  { id: 'extreme_close_up', label: 'Extreme Close-Up', description: 'Shows extreme detail of a subject, like eyes or small objects' },
+  { id: 'two_shot', label: 'Two-Shot', description: 'Shows two subjects in frame, good for interactions' },
+  { id: 'detail_shot', label: 'Detail Shot', description: 'Focuses on a specific object or part of a subject' },
 ];
 
 // AICODE-NOTE: IMAGE_MODELS now loaded dynamically from API via getAvailableImageModels()
@@ -48,7 +48,7 @@ export const imageDocumentHandler = createDocumentHandler<'image'>({
         style = { id: 'flux_steampunk', label: 'Steampunk' },
         resolution = { width: 1024, height: 1024, label: '1024x1024', aspectRatio: '1:1', qualityType: 'hd' },
         model = { id: 'flux-dev', label: 'Flux Dev' },
-        shotSize = { id: 'long-shot', label: 'Long Shot' }
+        shotSize = { id: 'long_shot', label: 'Long Shot' }
       } = params;
 
      
@@ -137,6 +137,20 @@ export const imageDocumentHandler = createDocumentHandler<'image'>({
     let draftContent = document.content;
 
     try {
+      // Check if document already has completed content - don't recreate if so
+      if (draftContent) {
+        try {
+          const existingContent = JSON.parse(draftContent);
+          if (existingContent.status === 'completed' && existingContent.imageUrl) {
+            console.log('🎨 ⚠️ Document already completed with image, skipping update to prevent reset');
+            return draftContent; // Return existing content without recreating
+          }
+        } catch (parseError) {
+          // If we can't parse existing content, proceed with update
+          console.log('🎨 ℹ️ Could not parse existing content, proceeding with update');
+        }
+      }
+
       // Extract chatId from document.id (which should be the chat ID)
       const chatId = document.id;
       
@@ -147,7 +161,7 @@ export const imageDocumentHandler = createDocumentHandler<'image'>({
         style = { id: 'flux_steampunk', label: 'Steampunk' },
         resolution = { width: 1024, height: 1024, label: '1024x1024', aspectRatio: '1:1', qualityType: 'hd' },
         model = { id: 'flux-dev', label: 'Flux Dev' },
-        shotSize = { id: 'long-shot', label: 'Long Shot' }
+        shotSize = { id: 'long_shot', label: 'Long Shot' }
       } = params;
 
       // AICODE-NOTE: Load dynamic models for update as well

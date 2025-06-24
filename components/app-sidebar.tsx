@@ -77,7 +77,7 @@ export function AppSidebar({ user }: { user: User | undefined }) {
                     onClick={() => setOpenMobile(false)}
                     className="flex items-center gap-2"
                   >
-                    <ImageIcon className="h-4 w-4" />
+                    <ImageIcon className="size-4" />
                     <span>Image Generator</span>
                   </Link>
                 </SidebarMenuButton>
@@ -89,7 +89,7 @@ export function AppSidebar({ user }: { user: User | undefined }) {
                     onClick={() => setOpenMobile(false)}
                     className="flex items-center gap-2"
                   >
-                    <Video className="h-4 w-4" />
+                    <Video className="size-4" />
                     <span>Video Generator</span>
                   </Link>
                 </SidebarMenuButton>

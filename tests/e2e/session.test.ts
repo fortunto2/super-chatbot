@@ -14,12 +14,14 @@ test.describe
         throw new Error('Failed to load page');
       }
 
+      // @ts-ignore - Playwright Request type issues
       let request = response.request();
 
       const chain = [];
 
       while (request) {
         chain.unshift(request.url());
+        // @ts-ignore - redirectedFrom() can return null
         request = request.redirectedFrom();
       }
 
