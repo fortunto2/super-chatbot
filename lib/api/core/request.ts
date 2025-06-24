@@ -5,7 +5,7 @@
 // @ts-nocheck
 import axios from 'axios';
 import type { AxiosError, AxiosRequestConfig, AxiosResponse, AxiosInstance } from 'axios';
-// Note: Using browser's built-in FormData instead of 'form-data' package
+import FormData from 'form-data';
 
 import { ApiError } from './ApiError';
 import type { ApiRequestOptions } from './ApiRequestOptions';
@@ -150,8 +150,7 @@ export const getHeaders = async (config: OpenAPIConfig, options: ApiRequestOptio
     const username = await resolve(options, config.USERNAME);
     const password = await resolve(options, config.PASSWORD);
     const additionalHeaders = await resolve(options, config.HEADERS);
-    // Browser FormData doesn't have getHeaders() method - headers are set automatically
-    const formHeaders = {}
+    const formHeaders = typeof formData?.getHeaders === 'function' && formData?.getHeaders() || {}
 
     const headers = Object.entries({
         Accept: 'application/json',
@@ -166,12 +165,12 @@ export const getHeaders = async (config: OpenAPIConfig, options: ApiRequestOptio
     }), {} as Record<string, string>);
 
     if (isStringWithValue(token)) {
-        headers.Authorization = `Bearer ${token}`;
+        headers['Authorization'] = `Bearer ${token}`;
     }
 
     if (isStringWithValue(username) && isStringWithValue(password)) {
         const credentials = base64(`${username}:${password}`);
-        headers.Authorization = `Basic ${credentials}`;
+        headers['Authorization'] = `Basic ${credentials}`;
     }
 
     if (options.body) {

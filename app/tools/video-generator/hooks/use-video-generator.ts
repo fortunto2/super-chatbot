@@ -2,10 +2,15 @@
 
 import { useState, useCallback, useRef } from 'react';
 import { toast } from 'sonner';
-import { generateVideo } from '@/lib/ai/api/generate-video';
 import { getVideoGenerationConfig } from '@/lib/config/media-settings-factory';
 import type { VideoGenerationFormData } from '../components/video-generator-form';
 import type { GenerationStatus } from '../../image-generator/components/generation-progress';
+import { configureClientOpenAPI } from '@/lib/config/superduperai';
+import { FileService } from '@/lib/api/services/FileService';
+import type { IFileRead } from '@/lib/api/models/IFileRead';
+import { fileClient } from '@/lib/api/client/file-client';
+import { generationClient } from '@/lib/api/client/generation-client';
+import type { GenerateVideoPayload } from '@/lib/api/models/GenerateVideoPayload';
 
 // AICODE-NOTE: Generated video data structure
 export interface GeneratedVideo {
@@ -80,35 +85,57 @@ export function useVideoGenerator(): UseVideoGeneratorReturn {
     }
   }, []);
 
-
-
   // AICODE-NOTE: Simple file-based polling (like image generator)
   const startPolling = useCallback((fileId: string) => {
-    console.log('📊 Starting polling for video file:', fileId);
+    console.log('🔄 Starting video polling for file:', fileId);
     
     const poll = async () => {
       try {
-        const { FileService } = await import('@/lib/api');
-        const fileDetails = await FileService.fileGetById({ id: fileId });
+        // Use typed client instead of direct OpenAPI calls
+        const fileData: IFileRead = await fileClient.getById(fileId);
         
-        if (fileDetails.url) {
-          console.log('📊 ✅ Video file ready:', fileDetails.url);
-          handleGenerationSuccess(fileDetails.url, fileId);
+        console.log('📊 Video file data:', fileData);
+        
+        // Check if file has URL (completed)
+        if (fileData.url) {
+          console.log('✅ Video generation completed with URL:', fileData.url);
+          const projectId = fileData.tasks?.[0]?.project_id || undefined;
+          handleGenerationSuccess(fileData.url, projectId);
+          if (pollingRef.current) {
+            clearTimeout(pollingRef.current);
+            pollingRef.current = null;
+          }
           return;
         }
         
-        // If no URL yet, continue polling
-        console.log('📊 Video file not ready yet, continuing to poll...');
-        pollingRef.current = setTimeout(poll, 3000);
+        // Check task status if available
+        if (fileData.tasks && fileData.tasks.length > 0) {
+          const latestTask = fileData.tasks[fileData.tasks.length - 1];
+          console.log('📋 Latest video task status:', latestTask.status);
+          
+          if (latestTask.status === 'error') {
+            console.error('❌ Video generation failed with task error');
+            handleGenerationError('Video generation failed');
+            if (pollingRef.current) {
+              clearTimeout(pollingRef.current);
+              pollingRef.current = null;
+            }
+            return;
+          }
+        }
+        
+        // Continue polling if not completed or failed
+        pollingRef.current = setTimeout(poll, 2000);
         
       } catch (error) {
-        console.error('📊 ❌ Video polling error:', error);
-        handleGenerationError('Failed to check video generation status');
+        console.error('❌ Video polling error:', error);
+        // Don't stop polling on single error, might be temporary
+        pollingRef.current = setTimeout(poll, 2000);
       }
     };
 
+    // Initial poll
     poll();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // AICODE-NOTE: Legacy project-based polling (kept for compatibility)
@@ -373,18 +400,19 @@ export function useVideoGenerator(): UseVideoGeneratorReturn {
       // Find the selected shot size
       const selectedShotSize = config.availableShotSizes.find(s => s.id === formData.shotSize) || config.defaultSettings.shotSize;
 
-      // AICODE-NOTE: Call existing SuperDuperAI video API with proper parameters
-      const result = await generateVideo(
-        selectedStyle,
-        selectedResolution,
-        formData.prompt,
-        selectedModel,
-        selectedShotSize,
-        'video-generator-tool', // Use tool identifier as chatId
-        formData.negativePrompt,
-        formData.frameRate || 30,
-        formData.duration || 5
-      );
+      // AICODE-NOTE: Use typed generation client instead of manual fetch
+      const result = await generationClient.generateVideo({
+        prompt: formData.prompt,
+        negativePrompt: formData.negativePrompt,
+        model: { name: selectedModel.name },
+        resolution: { 
+          width: selectedResolution.width, 
+          height: selectedResolution.height,
+          aspectRatio: selectedResolution.aspectRatio 
+        },
+        chatId: 'video-generator-tool',
+        duration: formData.duration || 5,
+      });
 
       console.log('🎬 ✅ Generation API response:', result);
 
@@ -397,17 +425,16 @@ export function useVideoGenerator(): UseVideoGeneratorReturn {
             ...prev,
             status: 'processing',
             fileId: fileId,
-            requestId: result.requestId,
           }));
 
           // Use fileId for SSE connection
-          await connectSSE(fileId, result.requestId);
+          await connectSSE(fileId, fileId);
         } else {
           throw new Error('No file ID returned from video generation API');
         }
         
       } else {
-        throw new Error(result.error || 'Failed to start generation');
+        throw new Error(result.message || 'Failed to start generation');
       }
 
     } catch (error) {

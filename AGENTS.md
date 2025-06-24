@@ -208,6 +208,22 @@ const blob = await put(filename, file, {
 
 ## SuperDuperAI API Integration Patterns
 
+### Typed Proxy Architecture (Updated: January 15, 2025)
+
+AI agents must follow the **Typed Proxy Architecture** where frontend never makes direct OpenAPI calls to external APIs. All communication goes through internal Next.js API routes that act as secure proxies using OpenAPI models for type safety.
+
+#### Architecture Overview
+```
+Frontend → Internal API Routes → OpenAPI Client → SuperDuperAI API
+```
+
+**Key Principles:**
+- **Security**: External API tokens never exposed to frontend
+- **Type Safety**: OpenAPI models used throughout the stack
+- **Consistency**: Unified error handling and response format
+- **Performance**: Server-side caching and optimization
+- **Maintainability**: Single source of truth for API integration
+
 ### OpenAPI Client Setup
 AI agents must use the auto-generated OpenAPI client for SuperDuperAI API:
 ```bash
@@ -215,77 +231,168 @@ AI agents must use the auto-generated OpenAPI client for SuperDuperAI API:
 pnpm generate-api
 ```
 
-### Authentication Pattern
-AI agents must authenticate with SuperDuperAI API using the OpenAPI client:
+### Typed Client Architecture Pattern
+AI agents should use typed frontend clients that communicate with internal proxy APIs:
+
 ```typescript
-// SuperDuperAI API authentication with OpenAPI client
-import { OpenAPI } from '@/lib/api'
+// Frontend Typed Clients (lib/api/client/)
+import { FileClient } from '@/lib/api/client/file-client'
+import { GenerationClient } from '@/lib/api/client/generation-client'
+import { ModelsClient } from '@/lib/api/client/models-client'
 
-// Configure OpenAPI client
-OpenAPI.BASE = process.env.SUPERDUPERAI_BASE_URL || 'https://dev-editor.superduperai.co'
-OpenAPI.TOKEN = process.env.SUPERDUPERAI_API_TOKEN
+// Example usage in React hooks
+const fileClient = new FileClient()
+const generationClient = new GenerationClient()
+const modelsClient = new ModelsClient()
 
-// Or use dynamic configuration
-import { getSuperduperAIConfig } from '@/lib/config/superduperai'
-
-const config = getSuperduperAIConfig()
-OpenAPI.BASE = config.baseUrl
-OpenAPI.TOKEN = config.token
+// Type-safe operations
+const fileData = await fileClient.getById(fileId)
+const result = await generationClient.generateImage(params)
+const models = await modelsClient.getImageModels()
 ```
 
-### Model Discovery Pattern
-AI agents should use OpenAPI-based model discovery:
+### Internal API Routes as Secure Proxies
+AI agents must create internal API routes that use OpenAPI client server-side:
+
 ```typescript
-// Load available models using OpenAPI client
+// app/api/generate/image/route.ts
+import { FileService } from '@/lib/api'
+
+export async function POST(request: Request) {
+  // Configure OpenAPI client server-side only
+  configureServerOpenAPI()
+  
+  const params = await request.json()
+  
+  // Use OpenAPI client with typed models
+  const result = await FileService.fileGenerateImage({
+    requestBody: {
+      prompt: params.prompt,
+      config_id: params.modelId,
+      params: {
+        width: params.width,
+        height: params.height,
+        quality: params.quality
+      }
+    }
+  })
+  
+  return Response.json(result)
+}
+```
+
+### Authentication Pattern
+AI agents must configure OpenAPI client only on server-side:
+```typescript
+// Server-side OpenAPI configuration only
+import { OpenAPI } from '@/lib/api'
+
+function configureServerOpenAPI() {
+  OpenAPI.BASE = process.env.SUPERDUPERAI_BASE_URL || 'https://dev-editor.superduperai.co'
+  OpenAPI.TOKEN = process.env.SUPERDUPERAI_API_TOKEN // Never expose to frontend
+}
+
+// Frontend uses internal endpoints
+const response = await fetch('/api/generate/image', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify(params)
+})
+```
+
+### Model Discovery Pattern with Typed Proxy
+AI agents should use typed clients for model discovery through internal proxy APIs:
+
+```typescript
+// Frontend: Use typed client for model discovery
+import { ModelsClient } from '@/lib/api/client/models-client'
+import { useModels } from '@/hooks/use-models'
+
+// React hook for model discovery with caching
+function useImageModels() {
+  const { imageModels, loading, error } = useModels()
+  return { models: imageModels, loading, error }
+}
+
+// Direct client usage
+const modelsClient = new ModelsClient()
+const imageModels = await modelsClient.getImageModels()
+const videoModels = await modelsClient.getVideoModels()
+
+// Server-side API route (app/api/config/models/route.ts)
 import { GenerationConfigService, type IGenerationConfigRead } from '@/lib/api'
-import { getAvailableImageModels, getAvailableVideoModels } from '@/lib/config/superduperai'
+import { configureServerOpenAPI } from '@/lib/config/superduperai'
+
+export async function GET() {
+  configureServerOpenAPI() // Configure OpenAPI client server-side only
+  
+  // Fetch models using OpenAPI client server-side
+  const [imageResponse, videoResponse] = await Promise.all([
+    GenerationConfigService.generationConfigGetList({
+      type: 'text_to_image,image_to_image'
+    }),
+    GenerationConfigService.generationConfigGetList({
+      type: 'text_to_video,image_to_video'
+    })
+  ])
+  
+  return Response.json({
+    imageModels: imageResponse.items || [],
+    videoModels: videoResponse.items || [],
+    total: (imageResponse.items?.length || 0) + (videoResponse.items?.length || 0)
+  })
+}
 
 // Type aliases for compatibility
 export type ImageModel = IGenerationConfigRead
 export type VideoModel = IGenerationConfigRead
-
-// Get available models with caching
-const imageModels = await getAvailableImageModels()
-const videoModels = await getAvailableVideoModels()
-
-// Filter models by type
-const textToImageModels = imageModels.filter(model => 
-  model.type === 'text_to_image'
-)
-const imageToVideoModels = videoModels.filter(model => 
-  model.type === 'image_to_video'
-)
 ```
 
-### Image Generation Pattern
-AI agents should use this pattern for image generation with OpenAPI client:
+### Image Generation Pattern with Typed Proxy
+AI agents should use this pattern for image generation through internal proxy APIs:
+
 ```typescript
-// SuperDuperAI Image Generation with OpenAPI
-import { GenerationConfigService, GenerationService } from '@/lib/api'
+// Frontend: Use typed client instead of direct OpenAPI calls
+import { GenerationClient } from '@/lib/api/client/generation-client'
 
 async function generateImage(params: ImageGenerationParams) {
-  // 1. Get available models
-  const models = await GenerationConfigService.generationConfigGetList({
-    type: 'text_to_image'
+  const generationClient = new GenerationClient()
+  
+  // Type-safe generation through internal proxy
+  const result = await generationClient.generateImage({
+    prompt: params.prompt,
+    negativePrompt: params.negativePrompt,
+    modelId: params.model,
+    width: params.width,
+    height: params.height,
+    quality: params.quality || 'hd',
+    style: params.style,
+    shotSize: params.shotSize,
+    seed: params.seed
   })
   
-  // 2. Find selected model
-  const model = models.items?.find(m => m.name === params.model) || models.items?.[0]
+  return result
+}
+
+// Server-side API route (app/api/generate/image/route.ts)
+import { FileService } from '@/lib/api'
+import { configureServerOpenAPI } from '@/lib/config/superduperai'
+
+export async function POST(request: Request) {
+  configureServerOpenAPI() // Configure OpenAPI client server-side only
   
-  if (!model) {
-    throw new Error('No image generation models available')
-  }
+  const params = await request.json()
   
-  // 3. Create generation request using OpenAPI client
-  const generation = await GenerationService.generationCreateGenerationApiV1GenerationPost({
+  // Use OpenAPI client with typed models server-side
+  const result = await FileService.fileGenerateImage({
     requestBody: {
       prompt: params.prompt,
       negative_prompt: params.negativePrompt,
-      config_id: model.id,
+      config_id: params.modelId,
       params: {
         width: params.width,
         height: params.height,
-        quality: params.quality || 'hd',
+        quality: params.quality,
         style: params.style,
         shot_size: params.shotSize,
         seed: params.seed
@@ -293,73 +400,69 @@ async function generateImage(params: ImageGenerationParams) {
     }
   })
   
-  // 4. Poll for completion or use WebSocket
-  return await pollGenerationStatus('image', generation.id)
-}
-
-async function pollGenerationStatus(type: 'image' | 'video', id: string) {
-  // Use OpenAPI client for status polling
-  import { GenerationService } from '@/lib/api'
-  
-  while (true) {
-    const result = await GenerationService.generationGetGenerationApiV1GenerationGenerationIdGet({
-      generationId: id
-    })
-    
-    if (result.status === 'completed') {
-      return result
-    } else if (result.status === 'error') {
-      throw new Error(result.error || 'Generation failed')
-    }
-    
-    // Wait before next poll
-    await new Promise(resolve => setTimeout(resolve, 2000))
-  }
+  return Response.json(result)
 }
 ```
 
-### Video Generation Pattern
-AI agents should use this pattern for video generation with OpenAPI client:
+### Video Generation Pattern with Typed Proxy
+AI agents should use this pattern for video generation through internal proxy APIs:
+
 ```typescript
-// SuperDuperAI Video Generation with OpenAPI
-import { GenerationConfigService, GenerationService } from '@/lib/api'
+// Frontend: Use typed client instead of direct OpenAPI calls
+import { GenerationClient } from '@/lib/api/client/generation-client'
 
 async function generateVideo(params: VideoGenerationParams) {
-  // 1. Get available video models
-  const models = await GenerationConfigService.generationConfigGetList({
-    type: 'text_to_video' // or 'image_to_video'
+  const generationClient = new GenerationClient()
+  
+  // Type-safe generation through internal proxy
+  const result = await generationClient.generateVideo({
+    prompt: params.prompt,
+    negativePrompt: params.negativePrompt,
+    modelId: params.model,
+    width: params.width,
+    height: params.height,
+    duration: params.duration || 10,
+    frameRate: params.frameRate || 30,
+    aspectRatio: params.aspectRatio || '16:9',
+    style: params.style,
+    shotSize: params.shotSize,
+    seed: params.seed,
+    references: params.references || []
   })
   
-  // 2. Find selected model
-  const model = models.items?.find(m => m.name === params.model) || models.items?.[0]
+  return result
+}
+
+// Server-side API route (app/api/generate/video/route.ts)
+import { FileService } from '@/lib/api'
+import { configureServerOpenAPI } from '@/lib/config/superduperai'
+
+export async function POST(request: Request) {
+  configureServerOpenAPI() // Configure OpenAPI client server-side only
   
-  if (!model) {
-    throw new Error('No video generation models available')
-  }
+  const params = await request.json()
   
-  // 3. Create generation request using OpenAPI client
-  const generation = await GenerationService.generationCreateGenerationApiV1GenerationPost({
+  // Use OpenAPI client with typed models server-side
+  const result = await FileService.fileGenerateVideo({
     requestBody: {
       prompt: params.prompt,
       negative_prompt: params.negativePrompt,
-      config_id: model.id,
+      config_id: params.modelId,
       params: {
         width: params.width,
         height: params.height,
-        duration: params.duration || 10,
-        fps: params.frameRate || 30,
-        aspect_ratio: params.aspectRatio || '16:9',
+        duration: params.duration,
+        fps: params.frameRate,
+        aspect_ratio: params.aspectRatio,
         style: params.style,
         shot_size: params.shotSize,
         seed: params.seed,
-        // Video-specific parameters
-        references: params.references || []
+        references: params.references
       }
     }
   })
   
-  // 4. Poll for completion or use WebSocket
-  return await pollGenerationStatus('video', generation.id)
+  return Response.json(result)
 }
 ```
 
@@ -397,40 +500,61 @@ function connectToGenerationUpdates(projectId: string) {
 }
 ```
 
-### File Download Pattern
-AI agents should handle file downloads from SuperDuperAI using OpenAPI client:
-```typescript
-// Download generated media using OpenAPI client
-import { GenerationService } from '@/lib/api'
+### File Operations Pattern with Typed Proxy
+AI agents should handle file operations through internal proxy APIs:
 
-async function downloadGeneratedMedia(type: 'image' | 'video', id: string) {
-  const result = await GenerationService.generationDownloadGenerationApiV1GenerationGenerationIdDownloadPost({
-    generationId: id
-  })
+```typescript
+// Frontend: Use typed client for file operations
+import { FileClient } from '@/lib/api/client/file-client'
+
+async function getFileStatus(fileId: string) {
+  const fileClient = new FileClient()
   
-  if (!result.file_url) {
-    throw new Error('No download URL available')
+  // Type-safe file status through internal proxy
+  const fileData = await fileClient.getById(fileId)
+  
+  return {
+    status: fileData.tasks?.[0]?.status,
+    progress: fileData.tasks?.[0]?.progress,
+    downloadUrl: fileData.tasks?.[0]?.result?.file_url
   }
-  
-  // Fetch the actual file
-  const response = await fetch(result.file_url)
-  
-  if (!response.ok) {
-    throw new Error(`Download failed: ${response.statusText}`)
-  }
-  
-  return response.blob()
 }
 
-// Store in Vercel Blob
-async function storeGeneratedMedia(blob: Blob, filename: string) {
-  const file = new File([blob], filename)
-  const result = await put(filename, file, {
-    access: 'public',
-    addRandomSuffix: true,
+// Server-side API route (app/api/file/[id]/route.ts)
+import { FileService, type IFileRead } from '@/lib/api'
+import { configureServerOpenAPI } from '@/lib/config/superduperai'
+
+export async function GET(
+  request: Request,
+  { params }: { params: { id: string } }
+) {
+  configureServerOpenAPI() // Configure OpenAPI client server-side only
+  
+  // Use OpenAPI client with typed models server-side
+  const fileData = await FileService.fileGetById({
+    id: params.id
   })
   
-  return result.url
+  return Response.json(fileData)
+}
+
+// Polling pattern with typed client
+async function pollFileStatus(fileId: string): Promise<IFileRead> {
+  const fileClient = new FileClient()
+  
+  while (true) {
+    const fileData = await fileClient.getById(fileId)
+    const latestTask = fileData.tasks?.[0]
+    
+    if (latestTask?.status === 'completed') {
+      return fileData
+    } else if (latestTask?.status === 'error') {
+      throw new Error('Generation failed')
+    }
+    
+    // Wait before next poll
+    await new Promise(resolve => setTimeout(resolve, 2000))
+  }
 }
 ```
 
@@ -882,28 +1006,47 @@ AI agents must handle these specific error cases:
 
 ## OpenAPI Migration Summary (Updated: January 15, 2025)
 
-The Super Chatbot project has migrated from manual API integration to auto-generated OpenAPI client for SuperDuperAI API:
+The Super Chatbot project has migrated from manual API integration to auto-generated OpenAPI client with **Typed Proxy Architecture** for SuperDuperAI API:
 
 ### Key Changes for AI Agents
-- **Model Types**: `VideoModel` and `ImageModel` are now type aliases for `IGenerationConfigRead`
-- **Model Discovery**: Use `getAvailableImageModels()` and `getAvailableVideoModels()` functions with caching
-- **API Calls**: Use `GenerationConfigService` and `GenerationService` instead of manual fetch calls
-- **Type Safety**: Full TypeScript support with auto-generated interfaces
-- **Consistency**: Unified approach across the entire codebase
+- **Typed Proxy Architecture**: Frontend never makes direct OpenAPI calls, all communication through internal Next.js API routes
+- **Security**: External API tokens kept server-side only, never exposed to frontend
+- **Type Safety**: OpenAPI models used throughout entire stack (frontend → proxy → OpenAPI client)
+- **Consistency**: Unified error handling and response format across all API operations
+- **Performance**: Server-side caching and optimization with client-side typed interfaces
+
+### Architecture Components
+- **Frontend Typed Clients**: `FileClient`, `GenerationClient`, `ModelsClient` in `/lib/api/client/`
+- **Internal API Routes**: `/api/generate/image`, `/api/generate/video`, `/api/file/[id]`, `/api/config/models`
+- **React Hooks**: `useModels()` for dynamic model loading with caching
+- **Model Adapters**: Convert OpenAPI types to UI-compatible formats
 
 ### Migration Benefits
-- **Type Safety**: Compile-time validation of API parameters and responses
-- **Maintainability**: Automatic updates when API schema changes
-- **Performance**: Built-in caching and optimized request handling
-- **Developer Experience**: IntelliSense support and better error messages
-- **Consistency**: Same patterns used in SuperDuperApi/frontend project
+- **Security**: API tokens never exposed to browser, all authentication server-side
+- **Type Safety**: End-to-end type safety from UI to external API
+- **Maintainability**: Single source of truth for API integration patterns
+- **Performance**: Optimized caching at multiple levels (server-side API, client-side hooks)
+- **Developer Experience**: IntelliSense support throughout the stack
+- **Scalability**: Easy to add new endpoints following established proxy patterns
 
 ### Files Updated
-- `lib/config/superduperai.ts`: Centralized model discovery with OpenAPI client
-- `lib/api/`: Auto-generated OpenAPI client (89+ models, 15+ services)
+- `lib/api/client/`: New typed frontend clients (3 files)
+- `app/api/`: Updated proxy endpoints (4 files)
+- `hooks/use-models.ts`: New React hook for model discovery
+- `lib/utils/model-adapters.ts`: Utilities for type conversion
 - `package.json`: Added OpenAPI generation script and dependencies
 
-This Agents.md guide helps ensure AI agents work effectively with the Super Chatbot codebase while maintaining code quality, security, and performance standards when integrating with SuperDuperAI API. 
+### Implementation Pattern for AI Agents
+```typescript
+// ✅ CORRECT: Use typed proxy architecture
+const generationClient = new GenerationClient()
+const result = await generationClient.generateImage(params)
+
+// ❌ INCORRECT: Direct OpenAPI calls from frontend
+const result = await GenerationService.generationCreateGeneration(...)
+```
+
+This Typed Proxy Architecture ensures AI agents work securely and efficiently with the Super Chatbot codebase while maintaining code quality, security, and performance standards when integrating with SuperDuperAI API. 
 
 **For comprehensive development methodology including implementation planning and persistent memory management, see [AI Development Methodology](./docs/ai-development-methodology.md).** 
 **For comprehensive development methodology including implementation planning and persistent memory management, see [AI Development Methodology](./docs/ai-development-methodology.md).** 

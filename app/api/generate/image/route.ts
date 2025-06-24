@@ -1,43 +1,98 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSuperduperAIConfig } from '@/lib/config/superduperai';
+import { FileService } from '@/lib/api/services/FileService';
+import { OpenAPI } from '@/lib/api/core/OpenAPI';
+import { GenerateImagePayload } from '@/lib/api/models/GenerateImagePayload';
+import { IImageGenerationCreate } from '@/lib/api/models/IImageGenerationCreate';
+import { IImageGenerationReferenceCreate } from '@/lib/api/models/IImageGenerationReferenceCreate';
+import { ReferenceTypeEnum } from '@/lib/api/models/ReferenceTypeEnum';
+import { ShotSizeEnum } from '@/lib/api/models/ShotSizeEnum';
 
 export async function POST(request: NextRequest) {
   try {
-    const config = getSuperduperAIConfig();
     const body = await request.json();
     
-    console.log('🖼️ Image proxy: Forwarding request to SuperDuperAI API');
-    console.log('📦 Request body:', JSON.stringify(body, null, 2));
+    console.log('🖼️ Image API: Processing image generation request');
+    console.log('📦 Request parameters:', JSON.stringify(body, null, 2));
     
-    const response = await fetch(`${config.url}/api/v1/file/generate-image`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${config.token}`,
-        'User-Agent': 'SuperChatbot/1.0',
-      },
-      body: JSON.stringify(body),
+    // Extract parameters from request body
+    const {
+      prompt,
+      model,
+      resolution,
+      chatId,
+      negativePrompt,
+      steps = 30,
+      seed,
+      shotSize,
+      style,
+      sourceImageId,
+      sourceImageUrl
+    } = body;
+    
+    // Configure OpenAPI client for server-side usage
+    const config = getSuperduperAIConfig();
+    OpenAPI.BASE = config.url;
+    OpenAPI.TOKEN = config.token;
+    
+    // Create image generation config using OpenAPI types
+    const imageConfig: IImageGenerationCreate = {
+      prompt,
+      negative_prompt: negativePrompt || '',
+      width: resolution?.width || 512,
+      height: resolution?.height || 512,
+      steps,
+      shot_size: shotSize?.id as ShotSizeEnum || null,
+      seed: seed || Math.floor(Math.random() * 1000000000000),
+      generation_config_name: model?.name || 'fal-ai/flux-dev',
+      batch_size: 1,
+      style_name: style?.id || null,
+      references: sourceImageUrl ? [{
+        type: ReferenceTypeEnum.SOURCE,
+        reference_id: sourceImageId || ''
+      } as IImageGenerationReferenceCreate] : [],
+      entity_ids: []
+    };
+
+    // Create image generation payload using OpenAPI types
+    const imagePayload: GenerateImagePayload = {
+      config: imageConfig
+    };
+    
+    console.log('🖼️ Calling FileService.fileGenerateImage with payload:', imagePayload);
+    
+    // Use OpenAPI client to generate image
+    const result = await FileService.fileGenerateImage({
+      requestBody: imagePayload
     });
-
-    console.log(`📡 SuperDuperAI API Response Status: ${response.status}`);
     
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('❌ SuperDuperAI API Error:', errorText);
-      return NextResponse.json(
-        { error: 'Failed to generate image', details: errorText },
-        { status: response.status }
-      );
+    console.log('✅ Image generation result:', result);
+    
+    // FileService.fileGenerateImage returns an array of IFileRead
+    const file = Array.isArray(result) && result.length > 0 ? result[0] : null;
+    
+    if (!file) {
+      throw new Error('No file returned from image generation');
     }
-
-    const data = await response.json();
-    console.log('✅ Image generation response:', data);
     
-    return NextResponse.json(data);
+    // Transform result to match expected format
+    const response = {
+      success: true,
+      fileId: file.id,
+      projectId: chatId,
+      url: file.url,
+      tasks: file.tasks || []
+    };
+    
+    return NextResponse.json(response);
   } catch (error) {
-    console.error('💥 Image proxy error:', error);
+    console.error('💥 Image API error:', error);
     return NextResponse.json(
-      { error: 'Failed to generate image', details: error instanceof Error ? error.message : 'Unknown error' },
+      { 
+        success: false,
+        error: 'Failed to generate image', 
+        details: error instanceof Error ? error.message : 'Unknown error' 
+      },
       { status: 500 }
     );
   }

@@ -2,11 +2,16 @@
 
 import { useState, useCallback, useRef } from 'react';
 import { toast } from 'sonner';
-import { generateImage } from '@/lib/ai/api/generate-image';
+// import { generateImage } from '@/lib/ai/api/generate-image'; // AICODE-NOTE: Removed direct import - using API endpoint instead
 import { getImageGenerationConfig } from '@/lib/config/media-settings-factory';
-import { getClientSuperduperAIConfig } from '@/lib/config/superduperai';
+import { getClientSuperduperAIConfig, configureClientOpenAPI } from '@/lib/config/superduperai';
 import type { ImageGenerationFormData } from '../components/image-generator-form';
 import type { GenerationStatus } from '../components/generation-progress';
+import { FileService } from '@/lib/api/services/FileService';
+import type { IFileRead } from '@/lib/api/models/IFileRead';
+import { fileClient } from '@/lib/api/client/file-client';
+import { generationClient, type ImageGenerationInput } from '@/lib/api/client/generation-client';
+import type { GenerateImagePayload } from '@/lib/api/models/GenerateImagePayload';
 
 // AICODE-NOTE: Generated image data structure
 export interface GeneratedImage {
@@ -46,6 +51,30 @@ export interface UseImageGeneratorReturn {
   // Utils
   downloadImage: (image: GeneratedImage) => Promise<void>;
   copyImageUrl: (image: GeneratedImage) => Promise<void>;
+}
+
+export interface ImageGenerationConfig {
+  model: string;
+  prompt: string;
+  width: number;
+  height: number;
+  samples: number;
+  steps: number;
+  scale: number;
+  seed?: number;
+  style?: string;
+}
+
+export interface ImageGenerationResult {
+  fileId: string;
+  projectId?: string;
+  status: string;
+  message?: string;
+}
+
+export interface ImageGenerationError {
+  message: string;
+  details?: any;
 }
 
 export function useImageGenerator(): UseImageGeneratorReturn {
@@ -110,7 +139,7 @@ export function useImageGenerator(): UseImageGeneratorReturn {
           } else if (message.type === 'render_result') {
             const imageUrl = message.object?.url || message.object?.file_url;
             if (imageUrl) {
-              handleGenerationSuccess(imageUrl, fileId);
+              handleGenerationSuccess(imageUrl, message.object?.projectId);
             } else {
               handleGenerationError('No image URL in result');
             }
@@ -119,7 +148,7 @@ export function useImageGenerator(): UseImageGeneratorReturn {
             
             if (imageUrl.match(/\.(jpg|jpeg|png|webp|gif|bmp|svg)$/i) || 
                 message.object.contentType?.startsWith('image/')) {
-              handleGenerationSuccess(imageUrl, fileId);
+              handleGenerationSuccess(imageUrl, message.object.projectId);
             }
           } else if (message.type === 'task_status' && message.object?.status === 'COMPLETED') {
             startPolling(fileId);
@@ -155,27 +184,55 @@ export function useImageGenerator(): UseImageGeneratorReturn {
   }, []);
 
   const startPolling = useCallback((fileId: string) => {
+    console.log('🔄 Starting polling for file:', fileId);
+    
     const poll = async () => {
       try {
-        const { FileService } = await import('@/lib/api');
-        const fileDetails = await FileService.fileGetById({ id: fileId });
+        // Use typed client instead of direct OpenAPI calls
+        const fileData: IFileRead = await fileClient.getById(fileId);
         
-        if (fileDetails.url) {
-          handleGenerationSuccess(fileDetails.url, fileId);
+        console.log('📊 File data:', fileData);
+        
+        // Check if file has URL (completed)
+        if (fileData.url) {
+          console.log('✅ Image generation completed with URL:', fileData.url);
+          const projectId = fileData.tasks?.[0]?.project_id || undefined;
+          handleGenerationSuccess(fileData.url, projectId);
+          if (pollingRef.current) {
+            clearTimeout(pollingRef.current);
+            pollingRef.current = null;
+          }
           return;
         }
         
-        // If no URL yet, continue polling
+        // Check task status if available
+        if (fileData.tasks && fileData.tasks.length > 0) {
+          const latestTask = fileData.tasks[fileData.tasks.length - 1];
+          console.log('📋 Latest task status:', latestTask.status);
+          
+          if (latestTask.status === 'error') {
+            console.error('❌ Image generation failed with task error');
+            handleGenerationError('Image generation failed');
+            if (pollingRef.current) {
+              clearTimeout(pollingRef.current);
+              pollingRef.current = null;
+            }
+            return;
+          }
+        }
+        
+        // Continue polling if not completed or failed
         pollingRef.current = setTimeout(poll, 2000);
         
       } catch (error) {
-        console.error('Polling error:', error);
-        handleGenerationError('Failed to check generation status');
+        console.error('❌ Polling error:', error);
+        // Don't stop polling on single error, might be temporary
+        pollingRef.current = setTimeout(poll, 2000);
       }
     };
 
+    // Initial poll
     poll();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Legacy polling function for project-based polling (kept for compatibility)
@@ -211,8 +268,12 @@ export function useImageGenerator(): UseImageGeneratorReturn {
             const fileId = (fileIdData.value as Record<string, any>).file_id as string;
             
             try {
-              const { FileService } = await import('@/lib/api');
-              const fileDetails = await FileService.fileGetById({ id: fileId });
+              // Use internal proxy API instead of direct OpenAPI client
+              const response = await fetch(`/api/file/${fileId}`);
+              if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+              }
+              const fileDetails = await response.json();
               
               if (fileDetails.url) {
                 handleGenerationSuccess(fileDetails.url, projectId);
@@ -331,28 +392,39 @@ export function useImageGenerator(): UseImageGeneratorReturn {
       // Find the selected shot size
       const selectedShotSize = config.availableShotSizes.find(s => s.id === formData.shotSize) || config.defaultSettings.shotSize;
 
-      const result = await generateImage(
-        formData.prompt,
-        selectedModel,
-        selectedResolution,
-        selectedStyle,
-        selectedShotSize,
-        'image-generator-tool',
-        formData.seed
-      );
+      // AICODE-NOTE: Use typed client for image generation
+      const payload = {
+        prompt: formData.prompt,
+        model: selectedModel,
+        resolution: selectedResolution,
+        style: selectedStyle,
+        shotSize: selectedShotSize,
+        chatId: 'image-generator-tool',
+        seed: formData.seed
+      };
 
-      if (result.success && result.projectId) {
+      const result = await generationClient.generateImage(payload);
+
+      if (result.success && (result.projectId || result.fileId)) {
+        // Use fileId if available, otherwise fall back to projectId
+        const connectionId = result.fileId || result.projectId || '';
+        
+        if (!connectionId) {
+          throw new Error('No connection ID received from server');
+        }
+        
         setGenerationStatus(prev => ({
           ...prev,
           status: 'processing',
           projectId: result.projectId,
-          requestId: result.requestId,
+          fileId: result.fileId,
+          requestId: result.fileId, // Use fileId as requestId
         }));
 
-        await connectSSE(result.projectId);
+        await connectSSE(connectionId);
         
       } else {
-        throw new Error(result.error || 'Failed to start generation');
+        throw new Error(result.message || 'Failed to start generation');
       }
 
     } catch (error) {
@@ -469,8 +541,12 @@ export function useImageGenerator(): UseImageGeneratorReturn {
           const fileId = (fileIdData.value as Record<string, any>).file_id as string;
           
           try {
-            const { FileService } = await import('@/lib/api');
-            const fileDetails = await FileService.fileGetById({ id: fileId });
+            // Use internal proxy API instead of direct OpenAPI client
+            const response = await fetch(`/api/file/${fileId}`);
+            if (!response.ok) {
+              throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            const fileDetails = await response.json();
             
             if (fileDetails.url) {
               handleGenerationSuccess(fileDetails.url, projectId);

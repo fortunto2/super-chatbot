@@ -38,9 +38,10 @@ export function getSuperduperAIConfig(): SuperduperAIConfig {
     return { url, token, wsURL };
   }
 
-  // Client-side: Return empty - will use direct proxy paths
+  // Client-side: Use current origin for proxy paths
+  const currentOrigin = typeof window !== 'undefined' ? window.location.origin : '';
   return { 
-    url: '', // Empty - direct proxy paths will be used
+    url: currentOrigin, // Use current origin for proxy paths
     token: '', // Never expose tokens to client
     wsURL: '' // Deprecated
   };
@@ -75,6 +76,19 @@ export function configureSuperduperAI(): SuperduperAIConfig {
   OpenAPI.TOKEN = config.token;
   
   return config;
+}
+
+/**
+ * Configure OpenAPI client for client-side usage with proxy endpoints
+ */
+export function configureClientOpenAPI(): void {
+  if (typeof window !== 'undefined') {
+    // Client-side: Use current origin for proxy paths
+    OpenAPI.BASE = window.location.origin;
+    OpenAPI.TOKEN = ''; // No token on client-side
+    
+    console.log('OpenAPI configured for client-side with BASE:', OpenAPI.BASE);
+  }
 }
 
 /**

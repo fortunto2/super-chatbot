@@ -85,10 +85,10 @@ export function ImageGeneratorForm({
         // Set default values from configuration
         setFormData(prev => ({
           ...prev,
-          style: imageConfig.defaultSettings.style.id,
-          resolution: imageConfig.defaultSettings.resolution.label,
-          shotSize: imageConfig.defaultSettings.shotSize.id,
-          model: imageConfig.defaultSettings.model.name,
+          style: imageConfig.defaultSettings.style?.id || '',
+          resolution: imageConfig.defaultSettings.resolution?.label || '',
+          shotSize: imageConfig.defaultSettings.shotSize?.id || '',
+          model: imageConfig.defaultSettings.model?.id || imageConfig.defaultSettings.model?.name || '',
         }));
         
       } catch (error) {

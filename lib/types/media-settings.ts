@@ -1,4 +1,3 @@
-
 import type { IGenerationConfigRead } from '@/lib/api/models/IGenerationConfigRead';
 
 // Extended model type with UI-friendly fields
@@ -15,6 +14,7 @@ export interface MediaOption {
   id: string;
   label: string;
   description?: string;
+  thumbnail?: string | null;
 }
 
 export interface MediaResolution {

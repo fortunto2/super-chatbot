@@ -91,10 +91,10 @@ export function VideoGeneratorForm({
         // Set default values from configuration
         setFormData(prev => ({
           ...prev,
-          style: videoConfig.defaultSettings.style.id,
-          resolution: videoConfig.defaultSettings.resolution.label,
-          shotSize: videoConfig.defaultSettings.shotSize.id,
-          model: videoConfig.defaultSettings.model.name,
+          style: videoConfig.defaultSettings.style?.id || '',
+          resolution: videoConfig.defaultSettings.resolution?.label || '',
+          shotSize: videoConfig.defaultSettings.shotSize?.id || '',
+          model: videoConfig.defaultSettings.model?.id || videoConfig.defaultSettings.model?.name || '',
         }));
         
       } catch (error) {

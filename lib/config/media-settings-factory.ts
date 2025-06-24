@@ -1,6 +1,9 @@
 import { getAvailableVideoModels, getAvailableImageModels, configureSuperduperAI, getDefaultImageModel, } from './superduperai';
 import type { ImageGenerationConfig, VideoGenerationConfig } from '../types/media-settings';
 import type { IGenerationConfigRead } from '../api/models/IGenerationConfigRead';
+import { ShotSizeEnum } from '@/lib/api/models/ShotSizeEnum';
+import { getStyles } from '@/lib/ai/api/get-styles';
+import type { MediaOption } from '@/lib/types/media-settings';
 
 // Adapter function to convert OpenAPI model to MediaSettings format
 function adaptModelForMediaSettings(model: IGenerationConfigRead): IGenerationConfigRead & {
@@ -93,6 +96,54 @@ export async function getImageGenerationConfig(): Promise<ImageGenerationConfig>
         price: 0
       };
   
+  // Get styles from API
+  let availableStyles: MediaOption[] = [];
+  try {
+    if (typeof window !== 'undefined') {
+      // Client-side: fetch from API endpoint
+      const response = await fetch('/api/config/models');
+      const data = await response.json();
+      availableStyles = data.data?.styles || [
+        { id: 'flux_watercolor', label: 'Watercolor', description: 'Watercolor painting style' },
+        { id: 'artistic', label: 'Artistic', description: 'Artistic interpretation' },
+        { id: 'cartoon', label: 'Cartoon', description: 'Cartoon/animated style' },
+        { id: 'abstract', label: 'Abstract', description: 'Abstract art style' },
+        { id: 'vintage', label: 'Vintage', description: 'Vintage/retro style' }
+      ];
+    } else {
+      // Server-side: direct API call
+      configureSuperduperAI();
+      const stylesResponse = await getStyles();
+      if ('error' in stylesResponse) {
+        console.error('Failed to load styles:', stylesResponse.error);
+        // Fallback to hardcoded styles
+        availableStyles = [
+          { id: 'flux_watercolor', label: 'Watercolor', description: 'Watercolor painting style' },
+          { id: 'artistic', label: 'Artistic', description: 'Artistic interpretation' },
+          { id: 'cartoon', label: 'Cartoon', description: 'Cartoon/animated style' },
+          { id: 'abstract', label: 'Abstract', description: 'Abstract art style' },
+          { id: 'vintage', label: 'Vintage', description: 'Vintage/retro style' }
+        ];
+      } else {
+        availableStyles = stylesResponse.items.map(style => ({
+          id: style.name,
+          label: style.title ?? style.name,
+          description: style.title ?? style.name,
+        }));
+      }
+    }
+  } catch (error) {
+    console.error('Failed to load styles:', error);
+    // Fallback to hardcoded styles
+    availableStyles = [
+      { id: 'flux_watercolor', label: 'Watercolor', description: 'Watercolor painting style' },
+      { id: 'artistic', label: 'Artistic', description: 'Artistic interpretation' },
+      { id: 'cartoon', label: 'Cartoon', description: 'Cartoon/animated style' },
+      { id: 'abstract', label: 'Abstract', description: 'Abstract art style' },
+      { id: 'vintage', label: 'Vintage', description: 'Vintage/retro style' }
+    ];
+  }
+  
   // Create configuration
   imageConfigCache = {
     type: 'image-generation-settings',
@@ -105,24 +156,18 @@ export async function getImageGenerationConfig(): Promise<ImageGenerationConfig>
       { width: 1920, height: 1080, label: '1920x1080 (Full HD)', aspectRatio: '16:9', qualityType: 'full_hd' },
       { width: 512, height: 512, label: '512x512 (Small Square)', aspectRatio: '1:1', qualityType: 'hd' }
     ],
-    availableStyles: [
-      { id: 'flux_watercolor', label: 'Watercolor', description: 'Watercolor painting style' },
-      { id: 'artistic', label: 'Artistic', description: 'Artistic interpretation' },
-      { id: 'cartoon', label: 'Cartoon', description: 'Cartoon/animated style' },
-      { id: 'abstract', label: 'Abstract', description: 'Abstract art style' },
-      { id: 'vintage', label: 'Vintage', description: 'Vintage/retro style' }
-    ],
+    availableStyles,
     availableShotSizes: [
-      { id: 'extreme_close_up', label: 'Extreme Close-up', description: 'Very tight shot' },
-      { id: 'close_up', label: 'Close-up', description: 'Close-up shot' },
-      { id: 'medium_shot', label: 'Medium Shot', description: 'Medium distance shot' },
-      { id: 'wide_shot', label: 'Wide Shot', description: 'Wide establishing shot' },
-      { id: 'extreme_wide_shot', label: 'Extreme Wide', description: 'Very wide panoramic shot' }
+      { id: ShotSizeEnum.EXTREME_CLOSE_UP, label: 'Extreme Close-up', description: 'Very tight shot' },
+      { id: ShotSizeEnum.CLOSE_UP, label: 'Close-up', description: 'Close-up shot' },
+      { id: ShotSizeEnum.MEDIUM_SHOT, label: 'Medium Shot', description: 'Medium distance shot' },
+      { id: ShotSizeEnum.LONG_SHOT, label: 'Long Shot', description: 'Full body establishing shot' },
+      { id: ShotSizeEnum.EXTREME_LONG_SHOT, label: 'Extreme Long Shot', description: 'Very wide panoramic shot' }
     ],
     defaultSettings: {
       resolution: { width: 1024, height: 1024, label: '1024x1024 (Square)', aspectRatio: '1:1', qualityType: 'hd' },
-      style: { id: 'flux_watercolor', label: 'Watercolor', description: 'Watercolor painting style' },
-      shotSize: { id: 'medium_shot', label: 'Medium Shot', description: 'Medium distance shot' },
+      style: availableStyles.find(s => s.id === 'flux_watercolor') || availableStyles[0] || { id: 'flux_watercolor', label: 'Watercolor', description: 'Watercolor painting style' },
+      shotSize: { id: ShotSizeEnum.MEDIUM_SHOT, label: 'Medium Shot', description: 'Medium distance shot' },
       model: defaultAdaptedModel
     }
   };
@@ -160,6 +205,54 @@ export async function getVideoGenerationConfig(): Promise<VideoGenerationConfig>
   
   const adaptedVideoModels = videoModels.map(adaptModelForMediaSettings);
   
+  // Get styles from API (same as image generation)
+  let availableStyles: MediaOption[] = [];
+  try {
+    if (typeof window !== 'undefined') {
+      // Client-side: fetch from API endpoint
+      const response = await fetch('/api/config/models');
+      const data = await response.json();
+      availableStyles = data.data?.styles || [
+        { id: 'cinematic', label: 'Cinematic', description: 'Movie-like style' },
+        { id: 'documentary', label: 'Documentary', description: 'Documentary style' },
+        { id: 'animated', label: 'Animated', description: 'Animation style' },
+        { id: 'flux_watercolor', label: 'Watercolor', description: 'Watercolor painting style' },
+        { id: 'artistic', label: 'Artistic', description: 'Artistic interpretation' }
+      ];
+    } else {
+      // Server-side: direct API call
+      configureSuperduperAI();
+      const stylesResponse = await getStyles();
+      if ('error' in stylesResponse) {
+        console.error('Failed to load styles:', stylesResponse.error);
+        // Fallback to hardcoded styles
+        availableStyles = [
+          { id: 'cinematic', label: 'Cinematic', description: 'Movie-like style' },
+          { id: 'documentary', label: 'Documentary', description: 'Documentary style' },
+          { id: 'animated', label: 'Animated', description: 'Animation style' },
+          { id: 'flux_watercolor', label: 'Watercolor', description: 'Watercolor painting style' },
+          { id: 'artistic', label: 'Artistic', description: 'Artistic interpretation' }
+        ];
+      } else {
+        availableStyles = stylesResponse.items.map(style => ({
+          id: style.name,
+          label: style.title ?? style.name,
+          description: style.title ?? style.name,
+        }));
+      }
+    }
+  } catch (error) {
+    console.error('Failed to load styles:', error);
+    // Fallback to hardcoded styles
+    availableStyles = [
+      { id: 'cinematic', label: 'Cinematic', description: 'Movie-like style' },
+      { id: 'documentary', label: 'Documentary', description: 'Documentary style' },
+      { id: 'animated', label: 'Animated', description: 'Animation style' },
+      { id: 'flux_watercolor', label: 'Watercolor', description: 'Watercolor painting style' },
+      { id: 'artistic', label: 'Artistic', description: 'Artistic interpretation' }
+    ];
+  }
+  
   // Create configuration
   videoConfigCache = {
     type: 'video-generation-settings',
@@ -171,19 +264,13 @@ export async function getVideoGenerationConfig(): Promise<VideoGenerationConfig>
       { width: 1024, height: 1024, label: '1024x1024 (Square)', aspectRatio: '1:1' },
       { width: 768, height: 1024, label: '768x1024 (Portrait)', aspectRatio: '3:4' }
     ],
-    availableStyles: [
-      { id: 'cinematic', label: 'Cinematic', description: 'Movie-like style' },
-      { id: 'documentary', label: 'Documentary', description: 'Documentary style' },
-      { id: 'animated', label: 'Animated', description: 'Animation style' },
-      { id: 'flux_watercolor', label: 'Watercolor', description: 'Watercolor painting style' },
-      { id: 'artistic', label: 'Artistic', description: 'Artistic interpretation' }
-    ],
+    availableStyles,
     availableShotSizes: [
-      { id: 'extreme_close_up', label: 'Extreme Close-up', description: 'Very tight shot' },
-      { id: 'close_up', label: 'Close-up', description: 'Close-up shot' },
-      { id: 'medium_shot', label: 'Medium Shot', description: 'Medium distance shot' },
-      { id: 'wide_shot', label: 'Wide Shot', description: 'Wide establishing shot' },
-      { id: 'extreme_wide_shot', label: 'Extreme Wide', description: 'Very wide panoramic shot' }
+      { id: ShotSizeEnum.EXTREME_CLOSE_UP, label: 'Extreme Close-up', description: 'Very tight shot' },
+      { id: ShotSizeEnum.CLOSE_UP, label: 'Close-up', description: 'Close-up shot' },
+      { id: ShotSizeEnum.MEDIUM_SHOT, label: 'Medium Shot', description: 'Medium distance shot' },
+      { id: ShotSizeEnum.LONG_SHOT, label: 'Long Shot', description: 'Full body establishing shot' },
+      { id: ShotSizeEnum.EXTREME_LONG_SHOT, label: 'Extreme Long Shot', description: 'Very wide panoramic shot' }
     ],
     availableFrameRates: [
       { value: 24, label: '24 FPS (Cinematic)' },
@@ -192,8 +279,8 @@ export async function getVideoGenerationConfig(): Promise<VideoGenerationConfig>
     ],
     defaultSettings: {
       resolution: { width: 1280, height: 720, label: '1280x720 (HD)', aspectRatio: '16:9' },
-      style: { id: 'cinematic', label: 'Cinematic', description: 'Movie-like style' },
-      shotSize: { id: 'wide_shot', label: 'Wide Shot', description: 'Wide establishing shot' },
+      style: availableStyles.find(s => s.id === 'cinematic') || availableStyles[0] || { id: 'cinematic', label: 'Cinematic', description: 'Movie-like style' },
+      shotSize: { id: ShotSizeEnum.LONG_SHOT, label: 'Long Shot', description: 'Full body establishing shot' },
       model: adaptedVideoModels.find(m => m.type === 'text_to_video') || adaptedVideoModels[0] || {
         name: 'fallback',
         label: 'Fallback Model',

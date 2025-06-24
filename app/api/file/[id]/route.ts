@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSuperduperAIConfig } from '@/lib/config/superduperai';
+import { configureSuperduperAI } from '@/lib/config/superduperai';
+import { FileService } from '@/lib/api/services/FileService';
+import type { IFileRead } from '@/lib/api/models/IFileRead';
 
 export async function GET(
   request: NextRequest,
@@ -8,34 +10,17 @@ export async function GET(
   const { id: fileId } = await params;
   
   try {
-    const config = getSuperduperAIConfig();
+    // Configure OpenAPI client for server-side usage
+    configureSuperduperAI();
     
     console.log('📁 File proxy: Getting file status for ID:', fileId);
     
-    const response = await fetch(`${config.url}/api/v1/file/${fileId}`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${config.token}`,
-        'User-Agent': 'SuperChatbot/1.0',
-      },
-    });
+    // Use OpenAPI client instead of manual fetch
+    const fileData: IFileRead = await FileService.fileGetById({ id: fileId });
 
-    console.log(`📡 SuperDuperAI File API Response Status: ${response.status}`);
+    console.log('✅ File status response:', fileData);
     
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('❌ SuperDuperAI File API Error:', errorText);
-      return NextResponse.json(
-        { error: 'Failed to get file status', details: errorText },
-        { status: response.status }
-      );
-    }
-
-    const data = await response.json();
-    console.log('✅ File status response:', data);
-    
-    return NextResponse.json(data);
+    return NextResponse.json(fileData);
   } catch (error) {
     console.error('💥 File proxy error:', error);
     return NextResponse.json(
