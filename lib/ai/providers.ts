@@ -33,6 +33,12 @@ const mainModel = customAzure(
 const o4MiniModel = customAzure(
   process.env.AZURE_O4MINI_DEPLOYMENT_NAME || 'o4-mini',
 );
+const o3Model = customAzure(
+  process.env.AZURE_O3_DEPLOYMENT_NAME || 'o3',
+);
+const o3ProModel = customAzure(
+  process.env.AZURE_O3_PRO_DEPLOYMENT_NAME || 'o3-pro',
+);
 
 export const myProvider = isTestEnvironment
   ? customProvider({
@@ -50,6 +56,8 @@ export const myProvider = isTestEnvironment
           model: o4MiniModel,
           middleware: extractReasoningMiddleware({ tagName: 'think' }),
         }),
+        'o3-model': o3Model,
+        'o3-pro-model': o3ProModel,
         'title-model': mainModel,
         'artifact-model': mainModel,
       },
