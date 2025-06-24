@@ -17,7 +17,7 @@ export type ImageModel = IGenerationConfigRead;
 interface SuperduperAIConfig {
   url: string;
   token: string;
-  wsURL: string;
+  wsURL: string; // Deprecated - kept for backward compatibility
 }
 
 // Cache for models with 1-hour expiration
@@ -25,27 +25,24 @@ const modelCache = new Map<string, { data: IGenerationConfigRead[]; timestamp: n
 const CACHE_DURATION = 60 * 60 * 1000; // 1 hour
 
 export function getSuperduperAIConfig(): SuperduperAIConfig {
-  // For server-side usage
-  const url = process.env.NEXT_PUBLIC_SUPERDUPERAI_URL || 'https://dev-editor.superduperai.co';
-    const token = process.env.NEXT_PUBLIC_SUPERDUPERAI_TOKEN || process.env.SUPERDUPERAI_API_KEY || '';
-    const wsURL = url.replace('https://', 'wss://').replace('http://', 'ws://');
-
   if (typeof window === 'undefined') {
+    // Server-side: Real external API
+    const url = process.env.SUPERDUPERAI_URL || 'https://dev-editor.superduperai.co';
+    const token = process.env.SUPERDUPERAI_TOKEN || '';
     const wsURL = url.replace('https://', 'wss://').replace('http://', 'ws://');
 
     if (!token) {
-      throw new Error('SUPERDUPERAI_TOKEN or SUPERDUPERAI_API_KEY environment variable is required');
+      throw new Error('SUPERDUPERAI_TOKEN environment variable is required');
     }
 
     return { url, token, wsURL };
   }
-  // For client-side usage - return default values
-  // Token should be handled by API routes, not exposed to client
-  
+
+  // Client-side: Return empty - will use direct proxy paths
   return { 
-    url, 
-    token, // Empty token for client - API routes handle authentication
-    wsURL 
+    url: '', // Empty - direct proxy paths will be used
+    token: '', // Never expose tokens to client
+    wsURL: '' // Deprecated
   };
 }
 
@@ -295,7 +292,7 @@ export const API_ENDPOINTS = {
   CREATE_PROJECT: '/api/v1/project',
   GET_PROJECT: '/api/v1/project',
   
-  // Media generation
+  // Media generation - new file-based endpoints
   GENERATE_IMAGE: '/api/v1/file/generate-image',
   GENERATE_VIDEO: '/api/v1/file/generate-video',
   
@@ -303,8 +300,12 @@ export const API_ENDPOINTS = {
   LIST_MODELS: '/api/v1/generation-config',
   MODEL_INFO: '/api/v1/models/{modelId}',
   
-  // WebSocket
-  PROJECT_WS: '/api/v1/ws/project.{projectId}',
+  // SSE Events - file-based events (replaces WebSocket)
+  FILE_EVENTS: '/api/v1/events/file.{fileId}',
+  PROJECT_EVENTS: '/api/v1/events/project.{projectId}',
+  
+  // Legacy WebSocket endpoints (deprecated)
+  PROJECT_WS: '/api/v1/ws/project.{projectId}'
 } as const;
 
 /**
@@ -313,7 +314,14 @@ export const API_ENDPOINTS = {
 export function createAuthHeaders(config?: SuperduperAIConfig): Record<string, string> {
   const apiConfig = config || getSuperduperAIConfig();
   
-  // AICODE-NOTE: Bearer token authentication as required by SuperDuperAI API
+  // For client-side requests, don't include Authorization header (proxy handles it)
+  if (typeof window !== 'undefined') {
+    return {
+      'Content-Type': 'application/json',
+    };
+  }
+  
+  // Server-side only - Bearer token authentication as required by SuperDuperAI API
   return {
     'Content-Type': 'application/json',
     'Authorization': `Bearer ${apiConfig.token}`,
@@ -326,11 +334,27 @@ export function createAuthHeaders(config?: SuperduperAIConfig): Record<string, s
  */
 export function createAPIURL(endpoint: string, config?: SuperduperAIConfig): string {
   const apiConfig = config || getSuperduperAIConfig();
+  
+  // For client-side: just return the endpoint as is (should be proxy paths)
+  if (typeof window !== 'undefined') {
+    return endpoint;
+  }
+  
+  // Server-side: build full URL
   return `${apiConfig.url}${endpoint}`;
 }
 
 /**
- * Create WebSocket URL
+ * Create SSE URL for Server-Sent Events
+ */
+export function createSSEURL(path: string, config?: SuperduperAIConfig): string {
+  const apiConfig = config || getSuperduperAIConfig();
+  return `${apiConfig.url}${path}`;
+}
+
+/**
+ * Create WebSocket URL (deprecated - use SSE instead)
+ * @deprecated Use createSSEURL instead
  */
 export function createWSURL(path: string, config?: SuperduperAIConfig): string {
   const apiConfig = config || getSuperduperAIConfig();

@@ -66,8 +66,8 @@ export const useImageSSE = ({ projectId, eventHandlers, enabled = true }: Props)
     
     // Use environment variable or fallback to default
     const config = getSuperduperAIConfig();
-    // Convert to SSE URL format - use project.{projectId} channel
-    const sseUrl = `${config.url}/api/v1/events/project.${projectId}`;
+    // Convert to SSE URL format - use file.{projectId} channel (projectId is actually fileId)
+    const sseUrl = `${config.url}/api/v1/events/file.${projectId}`;
     
     console.log('🔌 Initializing SSE connection to:', sseUrl);
     

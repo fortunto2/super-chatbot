@@ -42,7 +42,7 @@ async function pollForCompletion(fileId: string, maxWaitTime = 120000): Promise<
   
   while (Date.now() - startTime < maxWaitTime) {
     try {
-      const response = await fetch(createAPIURL(`/api/v1/file/${fileId}`, config), {
+      const response = await fetch(createAPIURL(`/api/file/${fileId}`, config), {
         method: 'GET',
         headers: createAuthHeaders()
       });
@@ -70,7 +70,7 @@ async function pollForCompletion(fileId: string, maxWaitTime = 120000): Promise<
 async function tryWebSocketApproach(fileId: string, imageGenerationId: string): Promise<any> {
   return new Promise((resolve, reject) => {
     const config = getSuperduperAIConfig();
-    const wsUrl = `${config.wsURL}/api/v1/ws/project.${fileId}`;
+    const wsUrl = `${config.wsURL}/api/v1/events/file.${fileId}`;
     
     console.log(`🔌 Trying WebSocket approach: ${wsUrl}`);
     
@@ -96,7 +96,7 @@ async function tryWebSocketApproach(fileId: string, imageGenerationId: string): 
         console.log('🔌 WebSocket connected, sending subscribe message');
         ws?.send(JSON.stringify({
           type: 'subscribe',
-          projectId: `project.${fileId}`
+          fileId: `file.${fileId}`
         }));
       };
       
@@ -169,7 +169,7 @@ export const generateImageHybrid = async (
   try {
     // Step 1: Make API call to start generation
     const config = getSuperduperAIConfig();
-    const url = createAPIURL(API_ENDPOINTS.GENERATE_IMAGE, config);
+    const url = createAPIURL('/api/generate/image', config);
     const headers = createAuthHeaders();
 
     // AICODE-NOTE: Fixed payload structure to match working API format

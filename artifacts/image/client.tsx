@@ -93,7 +93,7 @@ const ImageArtifactWrapper = memo(function ImageArtifactWrapper(props: any) {
 
   // Connect to SSE for real-time updates
   const artifactSSE = useArtifactSSE({
-    channel: parsedContent?.projectId ? `project.${parsedContent.projectId}` : '',
+    channel: parsedContent?.projectId ? `file.${parsedContent.projectId}` : '',
     eventHandlers: parsedContent?.projectId ? [(message) => {
       console.log('🎨 Artifact SSE message:', message);
       

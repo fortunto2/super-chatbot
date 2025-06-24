@@ -1,4 +1,28 @@
-# Final Image Generation Solution
+# Final Solution for Image Generation
+
+## Updated Proxy Architecture
+
+The system now uses a clean proxy architecture with intuitive endpoint naming:
+
+### New API Endpoints
+
+- **Image Generation**: `/api/generate/image` (proxy to SuperDuperAI)
+- **Video Generation**: `/api/generate/video` (proxy to SuperDuperAI)  
+- **File Status**: `/api/file/{id}` (proxy to SuperDuperAI)
+
+### Benefits of New Structure
+
+1. **Clear Naming**: `/api/generate/image` clearly indicates purpose
+2. **Logical Organization**: All generation endpoints under `/api/generate/`
+3. **No Confusion**: Removed misleading `/api/project/` path
+4. **Consistent**: Matches RESTful naming conventions
+
+### API Flow
+
+```
+Client → /api/generate/image → SuperDuperAI /api/v1/file/generate-image
+Client → /api/file/{id} → SuperDuperAI /api/v1/file/{id}
+```
 
 ## Problem Summary
 

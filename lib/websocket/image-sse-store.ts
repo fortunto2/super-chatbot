@@ -257,12 +257,12 @@ class ImageSSEStore {
 
   // AICODE-NOTE: Initialize SSE connection using EventSource
   initConnection(url: string, handlers: ImageEventHandler[]) {
-    // Extract project ID from URL for tracking
-    const projectIdMatch = url.match(/project\.([^/]+)/);
-    const projectId = projectIdMatch ? projectIdMatch[1] : null;
+    // Extract file ID from URL for tracking (URL format: /api/v1/events/file.{fileId})
+    const fileIdMatch = url.match(/file\.([^/]+)/);
+    const projectId = fileIdMatch ? fileIdMatch[1] : null;
     
     if (!projectId) {
-      console.error('❌ Cannot extract project ID from SSE URL:', url);
+      console.error('❌ Cannot extract file ID from SSE URL:', url);
       return;
     }
 
@@ -275,7 +275,7 @@ class ImageSSEStore {
     
          // Convert WebSocket URL format to SSE format
      const config = getSuperduperAIConfig();
-     const channel = `project.${projectId}`;
+     const channel = `file.${projectId}`;
      const sseUrl = `${config.url}/api/v1/events/${channel}`;
     
     console.log('🔌 SSE Channel:', channel);

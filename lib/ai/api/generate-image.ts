@@ -109,8 +109,8 @@ export async function generateImage(
     
     console.log(`📦 Image generation payload:`, JSON.stringify(payload, null, 2));
 
-    // Use the correct endpoint for project+image generation
-    const url = createAPIURL('/api/v1/project/image', config);
+    // Use proxy endpoint directly
+    const url = createAPIURL('/api/generate/image', config);
     const headers = createAuthHeaders();
 
     console.log(`📡 Making request to: ${url}`);
@@ -139,8 +139,8 @@ export async function generateImage(
     const result = await response.json();
     console.log(`✅ API Success Response:`, result);
 
-    // The API returns a project object with data array
-    if (!result || !result.id || !result.data || !Array.isArray(result.data) || result.data.length === 0) {
+    // The API returns an array of files (new file-based endpoint)
+    if (!Array.isArray(result) || result.length === 0) {
       console.error(`❌ Invalid response format:`, result);
       return {
         success: false,
@@ -149,12 +149,9 @@ export async function generateImage(
       };
     }
 
-    const projectId = result.id;
-    const fileData = result.data[0];
-    const fileId = fileData.value?.file_id;
-    
-    // We need to get the actual file info from tasks or other source
-    const imageGenerationId = requestId; // Use our request ID as fallback
+    const fileData = result[0]; // Get first file
+    const fileId = fileData.id;
+    const imageGenerationId = fileData.image_generation_id;
     
     if (!fileId || !imageGenerationId) {
       console.error(`❌ Missing file ID or image generation ID:`, fileData);
@@ -174,10 +171,10 @@ export async function generateImage(
 
     return {
       success: true,
-      projectId: projectId, // Use the project ID from response for WebSocket
+      projectId: fileId, // Use file ID for tracking
       requestId: imageGenerationId, // Use image generation ID as request ID
       message: 'Image generation started successfully',
-      files: [result] // Return project as files array for compatibility
+      files: result // Return files array
     };
 
   } catch (error) {
