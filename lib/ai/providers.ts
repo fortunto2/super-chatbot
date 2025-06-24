@@ -56,8 +56,14 @@ export const myProvider = isTestEnvironment
           model: o4MiniModel,
           middleware: extractReasoningMiddleware({ tagName: 'think' }),
         }),
-        'o3-model': o3Model,
-        'o3-pro-model': o3ProModel,
+        'o3-reasoning': wrapLanguageModel({
+          model: o3Model,
+          middleware: extractReasoningMiddleware({ tagName: 'think' }),
+        }),
+        'o3-pro-reasoning': wrapLanguageModel({
+          model: o3ProModel,
+          middleware: extractReasoningMiddleware({ tagName: 'think' }),
+        }),
         'title-model': mainModel,
         'artifact-model': mainModel,
       },
