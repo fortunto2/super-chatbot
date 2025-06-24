@@ -13,6 +13,7 @@ export interface VideoGenerationResult {
   success: boolean;
   projectId?: string;
   requestId?: string;
+  fileId?: string;
   message?: string;
   error?: string;
   files?: any[];
@@ -194,6 +195,12 @@ export const generateVideo = async (
       
       const finalProjectId = result.id || chatId;
       
+      // Extract fileId from response like in image generation
+      const fileData = result.data?.[0];
+      const fileId = fileData?.value?.file_id || fileData?.id;
+      
+      console.log(`🎬 📁 Extracted fileId:`, fileId, `from data:`, fileData);
+      
       // Notify chat WebSocket about new project ID if different from chatId
       if (finalProjectId !== chatId && typeof window !== 'undefined') {
         console.log(`🎬 New projectId detected: ${finalProjectId}, notifying chat WebSocket`);
@@ -207,7 +214,8 @@ export const generateVideo = async (
         success: true,
         projectId: finalProjectId,
         requestId,
-        message: `Video generation started successfully! Project ID: ${finalProjectId}, Request ID: ${requestId}`,
+        fileId,
+        message: `Video generation started successfully! Project ID: ${finalProjectId}, Request ID: ${requestId}, File ID: ${fileId}`,
         files: result.files || [],
         url: result.url || null,
       };

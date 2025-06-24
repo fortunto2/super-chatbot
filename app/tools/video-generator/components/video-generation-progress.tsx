@@ -2,8 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Loader2, Image, CheckCircle, XCircle, RefreshCw } from 'lucide-react';
+import { Loader2, Video, CheckCircle, XCircle } from 'lucide-react';
 
 // AICODE-NOTE: Simple Progress component since it's not available in UI library
 function Progress({ value, className }: { value: number; className?: string }) {
@@ -48,20 +47,17 @@ export interface GenerationStatus {
   fileId?: string;
 }
 
-interface GenerationProgressProps {
+interface VideoGenerationProgressProps {
   generationStatus: GenerationStatus;
   prompt?: string;
-  onForceCheck?: () => Promise<void>;
 }
 
-export function GenerationProgress({ 
+export function VideoGenerationProgress({ 
   generationStatus, 
-  prompt,
-  onForceCheck
-}: GenerationProgressProps) {
+  prompt
+}: VideoGenerationProgressProps) {
   const [displayProgress, setDisplayProgress] = useState(0);
   const [elapsedTime, setElapsedTime] = useState(0);
-  const [isCheckingResults, setIsCheckingResults] = useState(false);
 
   // AICODE-NOTE: Animate progress bar smoothly
   useEffect(() => {
@@ -106,7 +102,7 @@ export function GenerationProgress({
       case 'pending':
         return <Loader2 className="size-5 animate-spin text-blue-500" />;
       case 'processing':
-        return <Image className="size-5 text-blue-500" />;
+        return <Video className="size-5 text-blue-500" />;
       case 'completed':
         return <CheckCircle className="size-5 text-green-500" />;
       case 'error':
@@ -138,13 +134,13 @@ export function GenerationProgress({
 
     switch (generationStatus.status) {
       case 'pending':
-        return 'Preparing your image generation request...';
+        return 'Preparing your video generation request...';
       case 'processing':
-        return 'Generating your image using AI models...';
+        return 'Generating your video using AI models...';
       case 'completed':
-        return 'Image generated successfully!';
+        return 'Video generated successfully!';
       case 'error':
-        return 'Failed to generate image. Please try again.';
+        return 'Failed to generate video. Please try again.';
       default:
         return '';
     }
@@ -159,7 +155,7 @@ export function GenerationProgress({
             <div className="flex items-center space-x-2">
               {getStatusIcon()}
               <span className="font-medium">
-                {generationStatus.status === 'processing' ? 'Generating Image' : 'Image Generation'}
+                {generationStatus.status === 'processing' ? 'Generating Video' : 'Video Generation'}
               </span>
             </div>
             {getStatusBadge()}
@@ -209,38 +205,6 @@ export function GenerationProgress({
               )}
             </div>
           </div>
-
-          {/* Force Check Button - only show during processing/pending */}
-          {onForceCheck && (generationStatus.status === 'processing' || generationStatus.status === 'pending') && (
-            <div className="pt-2 border-t">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={async () => {
-                  setIsCheckingResults(true);
-                  try {
-                    await onForceCheck();
-                  } finally {
-                    setIsCheckingResults(false);
-                  }
-                }}
-                disabled={isCheckingResults}
-                className="w-full"
-              >
-                {isCheckingResults ? (
-                  <>
-                    <Loader2 className="size-4 mr-2 animate-spin" />
-                    Checking results...
-                  </>
-                ) : (
-                  <>
-                    <RefreshCw className="size-4 mr-2" />
-                    Check for results
-                  </>
-                )}
-              </Button>
-            </div>
-          )}
         </div>
       </CardContent>
     </Card>

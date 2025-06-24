@@ -55,10 +55,12 @@ The video generation system consists of:
 - ✅ Enhanced error handling and debugging
 - ✅ Improved user experience and progress tracking
 - ✅ **Fixed video results not appearing in frontend** (SSE + polling improvements)
-- ✅ Added manual check functionality for video generation results
+- ✅ **Video Generation Progress Component Improvement** - Fixed progress texts and simplified UX
 
 ### Latest Improvements
 
+- **[Video Gallery UI Improvements](./video-gallery-ui-improvements.md)** - Fixed icon sizes and button visibility in video gallery component
+- **[Video Generation Progress Improvement](./video-generation-progress-improvement.md)** - Fixed "Image Generation" texts to "Video Generation" and removed redundant manual check button
 - **[SSE Polling Improvement](./sse-polling-improvement.md)** - Comprehensive fix for video results not appearing in frontend interface
 
 ## Related Documentation
