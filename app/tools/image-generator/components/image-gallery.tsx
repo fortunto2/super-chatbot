@@ -55,7 +55,7 @@ export function ImageGallery({
 
   // AICODE-NOTE: Image preview modal
   const ImagePreviewModal = ({ image }: { image: GeneratedImage }) => (
-    <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black/75 flex items-center justify-center z-50 p-4">
       <div className="relative max-w-4xl h-full">
         <Button
           variant="outline"
@@ -73,7 +73,7 @@ export function ImageGallery({
           onError={() => handleImageError(image.id)}
         />
         
-        <div className="absolute bottom-0 inset-x-0 bg-black bg-opacity-50 text-white p-4 rounded-b-lg">
+        <div className="absolute bottom-0 inset-x-0 bg-black/50 text-white p-4 rounded-b-lg">
           <p className="text-sm font-medium line-clamp-2">{image.prompt}</p>
           <p className="text-xs text-gray-300 mt-1">
             {formatTimestamp(image.timestamp)}
@@ -93,13 +93,14 @@ export function ImageGallery({
           {hasError ? (
             <div className="size-full bg-gray-50 flex items-center justify-center border-2 border-dashed border-gray-300">
               <div className="text-center text-gray-500">
-                <div className="bg-red-100 rounded-full p-3 w-14 h-14 mx-auto mb-2 flex items-center justify-center">
+                <div className="bg-red-100 rounded-full p-3 size-14 mx-auto mb-2 flex items-center justify-center">
                   <Settings className="size-6 text-red-400" />
                 </div>
                 <p className="text-sm font-medium">Failed to load</p>
               </div>
             </div>
           ) : (
+            // eslint-disable-next-line @next/next/no-img-element
             <img
               src={image.url}
               alt={image.prompt}
@@ -110,7 +111,7 @@ export function ImageGallery({
           )}
           
           {/* Overlay with actions */}
-          <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-60 transition-all duration-200 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/60 transition-all duration-200 flex items-center justify-center">
             <div className="opacity-0 group-hover:opacity-100 transition-opacity space-x-2">
               <Button
                 size="sm"
@@ -185,7 +186,7 @@ export function ImageGallery({
         </CardHeader>
         <CardContent>
           <div className="text-center py-8 text-gray-600">
-            <div className="bg-gray-100 rounded-full p-4 w-20 h-20 mx-auto mb-4 flex items-center justify-center">
+            <div className="bg-gray-100 rounded-full p-4 size-20 mx-auto mb-4 flex items-center justify-center">
               <Settings className="size-8 text-gray-400" />
             </div>
             <p className="text-lg font-medium mb-2 text-gray-700">No images generated yet</p>

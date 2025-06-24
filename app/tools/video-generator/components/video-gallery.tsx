@@ -64,7 +64,7 @@ export function VideoGallery({
 
   // AICODE-NOTE: Video preview modal
   const VideoPreviewModal = ({ video }: { video: GeneratedVideo }) => (
-    <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4">
       <div className="relative max-w-5xl max-h-full">
         <Button
           variant="outline"
@@ -83,7 +83,7 @@ export function VideoGallery({
           onError={() => handleVideoError(video.id)}
         />
         
-        <div className="absolute bottom-0 inset-x-0 bg-black bg-opacity-70 text-white p-4 rounded-b-lg">
+        <div className="absolute bottom-0 inset-x-0 bg-black/70 text-white p-4 rounded-b-lg">
           <p className="text-sm font-medium line-clamp-2">{video.prompt}</p>
           <div className="flex justify-between items-center mt-2 text-xs text-gray-300">
             <span>{formatTimestamp(video.timestamp)}</span>
@@ -130,7 +130,7 @@ export function VideoGallery({
           )}
           
           {/* Play button overlay */}
-          <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all duration-200 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-all duration-200 flex items-center justify-center">
             <div className="opacity-0 group-hover:opacity-100 transition-opacity">
               <Button
                 size="lg"
@@ -172,7 +172,7 @@ export function VideoGallery({
           </div>
           
           {/* Duration badge */}
-          <div className="absolute bottom-2 right-2 bg-black bg-opacity-70 text-white text-xs px-2 py-1 rounded">
+          <div className="absolute bottom-2 right-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
             {formatDuration(video.settings.duration)}
           </div>
           

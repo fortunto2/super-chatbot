@@ -108,16 +108,17 @@ export function ChatImageHistory({ chatId, isVisible, onImageSelect }: ChatImage
               className="group relative aspect-square rounded-lg overflow-hidden border cursor-pointer hover:border-primary transition-colors"
               onClick={() => handleImageClick(image.url)}
             >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={image.url}
                 alt={image.prompt}
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                className="size-full object-cover group-hover:scale-105 transition-transform duration-200"
                 loading="lazy"
               />
               
               {/* Overlay with prompt */}
               <div className="absolute inset-0 bg-black/0 group-hover:bg-black/50 transition-colors">
-                <div className="absolute bottom-0 left-0 right-0 p-2 text-white text-xs opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="absolute bottom-0 inset-x-0 p-2 text-white text-xs opacity-0 group-hover:opacity-100 transition-opacity">
                   <div className="truncate">{image.prompt}</div>
                   <div className="text-xs opacity-75 mt-1">
                     {new Date(image.createdAt).toLocaleDateString()}
@@ -126,8 +127,8 @@ export function ChatImageHistory({ chatId, isVisible, onImageSelect }: ChatImage
               </div>
               
               {/* Click indicator */}
-              <div className="absolute top-2 right-2 w-6 h-6 bg-white/80 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="absolute top-2 right-2 size-6 bg-white/80 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                <svg className="size-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                 </svg>
               </div>

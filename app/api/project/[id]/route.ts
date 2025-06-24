@@ -4,9 +4,9 @@ import { configureSuperduperAI } from '@/lib/config/superduperai';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const projectId = params.id;
+  const { id: projectId } = await params;
   console.log('🔍 API: Getting project status for ID:', projectId);
   
   try {

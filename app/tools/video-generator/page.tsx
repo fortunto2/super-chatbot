@@ -83,7 +83,7 @@ export default function VideoGeneratorPage() {
           {isGenerating && (
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
               <div className="flex items-center gap-2 text-sm">
-                <div className={`w-2 h-2 rounded-full ${
+                <div className={`size-2 rounded-full ${
                   isConnected ? 'bg-green-500' : 'bg-yellow-500'
                 }`} />
                 <span className="text-blue-800">
