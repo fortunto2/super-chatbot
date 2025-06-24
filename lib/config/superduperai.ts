@@ -300,9 +300,10 @@ export const API_ENDPOINTS = {
   LIST_MODELS: '/api/v1/generation-config',
   MODEL_INFO: '/api/v1/models/{modelId}',
   
-  // SSE Events - file-based events (replaces WebSocket)
-  FILE_EVENTS: '/api/v1/events/file.{fileId}',
-  PROJECT_EVENTS: '/api/v1/events/project.{projectId}',
+  // SSE Events - three channel types
+  SSE_FILE_EVENTS: '/api/v1/events/file.{fileId}',
+  SSE_PROJECT_EVENTS: '/api/v1/events/project.{projectId}',
+  SSE_USER_EVENTS: '/api/v1/events/user.{userId}',
   
   // Legacy WebSocket endpoints (deprecated)
   PROJECT_WS: '/api/v1/ws/project.{projectId}'
@@ -345,11 +346,27 @@ export function createAPIURL(endpoint: string, config?: SuperduperAIConfig): str
 }
 
 /**
- * Create SSE URL for Server-Sent Events
+ * Create SSE URL for file events
  */
-export function createSSEURL(path: string, config?: SuperduperAIConfig): string {
+export function createFileSSEURL(fileId: string, config?: SuperduperAIConfig): string {
   const apiConfig = config || getSuperduperAIConfig();
-  return `${apiConfig.url}${path}`;
+  return `${apiConfig.url}/api/v1/events/file.${fileId}`;
+}
+
+/**
+ * Create SSE URL for project events  
+ */
+export function createProjectSSEURL(projectId: string, config?: SuperduperAIConfig): string {
+  const apiConfig = config || getSuperduperAIConfig();
+  return `${apiConfig.url}/api/v1/events/project.${projectId}`;
+}
+
+/**
+ * Create SSE URL for user events
+ */
+export function createUserSSEURL(userId: string, config?: SuperduperAIConfig): string {
+  const apiConfig = config || getSuperduperAIConfig();
+  return `${apiConfig.url}/api/v1/events/user.${userId}`;
 }
 
 /**

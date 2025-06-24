@@ -2,20 +2,20 @@
 
 import { useEffect, useState, useRef } from "react";
 import { imageSSEStore, type ImageEventHandler } from "@/lib/websocket/image-sse-store";
-import { getSuperduperAIConfig } from "@/lib/config/superduperai";
+import { createFileSSEURL } from "@/lib/config/superduperai";
 
 type Props = {
-  projectId: string;
+  fileId: string; // Only fileId needed for image/video generation
   eventHandlers: ImageEventHandler[];
   enabled?: boolean;
 };
 
-// AICODE-NOTE: SSE-based hook replacing WebSocket functionality with same interface
-export const useImageSSE = ({ projectId, eventHandlers, enabled = true }: Props) => {
+// AICODE-NOTE: SSE-based hook for file events only
+export const useImageSSE = ({ fileId, eventHandlers, enabled = true }: Props) => {
   
   const [isConnected, setIsConnected] = useState(false);
   const [connectionAttempts, setConnectionAttempts] = useState(0);
-  const maxAttempts = 3; // Keep for compatibility, though SSE handles reconnection automatically
+  const maxAttempts = 3;
   const connectionHandlerRef = useRef<((connected: boolean) => void) | null>(null);
   const mountedRef = useRef(true);
 
@@ -28,15 +28,15 @@ export const useImageSSE = ({ projectId, eventHandlers, enabled = true }: Props)
 
   // AICODE-NOTE: Main effect for SSE connection management
   useEffect(() => {
-    if (!enabled || !projectId || eventHandlers.length === 0) {
+    if (!enabled || !fileId || eventHandlers.length === 0) {
       setIsConnected(false);
       setConnectionAttempts(0);
       return;
     }
 
-    console.log('🔌 Setting up SSE connection for project:', projectId);
+    console.log('🔌 Setting up SSE connection for file:', fileId);
 
-    // Reset attempts for new project
+    // Reset attempts for new file
     setConnectionAttempts(0);
 
     // Remove previous connection handler if exists
@@ -46,16 +46,14 @@ export const useImageSSE = ({ projectId, eventHandlers, enabled = true }: Props)
     
     // Add connection state handler
     const connectionHandler = (connected: boolean) => {
-      if (!mountedRef.current) return; // Don't update state if unmounted
+      if (!mountedRef.current) return;
       
-      console.log('📡 SSE connection state changed:', connected, 'for project:', projectId);
+      console.log('📡 SSE connection state changed:', connected, 'for file:', fileId);
       setIsConnected(connected);
       
-      // AICODE-NOTE: SSE handles reconnection automatically, so we don't need retry logic
       if (connected) {
         setConnectionAttempts(0);
       } else {
-        // For compatibility, show connection attempt (though SSE reconnects automatically)
         setConnectionAttempts(1);
       }
     };
@@ -64,18 +62,16 @@ export const useImageSSE = ({ projectId, eventHandlers, enabled = true }: Props)
     connectionHandlerRef.current = connectionHandler;
     imageSSEStore.addConnectionHandler(connectionHandler);
     
-    // Use environment variable or fallback to default
-    const config = getSuperduperAIConfig();
-    // Convert to SSE URL format - use file.{projectId} channel (projectId is actually fileId)
-    const sseUrl = `${config.url}/api/v1/events/file.${projectId}`;
+    // Create SSE URL for file events only
+    const sseUrl = createFileSSEURL(fileId);
     
     console.log('🔌 Initializing SSE connection to:', sseUrl);
     
-    // Initialize SSE connection with project-specific handlers
+    // Initialize SSE connection with file-specific handlers
     imageSSEStore.initConnection(sseUrl, eventHandlers);
 
     return () => {
-      console.log('🧹 Cleaning up SSE hook for project:', projectId);
+      console.log('🧹 Cleaning up SSE hook for file:', fileId);
       
       // Remove specific connection handler
       if (connectionHandlerRef.current) {
@@ -83,13 +79,13 @@ export const useImageSSE = ({ projectId, eventHandlers, enabled = true }: Props)
         connectionHandlerRef.current = null;
       }
       
-      // Remove project-specific handlers
-      imageSSEStore.removeProjectHandlers(projectId, eventHandlers);
+      // Remove file-specific handlers
+      imageSSEStore.removeProjectHandlers(fileId, eventHandlers);
       setConnectionAttempts(0);
     };
-  }, [projectId, eventHandlers, enabled]);
+  }, [fileId, eventHandlers, enabled]);
 
-  // AICODE-NOTE: Force cleanup on unmount with immediate execution
+  // AICODE-NOTE: Force cleanup on unmount
   useEffect(() => {
     return () => {
       mountedRef.current = false;
@@ -98,8 +94,8 @@ export const useImageSSE = ({ projectId, eventHandlers, enabled = true }: Props)
         imageSSEStore.removeConnectionHandler(connectionHandlerRef.current);
       }
       
-      // Clean up project-specific handlers immediately
-      imageSSEStore.removeProjectHandlers(projectId, eventHandlers);
+      // Clean up file-specific handlers immediately
+      imageSSEStore.removeProjectHandlers(fileId, eventHandlers);
       
       // Force cleanup if too many handlers accumulated
       const debugInfo = imageSSEStore.getDebugInfo();
@@ -108,7 +104,7 @@ export const useImageSSE = ({ projectId, eventHandlers, enabled = true }: Props)
         imageSSEStore.forceCleanup();
       }
     };
-  }, []);
+  }, [fileId, eventHandlers]);
 
   // AICODE-NOTE: Return same interface as WebSocket hook for compatibility
   return {
@@ -116,7 +112,7 @@ export const useImageSSE = ({ projectId, eventHandlers, enabled = true }: Props)
     connectionAttempts,
     maxAttempts,
     disconnect: () => {
-      console.log('🔌 Manual SSE disconnect requested for project:', projectId);
+      console.log('🔌 Manual SSE disconnect requested for file:', fileId);
       imageSSEStore.disconnect();
       setConnectionAttempts(0);
     },

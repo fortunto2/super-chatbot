@@ -3,7 +3,7 @@ import { CopyIcon, RedoIcon, UndoIcon } from '@/components/icons';
 import { ImageEditor } from '@/components/image-editor';
 import { toast } from 'sonner';
 import { memo, useMemo, useEffect } from 'react';
-import { useArtifactSSE } from '@/hooks/use-artifact-sse';
+import { useImageSSE } from '@/hooks/use-image-sse';
 
 // Import console helpers for debugging (auto-exposes in browser)
 import '@/lib/utils/console-helpers';
@@ -91,10 +91,10 @@ const ImageArtifactWrapper = memo(function ImageArtifactWrapper(props: any) {
     return state;
   }, [parsedContent]);
 
-  // Connect to SSE for real-time updates
-  const artifactSSE = useArtifactSSE({
-    channel: parsedContent?.projectId ? `file.${parsedContent.projectId}` : '',
-    eventHandlers: parsedContent?.projectId ? [(message) => {
+  // Connect to SSE for real-time updates using fileId directly
+  const artifactSSE = useImageSSE({
+    fileId: parsedContent?.projectId || '', // projectId is actually fileId from generate-image.ts
+    eventHandlers: parsedContent?.projectId ? [(message: any) => {
       console.log('🎨 Artifact SSE message:', message);
       
       // Handle file events for image completion

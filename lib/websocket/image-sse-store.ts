@@ -259,23 +259,23 @@ class ImageSSEStore {
   initConnection(url: string, handlers: ImageEventHandler[]) {
     // Extract file ID from URL for tracking (URL format: /api/v1/events/file.{fileId})
     const fileIdMatch = url.match(/file\.([^/]+)/);
-    const projectId = fileIdMatch ? fileIdMatch[1] : null;
+    const fileId = fileIdMatch ? fileIdMatch[1] : null;
     
-    if (!projectId) {
+    if (!fileId) {
       console.error('❌ Cannot extract file ID from SSE URL:', url);
       return;
     }
 
-    console.log('🔌 Initializing SSE connection for project:', projectId);
+    console.log('🔌 Initializing SSE connection for file:', fileId);
     console.log('🔌 SSE URL:', url);
     
-    // Track current project
-    this.currentProjectId = projectId;
-    this.activeProjects.add(projectId);
+    // Track current file
+    this.currentProjectId = fileId;
+    this.activeProjects.add(fileId);
     
          // Convert WebSocket URL format to SSE format
      const config = getSuperduperAIConfig();
-     const channel = `file.${projectId}`;
+     const channel = `file.${fileId}`;
      const sseUrl = `${config.url}/api/v1/events/${channel}`;
     
     console.log('🔌 SSE Channel:', channel);
@@ -284,8 +284,8 @@ class ImageSSEStore {
     // Store current channel
     this.currentChannel = channel;
     
-    // Add handlers for this project
-    this.addProjectHandlers(projectId, handlers);
+    // Add handlers for this file
+    this.addProjectHandlers(fileId, handlers);
     
     // Clear any existing connection timeout
     if (this.disconnectTimeout) {
