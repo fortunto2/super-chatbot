@@ -47,17 +47,29 @@ export const generateVideo = async (
       // Use our new dynamic model discovery system
       let actualModelName = model.name;
       
-      // Try to find the model in our dynamic system
-      const dynamicModel = await findVideoModel(model.name);
-      if (dynamicModel) {
-        actualModelName = dynamicModel.name;
-        console.log('🎬 ✅ Found dynamic model:', actualModelName, 'with name:', dynamicModel.name);
-      } else {
-        console.log('🎬 ⚠️ Model not found in dynamic system, using provided name:', model.name);
-        
-        // Log available models for debugging
-        const availableModels = await getAvailableVideoModels();
-        console.log('🎬 Available models:', availableModels.map(m => `${m.name} (${m.name})`));
+      // Try to find the model in our dynamic system via API
+      let dynamicModel: any = null;
+      try {
+        const modelsResponse = await fetch('/api/config/models');
+        if (modelsResponse.ok) {
+          const { availableModels } = await modelsResponse.json();
+          const videoModels = availableModels.filter((m: any) => 
+            m.type === 'image_to_video' || m.type === 'text_to_video' || m.type === 'video_to_video'
+          );
+          
+          dynamicModel = videoModels.find((m: any) => m.name === model.name);
+          if (dynamicModel) {
+            actualModelName = dynamicModel.name;
+            console.log('🎬 ✅ Found dynamic model via API:', actualModelName, 'with name:', dynamicModel.name);
+          } else {
+            console.log('🎬 ⚠️ Model not found in dynamic system, using provided name:', model.name);
+            console.log('🎬 Available models via API:', videoModels.map((m: any) => `${m.name} (${m.label || m.name})`));
+          }
+        } else {
+          console.log('🎬 ⚠️ Could not fetch models via API, using provided model name:', model.name);
+        }
+      } catch (error) {
+        console.log('🎬 ⚠️ Error fetching models via API, using provided model name:', model.name, error);
       }
       
       console.log('🎬 Final model ID for API:', actualModelName);
@@ -161,7 +173,7 @@ export const generateVideo = async (
           return {
             success: false,
             requestId,
-            error: `Model "${actualModelName}" not found. Available models: ${(await getAvailableVideoModels()).map(m => m.name).join(', ')}`,
+            error: `Model "${actualModelName}" not found. Check available models via /api/config/models endpoint.`,
           };
         }
         

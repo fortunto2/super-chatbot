@@ -21,7 +21,17 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { chatId, message: messageData } = body;
 
+    console.log('💾 API save-message received:', {
+      chatId,
+      messageId: messageData?.id,
+      role: messageData?.role,
+      partsCount: messageData?.parts?.length || 0,
+      attachmentsCount: messageData?.attachments?.length || 0,
+      hasContent: !!messageData?.content
+    });
+
     if (!chatId || !messageData) {
+      console.error('💾 API save-message error: Missing required data');
       return NextResponse.json(
         { error: 'Missing chatId or message' }, 
         { status: 400 }

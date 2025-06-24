@@ -1,8 +1,8 @@
 import { useEffect, useRef } from 'react';
 import type { UseChatHelpers } from '@ai-sdk/react';
 
-interface UseImageEffectsProps {
-  imageUrl?: string;
+interface UseVideoEffectsProps {
+  videoUrl?: string;
   status: string;
   append?: UseChatHelpers['append'];
   prompt: string;
@@ -24,80 +24,80 @@ const generateUUID = (): string => {
   });
 };
 
-// AICODE-NOTE: Function to check if image already exists in chat to prevent duplicates
-const checkImageExistsInChat = (
+// AICODE-NOTE: Function to check if video already exists in chat to prevent duplicates
+const checkVideoExistsInChat = (
   setMessages: UseChatHelpers['setMessages'],
-  imageUrl: string,
+  videoUrl: string,
 ): boolean => {
-  let imageExists = false;
+  let videoExists = false;
 
   setMessages((prevMessages) => {
-    // Check if any message already contains this image URL
-    imageExists = prevMessages.some((message) =>
+    // Check if any message already contains this video URL
+    videoExists = prevMessages.some((message) =>
       message.experimental_attachments?.some(
-        (attachment) => attachment.url === imageUrl,
+        (attachment) => attachment.url === videoUrl,
       ),
     );
     return prevMessages; // Don't modify messages, just check
   });
 
-  return imageExists;
+  return videoExists;
 };
 
-// AICODE-NOTE: Function to save generated image as a permanent chat message with attachment
-const saveImageToChat = async (
+// AICODE-NOTE: Function to save generated video as a permanent chat message with attachment
+const saveVideoToChat = async (
   chatId: string,
-  imageUrl: string,
+  videoUrl: string,
   prompt: string,
   setMessages?: UseChatHelpers['setMessages'],
 ) => {
   if (!setMessages || !chatId) {
     console.log(
-      '💾 ⚠️ Cannot save image to chat - missing setMessages or chatId',
+      '💾 ⚠️ Cannot save video to chat - missing setMessages or chatId',
     );
     return;
   }
 
-  console.log('💾 Saving generated image to chat history...', {
+  console.log('💾 Saving generated video to chat history...', {
     chatId,
-    imageUrl: `${imageUrl.substring(0, 50)}...`,
+    videoUrl: `${videoUrl.substring(0, 50)}...`,
     prompt,
   });
 
   try {
-    // AICODE-NOTE: Check if image already exists in chat to prevent duplicates from clicks
-    const imageExists = checkImageExistsInChat(setMessages, imageUrl);
-    if (imageExists) {
-      console.log('💾 ⏭️ Image already exists in chat, skipping duplicate save');
+    // AICODE-NOTE: Check if video already exists in chat to prevent duplicates from clicks
+    const videoExists = checkVideoExistsInChat(setMessages, videoUrl);
+    if (videoExists) {
+      console.log('💾 ⏭️ Video already exists in chat, skipping duplicate save');
       return;
     }
 
-    // Create image attachment for permanent storage in chat
-    const imageAttachment = {
-      name: prompt.length > 50 ? `${prompt.substring(0, 50)}...` : prompt, // Use prompt as name instead of generic filename
-      url: imageUrl,
-      contentType: 'image/webp',
+    // Create video attachment for permanent storage in chat
+    const videoAttachment = {
+      name: prompt.length > 50 ? `${prompt.substring(0, 50)}...` : prompt, // Use prompt as name
+      url: videoUrl,
+      contentType: 'video/mp4',
     };
 
-    // Create message with image attachment and valid UUID
-    const imageMessage = {
+    // Create message with video attachment and valid UUID
+    const videoMessage = {
       id: generateUUID(), // Use proper UUID instead of random string
       role: 'assistant' as const,
-      content: `Generated image: "${prompt}"`,
+      content: `Generated video: "${prompt}"`,
       parts: [
         {
           type: 'text' as const,
-          text: `Generated image: "${prompt}"`,
+          text: `Generated video: "${prompt}"`,
         },
       ],
-      experimental_attachments: [imageAttachment],
+      experimental_attachments: [videoAttachment],
       createdAt: new Date(),
     };
 
     // Add message to chat history
-    setMessages((prevMessages) => [...prevMessages, imageMessage]);
+    setMessages((prevMessages) => [...prevMessages, videoMessage]);
 
-    console.log('💾 ✅ Image added to chat history locally!');
+    console.log('💾 ✅ Video added to chat history locally!');
 
     // Save to database
     try {
@@ -109,11 +109,11 @@ const saveImageToChat = async (
         body: JSON.stringify({
           chatId,
           message: {
-            id: imageMessage.id,
-            role: imageMessage.role,
-            parts: imageMessage.parts,
-            attachments: imageMessage.experimental_attachments,
-            createdAt: imageMessage.createdAt,
+            id: videoMessage.id,
+            role: videoMessage.role,
+            parts: videoMessage.parts,
+            attachments: videoMessage.experimental_attachments,
+            createdAt: videoMessage.createdAt,
           },
         }),
       });
@@ -125,25 +125,25 @@ const saveImageToChat = async (
         );
       }
 
-      console.log('💾 ✅ Image saved to database successfully!');
+      console.log('💾 ✅ Video saved to database successfully!');
     } catch (dbError) {
       console.warn(
-        '💾 ⚠️ Failed to save to database, but image is in chat locally:',
+        '💾 ⚠️ Failed to save to database, but video is in chat locally:',
         dbError,
       );
-      // Don't throw - the image is already in chat locally
+      // Don't throw - the video is already in chat locally
     }
 
     console.log(
-      '💾 📷 Image will remain accessible even after closing the artifact',
+      '💾 🎬 Video will remain accessible even after closing the artifact',
     );
   } catch (error) {
-    console.error('💾 ❌ Failed to save image to chat:', error);
+    console.error('💾 ❌ Failed to save video to chat:', error);
   }
 };
 
-export function useImageEffects({
-  imageUrl,
+export function useVideoEffects({
+  videoUrl,
   status,
   append,
   prompt,
@@ -154,52 +154,52 @@ export function useImageEffects({
   setPrompt,
   initialPrompt,
   setMessages,
-}: UseImageEffectsProps) {
-  const savedImageUrlRef = useRef<string>('none');
+}: UseVideoEffectsProps) {
+  const savedVideoUrlRef = useRef<string>('none');
 
-  // AICODE-NOTE: Auto-save completed image to chat history for permanent access
+  // AICODE-NOTE: Auto-save completed video to chat history for permanent access
   useEffect(() => {
     // Debug all conditions
-    console.log('🔍 useImageEffects debug:', {
-      imageUrl: imageUrl ? `${imageUrl.substring(0, 50)}...` : 'none',
+    console.log('🔍 useVideoEffects debug:', {
+      videoUrl: videoUrl ? `${videoUrl.substring(0, 50)}...` : 'none',
       status,
       hasInitialized,
       chatId: chatId || 'none',
       setMessages: !!setMessages,
       prompt: prompt ? `${prompt.substring(0, 30)}...` : 'none',
-      savedImageUrlRef: savedImageUrlRef.current,
+      savedVideoUrlRef: savedVideoUrlRef.current,
       allConditionsMet: !!(
-        imageUrl &&
+        videoUrl &&
         status === 'completed' &&
         hasInitialized &&
         chatId &&
         setMessages &&
         prompt &&
-        savedImageUrlRef.current !== imageUrl
+        savedVideoUrlRef.current !== videoUrl
       ),
     });
 
-    // Only save if all conditions are met AND image hasn't been saved before
+    // Only save if all conditions are met AND video hasn't been saved before
     if (
-      imageUrl &&
+      videoUrl &&
       status === 'completed' &&
       hasInitialized &&
       chatId &&
       setMessages &&
       prompt &&
-      savedImageUrlRef.current !== imageUrl // Prevent duplicate saves
+      savedVideoUrlRef.current !== videoUrl // Prevent duplicate saves
     ) {
       console.log(
-        '💾 🎨 Image generation completed, auto-saving to chat history...',
+        '💾 🎬 Video generation completed, auto-saving to chat history...',
       );
-      savedImageUrlRef.current = imageUrl;
+      savedVideoUrlRef.current = videoUrl;
 
       // Small delay to ensure artifact is updated first
       setTimeout(() => {
-        saveImageToChat(chatId, imageUrl, prompt, setMessages);
+        saveVideoToChat(chatId, videoUrl, prompt, setMessages);
       }, 100);
     }
-  }, [imageUrl, status, hasInitialized, chatId, setMessages, prompt]);
+  }, [videoUrl, status, hasInitialized, chatId, setMessages, prompt]);
 
   // Handle prompt reset
   useEffect(() => {
@@ -211,16 +211,16 @@ export function useImageEffects({
 
   // Handle artifact update
   useEffect(() => {
-    if (imageUrl && setArtifact) {
+    if (videoUrl && setArtifact) {
       setArtifact((prev) => ({
         ...prev,
         content: JSON.stringify({
           projectId: chatId,
           status,
-          imageUrl,
+          videoUrl,
           prompt,
         }),
       }));
     }
-  }, [imageUrl, status, chatId, prompt, setArtifact]);
-}
+  }, [videoUrl, status, chatId, prompt, setArtifact]);
+} 

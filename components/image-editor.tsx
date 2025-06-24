@@ -204,21 +204,6 @@ export function ImageEditor({
     }
   }, [hasInitialized, initialState?.projectId, initialState?.status, initialState?.requestId, imageGeneration]);
 
-  // Handle image effects
-  useImageEffects({
-    imageUrl: imageGeneration.imageUrl,
-    status: imageGeneration.status,
-    append,
-    prompt,
-    hasInitialized,
-    setArtifact,
-    chatId,
-    resetState: imageGeneration.resetState,
-    setPrompt,
-    initialPrompt: initialState?.prompt,
-    setMessages
-  });
-
   // Debug initialState changes to track when it gets updated
   useEffect(() => {
     console.log('🎯 ImageEditor: initialState updated', {
@@ -228,6 +213,27 @@ export function ImageEditor({
       timestamp: initialState?.timestamp || 'none'
     });
   }, [initialState]);
+
+  // Determine what to display - prioritize initialState in artifact mode
+  const isArtifactMode = !!initialState?.projectId;
+
+  // Handle image effects - use initialState data in artifact mode
+  const effectiveImageUrlForEffects = isArtifactMode ? initialState?.imageUrl : imageGeneration.imageUrl;
+  const effectiveStatusForEffects = isArtifactMode ? initialState?.status : imageGeneration.status;
+  
+  useImageEffects({
+    imageUrl: effectiveImageUrlForEffects,
+    status: effectiveStatusForEffects || '',
+    append,
+    prompt: prompt || initialState?.prompt || '',
+    hasInitialized,
+    setArtifact,
+    chatId,
+    resetState: imageGeneration.resetState,
+    setPrompt,
+    initialPrompt: initialState?.prompt,
+    setMessages
+  });
 
   // Get connection status - prioritize SSE over WebSocket
   const getConnectionStatus = (): boolean => {
@@ -249,9 +255,6 @@ export function ImageEditor({
   };
 
   const isConnected = getConnectionStatus();
-
-  // Determine what to display - prioritize initialState in artifact mode
-  const isArtifactMode = !!initialState?.projectId;
   const effectiveImageUrl = isArtifactMode ? initialState?.imageUrl : imageGeneration.imageUrl;
   const showSkeleton = shouldShowSkeleton(initialState, effectiveImageUrl, initialState?.imageUrl);
   const showImage = shouldShowImage(effectiveImageUrl, initialState?.imageUrl);
