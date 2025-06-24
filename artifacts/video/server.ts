@@ -107,10 +107,10 @@ export const videoDocumentHandler = createDocumentHandler<'video'>({
         return draftContent;
       }
 
-      // Create content with project info and available options for WebSocket tracking
+      // Create content with file info and available options for WebSocket tracking
       draftContent = JSON.stringify({
         status: 'pending',
-        projectId: result.projectId || chatId,
+        fileId: result.fileId || result.projectId || chatId,
         requestId: result.requestId,
         prompt: prompt,
         negativePrompt: negativePrompt,
@@ -219,10 +219,10 @@ export const videoDocumentHandler = createDocumentHandler<'video'>({
         });
       }
 
-      // Update content with new project info
+      // Update content with new file info
       draftContent = JSON.stringify({
         status: 'pending',
-        projectId: result.projectId || chatId,
+        fileId: result.fileId || result.projectId || chatId,
         requestId: result.requestId,
         prompt: prompt,
         negativePrompt: negativePrompt,

@@ -13,9 +13,8 @@ export interface GeneratedVideo {
   url: string;
   prompt: string;
   timestamp: number;
-  projectId?: string;
+  fileId?: string; // Use fileId as primary identifier
   requestId?: string;
-  fileId?: string;
   settings: {
     model: string;
     style: string;
@@ -83,9 +82,38 @@ export function useVideoGenerator(): UseVideoGeneratorReturn {
 
 
 
-  // AICODE-NOTE: Polling fallback for generation status
-  const startPolling = useCallback((projectId: string) => {
-    console.log('📊 Starting polling for video project:', projectId);
+  // AICODE-NOTE: Simple file-based polling (like image generator)
+  const startPolling = useCallback((fileId: string) => {
+    console.log('📊 Starting polling for video file:', fileId);
+    
+    const poll = async () => {
+      try {
+        const { FileService } = await import('@/lib/api');
+        const fileDetails = await FileService.fileGetById({ id: fileId });
+        
+        if (fileDetails.url) {
+          console.log('📊 ✅ Video file ready:', fileDetails.url);
+          handleGenerationSuccess(fileDetails.url, fileId);
+          return;
+        }
+        
+        // If no URL yet, continue polling
+        console.log('📊 Video file not ready yet, continuing to poll...');
+        pollingRef.current = setTimeout(poll, 3000);
+        
+      } catch (error) {
+        console.error('📊 ❌ Video polling error:', error);
+        handleGenerationError('Failed to check video generation status');
+      }
+    };
+
+    poll();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // AICODE-NOTE: Legacy project-based polling (kept for compatibility)
+  const startProjectPolling = useCallback((projectId: string) => {
+    console.log('📊 Starting legacy polling for video project:', projectId);
     
     const poll = async () => {
       try {
@@ -173,7 +201,7 @@ export function useVideoGenerator(): UseVideoGeneratorReturn {
   }, []);
 
   // AICODE-NOTE: Handle successful generation
-  const handleGenerationSuccess = useCallback((videoUrl: string, projectId?: string) => {
+  const handleGenerationSuccess = useCallback((videoUrl: string, fileId?: string) => {
     cleanup();
     
     const newVideo: GeneratedVideo = {
@@ -181,7 +209,7 @@ export function useVideoGenerator(): UseVideoGeneratorReturn {
       url: videoUrl,
       prompt: generationStatus.message || 'Generated video',
       timestamp: Date.now(),
-      projectId,
+      fileId,
       settings: {
         model: 'Unknown',
         style: 'Unknown',
@@ -360,18 +388,23 @@ export function useVideoGenerator(): UseVideoGeneratorReturn {
 
       console.log('🎬 ✅ Generation API response:', result);
 
-      if (result.success && result.projectId) {
-              setGenerationStatus(prev => ({
-        ...prev,
-        status: 'processing',
-        projectId: result.projectId,
-        requestId: result.requestId,
-        fileId: result.fileId,
-      }));
+      if (result.success) {
+        // Extract fileId from result - could be in fileId or projectId field
+        const fileId = result.fileId || result.projectId;
+        
+        if (fileId) {
+          setGenerationStatus(prev => ({
+            ...prev,
+            status: 'processing',
+            fileId: fileId,
+            requestId: result.requestId,
+          }));
 
-      // Use fileId for SSE connection if available, fallback to projectId
-      const connectionId = result.fileId || result.projectId;
-      await connectSSE(connectionId, result.fileId);
+          // Use fileId for SSE connection
+          await connectSSE(fileId, result.requestId);
+        } else {
+          throw new Error('No file ID returned from video generation API');
+        }
         
       } else {
         throw new Error(result.error || 'Failed to start generation');
@@ -442,104 +475,40 @@ export function useVideoGenerator(): UseVideoGeneratorReturn {
     }
   }, []);
 
-  // AICODE-NOTE: Force check for completed videos manually
+  // AICODE-NOTE: Force check for completed videos manually (simplified file-based approach)
   const forceCheckResults = useCallback(async () => {
-    const projectId = generationStatus.projectId;
+    const fileId = generationStatus.fileId;
     
-    if (!projectId) {
+    if (!fileId) {
       toast.warning('No active video generation to check');
       return;
     }
     
-    console.log('🔍 Force checking video results for project:', projectId);
+    console.log('🔍 Force checking video results for file:', fileId);
     toast.info('Checking for video results...');
     
     try {
-      // AICODE-NOTE: Use OpenAPI client directly like image-generator
-      const { ProjectService, TaskStatusEnum } = await import('@/lib/api');
-      const { getClientSuperduperAIConfig, getSuperduperAIConfig } = await import('@/lib/config/superduperai');
-      const { OpenAPI } = await import('@/lib/api');
+      // Use simple file-based checking like image generator
+      const { FileService } = await import('@/lib/api');
+      const fileDetails = await FileService.fileGetById({ id: fileId });
       
-      // Force SuperDuperAI config (always use SuperDuperAI directly for stability)
-      const baseUrl = process.env.NEXT_PUBLIC_SUPERDUPERAI_URL || 'https://dev-editor.superduperai.co';
-      const config = {
-        url: baseUrl,
-        token: process.env.NEXT_PUBLIC_SUPERDUPERAI_TOKEN || '', // Token handled server-side
-        wsURL: baseUrl.replace('https://', 'wss://').replace('http://', 'ws://')
-      };
-      
-      OpenAPI.BASE = config.url;
-      OpenAPI.TOKEN = config.token;
-      console.log('🔍 Force configured OpenAPI BASE to:', OpenAPI.BASE);
-      console.log('🔍 Using config:', { ...config, token: config.token ? '[REDACTED]' : 'empty' });
-      
-      const project = await ProjectService.projectGetById({ id: projectId });
-      console.log('🔍 Project check result:', {
-        id: project.id,
-        tasksCount: project.tasks?.length || 0,
-        dataCount: project.data?.length || 0,
-        taskStatuses: project.tasks?.map((t: any) => t.status) || []
-      });
-      
-      // Check if all tasks are completed
-      const allCompleted = project.tasks?.length > 0 && 
-                          project.tasks.every((task: any) => task.status === TaskStatusEnum.COMPLETED);
-      
-      if (allCompleted) {
-        // Look for video in project.data
-        const videoData = project.data?.find((data: any) => {
-          if (data.value && typeof data.value === 'object') {
-            const value = data.value as Record<string, any>;
-            return value.url && (
-              value.contentType?.startsWith('video/') ||
-              value.url.match(/\.(mp4|mov|webm|avi|mkv)$/i)
-            );
-          }
-          return false;
-        });
-        
-        if (videoData?.value && typeof videoData.value === 'object') {
-          const videoUrl = (videoData.value as Record<string, any>).url as string;
-          console.log('🔍 ✅ Video found manually:', videoUrl);
-          handleGenerationSuccess(videoUrl, projectId);
-          toast.success('Video results retrieved!');
-          return;
-        }
-        
-        // Fallback: any data with URL
-        const anyDataWithUrl = project.data?.find((data: any) => {
-          return data.value && typeof data.value === 'object' && (data.value as any).url;
-        });
-        
-        if (anyDataWithUrl?.value && typeof anyDataWithUrl.value === 'object') {
-          const url = (anyDataWithUrl.value as Record<string, any>).url as string;
-          console.log('🔍 ✅ Video found (fallback):', url);
-          handleGenerationSuccess(url, projectId);
-          toast.success('Video results retrieved (unconfirmed type)!');
-          return;
-        }
-        
-        toast.warning('Tasks completed but no video data found');
-      } else {
-        const hasErrors = project.tasks?.some((task: any) => task.status === TaskStatusEnum.ERROR);
-        const inProgress = project.tasks?.some((task: any) => task.status === TaskStatusEnum.IN_PROGRESS);
-        
-        if (hasErrors) {
-          toast.error('Video generation failed - check logs');
-        } else if (inProgress) {
-          toast.info('Video generation still in progress...');
-          // Restart polling
-          startPolling(projectId);
-        } else {
-          toast.warning('Video generation status unclear - check manually');
-        }
+      if (fileDetails.url) {
+        console.log('🔍 ✅ Video file ready:', fileDetails.url);
+        handleGenerationSuccess(fileDetails.url, fileId);
+        toast.success('Video results retrieved!');
+        return;
       }
       
+      // If no URL yet, start polling
+      console.log('🔍 Video file not ready yet, starting polling...');
+      startPolling(fileId);
+      toast.info('Video generation still in progress, polling started');
+      
     } catch (error) {
-      console.error('🔍 ❌ Force check failed:', error);
+      console.error('🔍 ❌ Force check error:', error);
       toast.error('Failed to check video results');
     }
-  }, [generationStatus.projectId, handleGenerationSuccess, startPolling]);
+  }, [generationStatus.fileId, handleGenerationSuccess, startPolling]);
 
   return {
     generationStatus,

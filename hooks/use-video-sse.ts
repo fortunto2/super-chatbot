@@ -75,8 +75,8 @@ export const useVideoSSE = ({ projectId, eventHandlers, enabled = true, requestI
       console.log('🔌 Using SuperDuperAI directly for SSE (localhost detected)');
     }
     
-    // Convert to SSE URL format - use project.{projectId} channel
-    const sseUrl = `${sseBaseUrl}/api/v1/events/project.${projectId}`;
+    // Convert to SSE URL format - use file.{fileId} channel (projectId is actually fileId)
+    const sseUrl = `${sseBaseUrl}/api/v1/events/file.${projectId}`;
     
     console.log('🔌 Initializing video SSE connection to:', sseUrl);
     console.log('🔌 Request ID for SSE:', requestId || 'no-request-id');

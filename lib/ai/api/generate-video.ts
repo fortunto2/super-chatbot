@@ -193,29 +193,27 @@ export const generateVideo = async (
       
       console.log(`🎬 ✅ SuperDuperAI video generation API response for requestId ${requestId}:`, result);
       
-      const finalProjectId = result.id || chatId;
+      // For video API, result.id is the fileId, result.project_id is the projectId (can be null)
+      const fileId = result.id;
+      const projectId = result.project_id || chatId;
       
-      // Extract fileId from response like in image generation
-      const fileData = result.data?.[0];
-      const fileId = fileData?.value?.file_id || fileData?.id;
-      
-      console.log(`🎬 📁 Extracted fileId:`, fileId, `from data:`, fileData);
+      console.log(`🎬 📁 Extracted fileId: ${fileId}, projectId: ${projectId}`);
       
       // Notify chat WebSocket about new project ID if different from chatId
-      if (finalProjectId !== chatId && typeof window !== 'undefined') {
-        console.log(`🎬 New projectId detected: ${finalProjectId}, notifying chat WebSocket`);
+      if (projectId !== chatId && typeof window !== 'undefined') {
+        console.log(`🎬 New projectId detected: ${projectId}, notifying chat WebSocket`);
         const globalWindow = window as any;
         if (globalWindow.notifyNewProject) {
-          globalWindow.notifyNewProject(finalProjectId);
+          globalWindow.notifyNewProject(projectId);
         }
       }
   
       return {
         success: true,
-        projectId: finalProjectId,
+        projectId,
         requestId,
         fileId,
-        message: `Video generation started successfully! Project ID: ${finalProjectId}, Request ID: ${requestId}, File ID: ${fileId}`,
+        message: `Video generation started successfully! Project ID: ${projectId}, Request ID: ${requestId}, File ID: ${fileId}`,
         files: result.files || [],
         url: result.url || null,
       };

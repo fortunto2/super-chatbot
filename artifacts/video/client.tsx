@@ -41,7 +41,7 @@ const VideoArtifactWrapper = memo(function VideoArtifactWrapper(props: any) {
       status: parsedContent.status,
       prompt: parsedContent.prompt,
       negativePrompt: parsedContent.negativePrompt,
-      projectId: parsedContent.projectId,
+      fileId: parsedContent.fileId,
       requestId: parsedContent.requestId,
       timestamp: parsedContent.timestamp,
       message: parsedContent.message,
@@ -52,37 +52,35 @@ const VideoArtifactWrapper = memo(function VideoArtifactWrapper(props: any) {
     return state;
   }, [parsedContent]);
 
-  // Connect to SSE for real-time updates
+  // Connect to SSE for real-time updates (using fileId)
   const artifactSSE = useArtifactSSE({
-    channel: parsedContent?.projectId ? `project.${parsedContent.projectId}` : '',
-    eventHandlers: parsedContent?.projectId ? [(message) => {
+    channel: parsedContent?.fileId ? `file.${parsedContent.fileId}` : '',
+    eventHandlers: parsedContent?.fileId ? [(message) => {
       console.log('🎬 Artifact SSE message:', message);
       // Handle artifact updates here if needed
     }] : [],
-    enabled: !!parsedContent?.projectId && !!parsedContent?.requestId
+    enabled: !!parsedContent?.fileId && !!parsedContent?.requestId
   });
 
   // Debug SSE connection status
   useEffect(() => {
-    if (parsedContent?.projectId && artifactSSE.isConnected) {
-      console.log('🔌 SSE connected for video artifact project:', parsedContent.projectId);
+    if (parsedContent?.fileId && artifactSSE.isConnected) {
+      console.log('🔌 SSE connected for video artifact file:', parsedContent.fileId);
     }
-  }, [artifactSSE.isConnected, parsedContent?.projectId, parsedContent?.status]);
+  }, [artifactSSE.isConnected, parsedContent?.fileId, parsedContent?.status]);
 
-  // Auto-notify chat WebSocket about new projectId when artifact is created (fallback)
+  // Auto-notify chat WebSocket about new fileId when artifact is created (fallback)
   useEffect(() => {
-    if (parsedContent?.projectId) {
-      // Notifying chat WebSocket about projectId
-      
+    if (parsedContent?.fileId) {
       // Use the global notifyNewProject function exposed by console helpers
       const globalWindow = window as any;
       if (globalWindow.notifyNewProject) {
-        globalWindow.notifyNewProject(parsedContent.projectId);
+        globalWindow.notifyNewProject(parsedContent.fileId);
       } else {
         // notifyNewProject not available
       }
     }
-  }, [parsedContent?.projectId]);
+  }, [parsedContent?.fileId]);
 
   // Memoize settings to prevent recreating object on every render
   const defaultSettings = useMemo(() => {
@@ -102,7 +100,7 @@ const VideoArtifactWrapper = memo(function VideoArtifactWrapper(props: any) {
 
   // Memoize VideoEditor props to prevent unnecessary rerenders
   const videoEditorProps = useMemo(() => ({
-    chatId: parsedContent?.projectId || otherProps.chatId,
+    chatId: parsedContent?.fileId || otherProps.chatId,
     availableResolutions: otherProps.availableResolutions || [],
     availableStyles: otherProps.availableStyles || [],
     availableShotSizes: otherProps.availableShotSizes || [],
@@ -114,7 +112,7 @@ const VideoArtifactWrapper = memo(function VideoArtifactWrapper(props: any) {
     initialState,
     setArtifact,
   }), [
-    parsedContent?.projectId,
+    parsedContent?.fileId,
     otherProps.chatId,
     otherProps.availableResolutions,
     otherProps.availableStyles,
@@ -206,16 +204,16 @@ const VideoArtifactWrapper = memo(function VideoArtifactWrapper(props: any) {
     availableFrameRates: JSON.stringify(prevProps.availableFrameRates) !== JSON.stringify(nextProps.availableFrameRates),
   };
   
-  // Check if content contains different projectId or requestId
+  // Check if content contains different fileId or requestId
   let contentChanged = changes.content;
   if (!contentChanged && prevProps.content && nextProps.content) {
     try {
       const prevParsed = JSON.parse(prevProps.content);
       const nextParsed = JSON.parse(nextProps.content);
       
-      if (prevParsed.projectId !== nextParsed.projectId || 
+      if (prevParsed.fileId !== nextParsed.fileId || 
           prevParsed.requestId !== nextParsed.requestId) {
-        // Content has different project/request ID
+        // Content has different file/request ID
         contentChanged = true;
       }
     } catch {

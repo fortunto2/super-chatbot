@@ -21,6 +21,7 @@ SuperDuperAI API integration, authentication, and external service connections.
 
 ### [🛠 Maintenance](./maintenance/README.md)
 Changelog, troubleshooting, and project maintenance information.
+- **NEW**: [File-Based SSE Architecture Fix](./maintenance/changelog/file-based-sse-fix.md)
 
 ### [📖 Reference](./reference/README.md)
 Glossary, FAQ, and quick reference materials.

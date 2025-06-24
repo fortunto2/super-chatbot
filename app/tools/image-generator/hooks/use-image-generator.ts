@@ -80,9 +80,9 @@ export function useImageGenerator(): UseImageGeneratorReturn {
   }, []);
 
   // AICODE-NOTE: SSE connection for real-time updates (replacing WebSocket)
-  const connectSSE = useCallback(async (projectId: string) => {
+  const connectSSE = useCallback(async (fileId: string) => {
     const config = await getClientSuperduperAIConfig();
-    const sseUrl = `${config.url}/api/v1/events/project.${projectId}`;
+    const sseUrl = `${config.url}/api/v1/events/file.${fileId}`;
     
     setConnectionStatus('connecting');
     setIsConnected(false);
@@ -110,7 +110,7 @@ export function useImageGenerator(): UseImageGeneratorReturn {
           } else if (message.type === 'render_result') {
             const imageUrl = message.object?.url || message.object?.file_url;
             if (imageUrl) {
-              handleGenerationSuccess(imageUrl, projectId);
+              handleGenerationSuccess(imageUrl, fileId);
             } else {
               handleGenerationError('No image URL in result');
             }
@@ -119,10 +119,10 @@ export function useImageGenerator(): UseImageGeneratorReturn {
             
             if (imageUrl.match(/\.(jpg|jpeg|png|webp|gif|bmp|svg)$/i) || 
                 message.object.contentType?.startsWith('image/')) {
-              handleGenerationSuccess(imageUrl, projectId);
+              handleGenerationSuccess(imageUrl, fileId);
             }
           } else if (message.type === 'task_status' && message.object?.status === 'COMPLETED') {
-            startPolling(projectId);
+            startPolling(fileId);
           }
         } catch (error) {
           console.error('SSE message parse error:', error);
@@ -135,13 +135,13 @@ export function useImageGenerator(): UseImageGeneratorReturn {
         if (eventSource.readyState === EventSource.CLOSED) {
           setConnectionStatus('disconnected');
           setIsConnected(false);
-          startPolling(projectId);
+          startPolling(fileId);
         }
       };
 
       setTimeout(() => {
         if (eventSource.readyState !== EventSource.OPEN) {
-          startPolling(projectId);
+          startPolling(fileId);
         }
       }, 10000);
 
@@ -149,12 +149,37 @@ export function useImageGenerator(): UseImageGeneratorReturn {
       console.error('SSE connection failed:', error);
       setConnectionStatus('disconnected');
       setIsConnected(false);
-      startPolling(projectId);
+      startPolling(fileId);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const startPolling = useCallback((projectId: string) => {
+  const startPolling = useCallback((fileId: string) => {
+    const poll = async () => {
+      try {
+        const { FileService } = await import('@/lib/api');
+        const fileDetails = await FileService.fileGetById({ id: fileId });
+        
+        if (fileDetails.url) {
+          handleGenerationSuccess(fileDetails.url, fileId);
+          return;
+        }
+        
+        // If no URL yet, continue polling
+        pollingRef.current = setTimeout(poll, 2000);
+        
+      } catch (error) {
+        console.error('Polling error:', error);
+        handleGenerationError('Failed to check generation status');
+      }
+    };
+
+    poll();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Legacy polling function for project-based polling (kept for compatibility)
+  const startProjectPolling = useCallback((projectId: string) => {
     const poll = async () => {
       try {
         const { ProjectService, TaskStatusEnum } = await import('@/lib/api');
