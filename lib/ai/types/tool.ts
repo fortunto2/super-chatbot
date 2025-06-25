@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import type { z } from 'zod';
 import type { DataStreamWriter } from '@/lib/ai/data-stream';
 
 export interface ToolProps {

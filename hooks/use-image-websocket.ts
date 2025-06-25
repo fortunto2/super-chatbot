@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import { imageWebsocketStore, type ImageEventHandler } from "@/lib/websocket/image-websocket-store";
+import { getSuperduperAIConfig } from "@/lib/config/superduperai";
 
 type Props = {
   projectId: string;
@@ -40,13 +41,14 @@ export const useImageWebsocket = ({ projectId, eventHandlers, enabled = true }: 
     // Reset attempts for new project
     setConnectionAttempts(0);
 
-    const attemptConnection = (attempt: number = 1) => {
+    const attemptConnection = (attempt = 1) => {
       if (!mountedRef.current) {
         return;
       }
       
       // Use environment variable or fallback to default
-      const baseUrl = process.env.NEXT_PUBLIC_WS_URL || 'https://editor.superduperai.co';
+      const config = getSuperduperAIConfig();
+  const baseUrl = config.wsURL.replace('wss://', 'https://').replace('ws://', 'http://');
       const url = `${baseUrl.replace('https://', 'wss://')}/api/v1/ws/project.${projectId}`;
       
       // Remove previous connection handler if exists

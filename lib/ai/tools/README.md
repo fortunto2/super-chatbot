@@ -11,6 +11,9 @@
 ### 2. Инструменты (`lib/ai/tools/`)
 
 - `configureImageGeneration` - настройки генерации изображений
+- `configureVideoGeneration` - настройки генерации видео
+- `listVideoModels` - список доступных видео моделей
+- `diagnoseImageGeneration` - диагностика проблем с генерацией изображений
 - Все инструменты используют AI SDK `tool()` функцию
 
 ### 3. Компоненты

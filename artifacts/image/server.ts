@@ -1,7 +1,9 @@
 import { createDocumentHandler } from '@/lib/artifacts/server';
 import { generateImage } from '@/lib/ai/api/generate-image';
 import { getStyles } from '@/lib/ai/api/get-styles';
-import { ImageModel, MediaOption, MediaResolution } from '@/lib/types/media-settings';
+import type { MediaOption, MediaResolution } from '@/lib/types/media-settings';
+import type { ImageModel } from '@/lib/config/superduperai';
+import { getAvailableImageModels } from '@/lib/config/superduperai';
 
 // Import the same constants as in configure-image-generation
 const RESOLUTIONS: MediaResolution[] = [
@@ -18,20 +20,17 @@ const RESOLUTIONS: MediaResolution[] = [
 ];
 
 const SHOT_SIZES: MediaOption[] = [
-  { id: 'extreme-long-shot', label: 'Extreme Long Shot', description: 'Shows vast landscapes or cityscapes with tiny subjects' },
-  { id: 'long-shot', label: 'Long Shot', description: 'Shows full body of subject with surrounding environment' },
-  { id: 'medium-shot', label: 'Medium Shot', description: 'Shows subject from waist up, good for conversations' },
-  { id: 'medium-close-up', label: 'Medium Close-Up', description: 'Shows subject from chest up, good for portraits' },
-  { id: 'close-up', label: 'Close-Up', description: 'Shows a subject\'s face or a small object in detail' },
-  { id: 'extreme-close-up', label: 'Extreme Close-Up', description: 'Shows extreme detail of a subject, like eyes or small objects' },
-  { id: 'two-shot', label: 'Two-Shot', description: 'Shows two subjects in frame, good for interactions' },
-  { id: 'detail-shot', label: 'Detail Shot', description: 'Focuses on a specific object or part of a subject' },
+  { id: 'extreme_long_shot', label: 'Extreme Long Shot', description: 'Shows vast landscapes or cityscapes with tiny subjects' },
+  { id: 'long_shot', label: 'Long Shot', description: 'Shows full body of subject with surrounding environment' },
+  { id: 'medium_shot', label: 'Medium Shot', description: 'Shows subject from waist up, good for conversations' },
+  { id: 'medium_close_up', label: 'Medium Close-Up', description: 'Shows subject from chest up, good for portraits' },
+  { id: 'close_up', label: 'Close-Up', description: 'Shows a subject\'s face or a small object in detail' },
+  { id: 'extreme_close_up', label: 'Extreme Close-Up', description: 'Shows extreme detail of a subject, like eyes or small objects' },
+  { id: 'two_shot', label: 'Two-Shot', description: 'Shows two subjects in frame, good for interactions' },
+  { id: 'detail_shot', label: 'Detail Shot', description: 'Focuses on a specific object or part of a subject' },
 ];
 
-const IMAGE_MODELS: ImageModel[] = [
-  { id: 'flux-dev', label: 'Flux Dev', description: 'Previous generation flux model' },
-  { id: 'flux-pro', label: 'Flux Pro Ultra 1.1', description: 'Latest flux model with high quality and creativity' },
-];
+// AICODE-NOTE: IMAGE_MODELS now loaded dynamically from API via getAvailableImageModels()
 
 export const imageDocumentHandler = createDocumentHandler<'image'>({
   kind: 'image',
@@ -49,10 +48,21 @@ export const imageDocumentHandler = createDocumentHandler<'image'>({
         style = { id: 'flux_steampunk', label: 'Steampunk' },
         resolution = { width: 1024, height: 1024, label: '1024x1024', aspectRatio: '1:1', qualityType: 'hd' },
         model = { id: 'flux-dev', label: 'Flux Dev' },
-        shotSize = { id: 'long-shot', label: 'Long Shot' }
+        shotSize = { id: 'long_shot', label: 'Long Shot' }
       } = params;
 
      
+
+      // AICODE-NOTE: Load dynamic models from SuperDuperAI API
+      let availableModels: ImageModel[] = [];
+      try {
+        availableModels = await getAvailableImageModels();
+    
+      } catch (error) {
+        console.error('🎨 ❌ Failed to load dynamic models:', error);
+        // Will use fallback models from getAvailableImageModels()
+        availableModels = await getAvailableImageModels();
+      }
 
       // Get available styles from API
       let availableStyles: MediaOption[] = [];
@@ -72,7 +82,7 @@ export const imageDocumentHandler = createDocumentHandler<'image'>({
 
       
       // Start image generation
-      const result = await generateImage(style, resolution, prompt, model, shotSize, chatId);
+      const result = await generateImage(prompt, model, resolution, style, shotSize, chatId);
 
     
       if (!result.success) {
@@ -101,11 +111,53 @@ export const imageDocumentHandler = createDocumentHandler<'image'>({
           availableResolutions: RESOLUTIONS,
           availableStyles,
           availableShotSizes: SHOT_SIZES,
-          availableModels: IMAGE_MODELS,
+          availableModels: availableModels,
         },
         timestamp: Date.now(),
         message: 'Image generation started, connecting to WebSocket...'
       });
+
+      // FALLBACK: Set up immediate polling check for artifacts
+      // Since artifacts don't use hooks, we need server-side polling
+      const fileId = result.projectId;
+      if (fileId) {
+        // Start async polling without blocking the response
+        setTimeout(async () => {
+          
+          try {
+            // Import ProjectService to check project status
+            const { ProjectService } = await import('@/lib/api/services/ProjectService');
+            const project = await ProjectService.projectGetById({ id: fileId });
+            
+            console.log('🎨 ⏰ Artifact polling result:', {
+              id: project.id,
+              dataCount: project.data?.length || 0,
+            });
+            
+            // Look for completed image data
+            const imageData = project.data?.find((data: any) => {
+              if (data.value && typeof data.value === 'object') {
+                const value = data.value as Record<string, any>;
+                const hasUrl = !!value.url;
+                const isImage = value.url?.match(/\.(jpg|jpeg|png|webp|gif|bmp|svg)$/i);
+                return hasUrl && isImage;
+              }
+              return false;
+            });
+            
+            if (imageData?.value && typeof imageData.value === 'object') {
+              const imageUrl = (imageData.value as Record<string, any>).url as string;
+              console.log('🎨 ⏰ ✅ Image found via artifact polling:', imageUrl);
+              
+              // For artifacts, we can't easily update the document from server-side
+              // The client SSE will handle this, or manual refresh will show the result
+            }
+            
+          } catch (error) {
+            console.error('🎨 ⏰ ❌ Artifact polling error:', error);
+          }
+        }, 30000); // 30 second delay
+      }
 
      
 
@@ -127,6 +179,20 @@ export const imageDocumentHandler = createDocumentHandler<'image'>({
     let draftContent = document.content;
 
     try {
+      // Check if document already has completed content - don't recreate if so
+      if (draftContent) {
+        try {
+          const existingContent = JSON.parse(draftContent);
+          if (existingContent.status === 'completed' && existingContent.imageUrl) {
+            console.log('🎨 ⚠️ Document already completed with image, skipping update to prevent reset');
+            return draftContent; // Return existing content without recreating
+          }
+        } catch (parseError) {
+          // If we can't parse existing content, proceed with update
+          console.log('🎨 ℹ️ Could not parse existing content, proceeding with update');
+        }
+      }
+
       // Extract chatId from document.id (which should be the chat ID)
       const chatId = document.id;
       
@@ -137,11 +203,20 @@ export const imageDocumentHandler = createDocumentHandler<'image'>({
         style = { id: 'flux_steampunk', label: 'Steampunk' },
         resolution = { width: 1024, height: 1024, label: '1024x1024', aspectRatio: '1:1', qualityType: 'hd' },
         model = { id: 'flux-dev', label: 'Flux Dev' },
-        shotSize = { id: 'long-shot', label: 'Long Shot' }
+        shotSize = { id: 'long_shot', label: 'Long Shot' }
       } = params;
 
+      // AICODE-NOTE: Load dynamic models for update as well
+      let availableModels: ImageModel[] = [];
+      try {
+        availableModels = await getAvailableImageModels();
+      } catch (error) {
+        console.error('🎨 ❌ Failed to load dynamic models for update:', error);
+        availableModels = await getAvailableImageModels();
+      }
+
       // Start new image generation
-      const result = await generateImage(style, resolution, prompt, model, shotSize, chatId);
+      const result = await generateImage(prompt, model, resolution, style, shotSize, chatId);
 
       if (!result.success) {
         // Return error content as string
@@ -166,7 +241,7 @@ export const imageDocumentHandler = createDocumentHandler<'image'>({
           availableResolutions: RESOLUTIONS,
           availableStyles: [],
           availableShotSizes: SHOT_SIZES,
-          availableModels: IMAGE_MODELS,
+          availableModels: availableModels,
         },
         timestamp: Date.now(),
         message: 'Updated image generation started, connecting to WebSocket...'

@@ -1,45 +1,17 @@
 import { createDocumentHandler } from '@/lib/artifacts/server';
-import { generateVideo } from '@/lib/ai/api/generate-video';
+import { generateVideoHybrid } from '@/lib/ai/api/generate-video-hybrid';
 import { getStyles } from '@/lib/ai/api/get-styles';
-import { VideoModel, MediaOption, MediaResolution } from '@/lib/types/media-settings';
+import type { MediaOption } from '@/lib/types/media-settings';
+import type { VideoModel } from '@/lib/config/superduperai';
+import { getAvailableVideoModels } from '@/lib/config/superduperai';
+import { VIDEO_RESOLUTIONS, SHOT_SIZES, VIDEO_FRAME_RATES, DEFAULT_VIDEO_RESOLUTION, DEFAULT_VIDEO_DURATION } from '@/lib/config/video-constants';
+import { GenerationTypeEnum } from '@/lib/api/models/GenerationTypeEnum';
+import { GenerationSourceEnum } from '@/lib/api/models/GenerationSourceEnum';
 
-// Import the same constants as in configure-video-generation
-const VIDEO_RESOLUTIONS: MediaResolution[] = [
-  { width: 1344, height: 768, label: "1344x768", aspectRatio: "16:9", qualityType: "hd" },
-  { width: 1920, height: 1080, label: "1920×1080", aspectRatio: "16:9", qualityType: "full_hd" },
-  { width: 1664, height: 1216, label: "1664x1216", aspectRatio: "4:3", qualityType: "full_hd" },
-  { width: 1152, height: 896, label: "1152x896", aspectRatio: "4:3", qualityType: "hd" },
-  { width: 1024, height: 1024, label: "1024x1024", aspectRatio: "1:1", qualityType: "hd" },
-  { width: 1408, height: 1408, label: "1408×1408", aspectRatio: "1:1", qualityType: "full_hd" },
-  { width: 1408, height: 1760, label: "1408×1760", aspectRatio: "4:5", qualityType: "full_hd" },
-  { width: 1024, height: 1280, label: "1024x1280", aspectRatio: "4:5", qualityType: "hd" },
-  { width: 1080, height: 1920, label: "1080×1920", aspectRatio: "9:16", qualityType: "full_hd" },
-  { width: 768, height: 1344, label: "768x1344", aspectRatio: "9:16", qualityType: "hd" },
-];
-
-const SHOT_SIZES: MediaOption[] = [
-  { id: 'extreme-long-shot', label: 'Extreme Long Shot', description: 'Shows vast landscapes or cityscapes with tiny subjects' },
-  { id: 'long-shot', label: 'Long Shot', description: 'Shows full body of subject with surrounding environment' },
-  { id: 'medium-shot', label: 'Medium Shot', description: 'Shows subject from waist up, good for conversations' },
-  { id: 'medium-close-up', label: 'Medium Close-Up', description: 'Shows subject from chest up, good for portraits' },
-  { id: 'close-up', label: 'Close-Up', description: 'Shows a subject\'s face or a small object in detail' },
-  { id: 'extreme-close-up', label: 'Extreme Close-Up', description: 'Shows extreme detail of a subject, like eyes or small objects' },
-  { id: 'two-shot', label: 'Two-Shot', description: 'Shows two subjects in frame, good for interactions' },
-  { id: 'detail-shot', label: 'Detail Shot', description: 'Focuses on a specific object or part of a subject' },
-];
-
-const VIDEO_MODELS: VideoModel[] = [
-  { id: 'runway-gen3', label: 'Runway Gen-3', description: 'Advanced video generation model with high quality' },
-  { id: 'runway-gen2', label: 'Runway Gen-2', description: 'Previous generation model with good quality' },
-  { id: 'stable-video', label: 'Stable Video Diffusion', description: 'Stable video generation model' },
-];
-
-const VIDEO_FRAME_RATES = [
-  { value: 24, label: "24 FPS (Cinematic)" },
-  { value: 30, label: "30 FPS (Standard)" },
-  { value: 60, label: "60 FPS (Smooth)" },
-  { value: 120, label: "120 FPS (High Speed)" },
-];
+// AICODE-NOTE: Now using unified VideoModel type from superduperai.ts
+function convertToVideoModel(sdModel: VideoModel): VideoModel {
+  return sdModel; // No conversion needed, already in correct format
+}
 
 export const videoDocumentHandler = createDocumentHandler<'video'>({
   kind: 'video',
@@ -56,14 +28,40 @@ export const videoDocumentHandler = createDocumentHandler<'video'>({
         prompt,
         negativePrompt = "",
         style = { id: 'flux_steampunk', label: 'Steampunk' },
-        resolution = { width: 1920, height: 1080, label: '1920×1080', aspectRatio: '16:9', qualityType: 'full_hd' },
-        model = { id: 'runway-gen3', label: 'Runway Gen-3' },
+        resolution = DEFAULT_VIDEO_RESOLUTION, // AICODE-NOTE: Use economical HD default
+        model = { id: 'comfyui/ltx', label: 'LTX Video' }, // AICODE-NOTE: Default to LTX instead of Runway
         shotSize = { id: 'long-shot', label: 'Long Shot' },
         frameRate = 30,
-        duration = 10
+        duration = DEFAULT_VIDEO_DURATION, // AICODE-NOTE: Use economical 5-second default
+        sourceImageId,
+        sourceImageUrl
       } = params;
 
-     
+      // AICODE-NOTE: Load dynamic models from SuperDuperAI API
+      let availableModels: VideoModel[] = [];
+      try {
+        const superDuperModels = await getAvailableVideoModels();
+        availableModels = superDuperModels.map(convertToVideoModel);
+        console.log('🎬 ✅ Loaded dynamic video models:', availableModels.map(m => m.name));
+      } catch (error) {
+        console.error('🎬 ❌ Failed to load dynamic models:', error);
+        // Fallback to default LTX model
+        availableModels = [{
+          name: 'comfyui/ltx',
+          label: 'LTX Video',
+          type: GenerationTypeEnum.IMAGE_TO_VIDEO,
+          source: GenerationSourceEnum.LOCAL,
+          params: {
+            price: 0.4,
+            workflow_path: 'LTX/default.json',
+            max_duration: 30,
+            max_resolution: { width: 1216, height: 704 },
+            supported_frame_rates: [30],
+            supported_aspect_ratios: ['16:9', '1:1', '9:16'],
+            supported_qualities: ['hd']
+          }
+        }];
+      }
 
       // Get available styles from API
       let availableStyles: MediaOption[] = [];
@@ -82,17 +80,18 @@ export const videoDocumentHandler = createDocumentHandler<'video'>({
       }
 
       
-      // Start video generation
-      const result = await generateVideo(
-        style, 
-        resolution, 
-        prompt, 
-        model, 
-        shotSize, 
-        chatId,
-        negativePrompt,
+      // Start video generation with hybrid SSE approach
+      const result = await generateVideoHybrid(
+        prompt,
+        model,
+        style,
+        resolution,
+        shotSize,
+        duration,
         frameRate,
-        duration
+        negativePrompt,
+        sourceImageId,
+        sourceImageUrl
       );
 
     
@@ -107,11 +106,14 @@ export const videoDocumentHandler = createDocumentHandler<'video'>({
         return draftContent;
       }
 
-      // Create content with project info and available options for WebSocket tracking
+      // Create content with hybrid result - video might already be completed!
+      const isCompleted = result.url && result.method;
+      
       draftContent = JSON.stringify({
-        status: 'pending',
-        projectId: result.projectId || chatId,
+        status: isCompleted ? 'completed' : 'pending',
+        fileId: result.fileId || result.projectId || chatId,
         requestId: result.requestId,
+        videoUrl: result.url, // Video URL if already completed
         prompt: prompt,
         negativePrompt: negativePrompt,
         settings: {
@@ -126,11 +128,13 @@ export const videoDocumentHandler = createDocumentHandler<'video'>({
           availableResolutions: VIDEO_RESOLUTIONS,
           availableStyles,
           availableShotSizes: SHOT_SIZES,
-          availableModels: VIDEO_MODELS,
+          availableModels: availableModels, // AICODE-NOTE: Use dynamic models
           availableFrameRates: VIDEO_FRAME_RATES,
         },
         timestamp: Date.now(),
-        message: 'Video generation started, connecting to WebSocket...'
+        message: isCompleted 
+          ? `Video generation completed via ${result.method}! (${resolution.label}, ${duration}s)`
+          : `Video generation started with economical settings (${resolution.label}, ${duration}s), connecting to SSE...`
       });
 
      
@@ -162,24 +166,51 @@ export const videoDocumentHandler = createDocumentHandler<'video'>({
         prompt,
         negativePrompt = "",
         style = { id: 'flux_steampunk', label: 'Steampunk' },
-        resolution = { width: 1920, height: 1080, label: '1920×1080', aspectRatio: '16:9', qualityType: 'full_hd' },
-        model = { id: 'runway-gen3', label: 'Runway Gen-3' },
+        resolution = DEFAULT_VIDEO_RESOLUTION, // AICODE-NOTE: Use economical HD default
+        model = { id: 'comfyui/ltx', label: 'LTX Video' }, // AICODE-NOTE: Default to LTX instead of Runway
         shotSize = { id: 'long-shot', label: 'Long Shot' },
         frameRate = 30,
-        duration = 10
+        duration = DEFAULT_VIDEO_DURATION, // AICODE-NOTE: Use economical 5-second default
+        sourceImageId,
+        sourceImageUrl
       } = params;
 
-      // Start new video generation
-      const result = await generateVideo(
-        style, 
-        resolution, 
-        prompt, 
-        model, 
-        shotSize, 
-        chatId,
-        negativePrompt,
+      // AICODE-NOTE: Load dynamic models for update as well
+      let availableModels: VideoModel[] = [];
+      try {
+        const superDuperModels = await getAvailableVideoModels();
+        availableModels = superDuperModels.map(convertToVideoModel);
+      } catch (error) {
+        console.error('🎬 ❌ Failed to load dynamic models for update:', error);
+        availableModels = [{
+          name: 'comfyui/ltx',
+          label: 'LTX Video',
+          type: GenerationTypeEnum.IMAGE_TO_VIDEO,
+          source: GenerationSourceEnum.LOCAL,
+          params: {
+            price: 0.4,
+            workflow_path: 'LTX/default.json',
+            max_duration: 30,
+            max_resolution: { width: 1216, height: 704 },
+            supported_frame_rates: [30],
+            supported_aspect_ratios: ['16:9', '1:1', '9:16'],
+            supported_qualities: ['hd']
+          }
+        }];
+      }
+
+      // Start new video generation with hybrid SSE approach
+      const result = await generateVideoHybrid(
+        prompt,
+        model,
+        style,
+        resolution,
+        shotSize,
+        duration,
         frameRate,
-        duration
+        negativePrompt,
+        sourceImageId,
+        sourceImageUrl
       );
 
       if (!result.success) {
@@ -191,11 +222,14 @@ export const videoDocumentHandler = createDocumentHandler<'video'>({
         });
       }
 
-      // Update content with new project info
+      // Update content with hybrid result - video might already be completed!
+      const isCompleted = result.url && result.method;
+      
       draftContent = JSON.stringify({
-        status: 'pending',
-        projectId: result.projectId || chatId,
+        status: isCompleted ? 'completed' : 'pending',
+        fileId: result.fileId || result.projectId || chatId,
         requestId: result.requestId,
+        videoUrl: result.url, // Video URL if already completed
         prompt: prompt,
         negativePrompt: negativePrompt,
         settings: {
@@ -209,11 +243,13 @@ export const videoDocumentHandler = createDocumentHandler<'video'>({
           availableResolutions: VIDEO_RESOLUTIONS,
           availableStyles: [],
           availableShotSizes: SHOT_SIZES,
-          availableModels: VIDEO_MODELS,
+          availableModels: availableModels, // AICODE-NOTE: Use dynamic models
           availableFrameRates: VIDEO_FRAME_RATES,
         },
         timestamp: Date.now(),
-        message: 'Updated video generation started, connecting to WebSocket...'
+        message: isCompleted 
+          ? `Updated video generation completed via ${result.method}! (${resolution.label}, ${duration}s)`
+          : `Updated video generation started with economical settings (${resolution.label}, ${duration}s), connecting to SSE...`
       });
 
     } catch (error: any) {

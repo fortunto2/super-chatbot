@@ -16,7 +16,7 @@ export const PreviewAttachment = ({
   const { setArtifact } = useArtifact();
 
   const handleImageClick = () => {
-    if (contentType && contentType.startsWith('image')) {
+    if (contentType?.startsWith('image')) {
       setArtifact((prev) => ({
         ...prev,
         isVisible: true,

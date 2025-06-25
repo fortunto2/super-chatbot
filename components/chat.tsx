@@ -6,7 +6,7 @@ import { Suspense, useEffect, useState } from 'react';
 import useSWR, { useSWRConfig } from 'swr';
 import { ChatHeader } from '@/components/chat-header';
 import type { Vote } from '@/lib/db/schema';
-import { fetcher, generateUUID, cn } from '@/lib/utils';
+import { fetcher, generateUUID, } from '@/lib/utils';
 import { Artifact } from './artifact';
 import { MultimodalInput } from './multimodal-input';
 import { Messages } from './messages';
@@ -19,10 +19,10 @@ import type { Session } from 'next-auth';
 import { useSearchParams } from 'next/navigation';
 import { useChatVisibility } from '@/hooks/use-chat-visibility';
 import { useAutoResume } from '@/hooks/use-auto-resume';
-import { useChatImageWebSocket } from '@/hooks/use-chat-image-websocket';
+import { useChatImageSSE } from '@/hooks/use-chat-image-sse';
+import { useChatVideoSSE } from '@/hooks/use-chat-video-sse';
 import { ChatWebSocketCleanup } from '@/lib/utils/chat-websocket-cleanup';
 import { LoaderIcon } from './icons';
-import { PreviewMessage, ThinkingMessage } from './message';
 
 function ChatContent({
   id,
@@ -146,8 +146,15 @@ function ChatContent({
     ChatWebSocketCleanup.setActiveChat(id);
   }, [id]);
 
-  // Global WebSocket connection for image generation
-  const chatImageWebSocket = useChatImageWebSocket({
+  // Global SSE connections for media generation
+  const chatImageSSE = useChatImageSSE({
+    chatId: id,
+    messages,
+    setMessages,
+    enabled: !isReadonly, // Only enable for non-readonly chats
+  });
+
+  const chatVideoSSE = useChatVideoSSE({
     chatId: id,
     messages,
     setMessages,
@@ -164,17 +171,19 @@ function ChatContent({
           globalWindow.chatWebSocketInstance = {};
         }
         
-        // Update with current WebSocket data while preserving lastImageUrl
+        // Update with current SSE data while preserving lastImageUrl
         Object.assign(globalWindow.chatWebSocketInstance, {
-          ...chatImageWebSocket,
+          ...chatImageSSE,
+          ...chatVideoSSE,
           messages,
-          lastImageUrl: globalWindow.chatWebSocketInstance.lastImageUrl // Preserve existing URL
+          lastImageUrl: globalWindow.chatWebSocketInstance.lastImageUrl, // Preserve existing URL
+          lastVideoUrl: globalWindow.chatWebSocketInstance.lastVideoUrl // Preserve existing video URL
         });
         
         // Debugging instance stored silently
       }
     }
-  }, [chatImageWebSocket, messages]);
+  }, [chatImageSSE, chatVideoSSE, messages]);
 
   return (
     <>
@@ -240,32 +249,7 @@ function ChatContent({
         selectedChatModel={initialChatModel}
       />
 
-      <div className="pb-48 pt-4 md:pt-8">
-        {initialMessages?.length ? (
-          <>
-            {messages.map((message) => (
-              <PreviewMessage
-                key={message.id}
-                chatId={id}
-                message={message}
-                vote={votes?.find((vote) => vote.messageId === message.id)}
-                isLoading={status === 'streaming'}
-                setMessages={setMessages}
-                reload={reload}
-                isReadonly={isReadonly}
-                requiresScrollPadding={
-                  message.id === messages[messages.length - 1].id &&
-                  message.role === 'assistant'
-                }
-                selectedChatModel={initialChatModel}
-                selectedVisibilityType={visibilityType}
-                append={append}
-              />
-            ))}
-            {status === 'streaming' && <ThinkingMessage />}
-          </>
-        ) : null}
-      </div>
+
     </>
   );
 }

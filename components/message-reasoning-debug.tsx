@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { ChevronDownIcon, LoaderIcon } from './icons';
+import { useState, } from 'react';
+import { ChevronDownIcon, } from './icons';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Markdown } from './markdown';
 
@@ -27,7 +27,7 @@ export function MessageReasoningDebug({
     
     // Для случая, когда think tags находятся в тексте
     const thinkMatch = reasoning.match(/<think>(.*?)<\/think>/s);
-    if (thinkMatch && thinkMatch[1]) {
+    if (thinkMatch?.[1]) {
       reasoningText = thinkMatch[1].trim();
     }
   } else if (reasoning && typeof reasoning === 'object') {
@@ -66,7 +66,7 @@ export function MessageReasoningDebug({
     // Ищем рассуждения в content
     if (!reasoningText && message.content && typeof message.content === 'string') {
       const thinkMatch = message.content.match(/<think>(.*?)<\/think>/s);
-      if (thinkMatch && thinkMatch[1]) {
+      if (thinkMatch?.[1]) {
         reasoningText = thinkMatch[1].trim();
       }
     }

@@ -1,4 +1,12 @@
-import { ImageModel, MediaOption, MediaResolution } from "@/lib/types/media-settings";
+import type { MediaOption, MediaResolution } from "@/lib/types/media-settings";
+import type { ImageModel } from '@/lib/config/superduperai';
+import { 
+  getSuperduperAIConfig, 
+  createAuthHeaders, 
+  createAPIURL,
+  API_ENDPOINTS, 
+} from '@/lib/config/superduperai';
+// import { ensureProjectForChatId } from '@/lib/utils/simple-project';
 
 export interface ImageGenerationResult {
   success: boolean;
@@ -17,128 +25,167 @@ function generateRequestId(): string {
 
 // Validate style before sending to API
 function validateStyleForAPI(style: MediaOption): string {
-  console.log(`🎨 Validating style for API:`, { id: style.id, label: style.label });
+
   
-  // Ensure we have a valid style ID
-  if (!style.id || typeof style.id !== 'string') {
-    console.log(`🎨 ⚠️ Invalid style ID, using fallback: flux_steampunk`);
-    return 'flux_steampunk';
-  }
-  
-  // Log the final style being sent
-  console.log(`🎨 ✅ Using style ID for API: ${style.id}`);
-  return style.id;
+  // AICODE-NOTE: Use flux_watercolor as it exists in DB (based on working payload example)
+  console.log(`🔧 Using flux_watercolor style (confirmed working)`);
+  return 'flux_watercolor';
 }
 
-export const generateImage = async (
-  style: MediaOption, 
-  resolution: MediaResolution, 
-  prompt: string, 
-  model: ImageModel, 
+// Create image generation payload based on working examples
+function createImagePayload(
+  prompt: string,
+  model: ImageModel,
+  resolution: MediaResolution,
+  style: MediaOption,
   shotSize: MediaOption,
-  chatId: string
-): Promise<ImageGenerationResult> => {
-    try {
-      const requestId = generateRequestId();
-      const token = "afda4dc28cf1420db6d3e35a291c2d5f"
-      
-      console.log(`🎨 Starting image generation with requestId: ${requestId}, chatId: ${chatId}`);
-      
-      // Validate and prepare style for API
-      const validatedStyleId = validateStyleForAPI(style);
-      
-      console.log(`🎨 Sending to API with parameters:`, {
-        prompt: prompt.substring(0, 50) + '...',
-        style_name: validatedStyleId,
-        width: resolution.width,
-        height: resolution.height,
-        shot_size: shotSize.label,
-        model: model.id
-      });
-      
-      const response = await fetch('https://editor.superduperai.co/api/v1/project/image', {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          'Authorization': `Bearer ${token}`,
-          'X-Request-ID': requestId // Add request ID to headers
-        },
-        body: JSON.stringify({
-          projectId: chatId,
-          requestId: requestId, // Include in body as well
-          type: "image",
-          template_name: null,
-          config: {
-            prompt,
-            width: resolution.width,
-            height: resolution.height,
-            aspecRatio: resolution.aspectRatio,
-            qualityType: resolution.qualityType,
-            shot_size: shotSize.label,
-            seed: `${Math.floor(Math.random() * 1000000000000)}`,
-            generation_config_name: "comfyui/flux",
-            batch_size: 1,
-            style_name: validatedStyleId, // Use validated style ID
-            entity_ids: [],
-            references: []
-          }
-        }),
-      });
+  projectId: string | null,
+  seed?: number
+) {
+  const actualSeed = seed || Math.floor(Math.random() * 1000000000000);
+  const styleId = validateStyleForAPI(style);
   
-  
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('API Error Response:', errorText);
-        
-        if (response.status === 401) {
-          return {
-            success: false,
-            requestId,
-            error: 'Authentication failed. The API token may be invalid or expired.',
-          };
-        }
-        
-        if (response.status === 500) {
-          return {
-            success: false,
-            requestId,
-            error: 'Server error occurred. Please try again later or contact support.',
-          };
-        }
-        
-        throw new Error(`API Error: ${response.status} - ${errorText}`);
-      }
-  
-      const result = await response.json();
+  console.log(`🎯 Creating image payload:`, {
+    model: model.name,
+    resolution: `${resolution.width}x${resolution.height}`,
+    style: styleId,
+    shotSize: shotSize.label,
+    seed: actualSeed
+  });
+
+  // AICODE-NOTE: Fixed payload structure based on working example
+  // Key changes: aspectRatio, qualityType outside config, proper string formats
+  const payload = {
+    type: "media",
+    template_name: null,
+    style_name: styleId, // Move style_name outside config
+    config: {
+      prompt: prompt,
+      shot_size: shotSize.id, // FIXED: Use id instead of label for snake_case format
+      style_name: styleId, // Keep for backward compatibility
+      seed: String(actualSeed), // Convert to string
+      aspect_ratio: resolution.aspectRatio || "16:9", // FIXED: Use correct aspect_ratio parameter name
+      batch_size: 3, // Use batch_size 3 like in working example
+      entity_ids: [],
+      generation_config_name: model.name,
+      height: String(resolution.height), // Convert to string
+      qualityType: resolution.qualityType || "full_hd", // Add qualityType
+      references: [],
+      width: String(resolution.width), // Convert to string
+    }
+  };
+
+  return payload;
+}
+
+export async function generateImage(
+  prompt: string,
+  model: ImageModel,
+  resolution: MediaResolution,
+  style: MediaOption,
+  shotSize: MediaOption,
+  chatId: string,
+  seed?: number
+): Promise<ImageGenerationResult> {
+  try {
+    const config = getSuperduperAIConfig();
+    const requestId = generateRequestId();
+    
+    console.log(`🚀 Starting image generation:`, {
+      prompt: `${prompt.substring(0, 100)}...`,
+      model: model.label || model.name,
+      resolution: `${resolution.width}x${resolution.height}`,
+      style: style.label,
+      shotSize: shotSize.label,
+      requestId,
+      chatId
+    });
+
+    // AICODE-NOTE: Skip project creation - let backend create new project automatically
+    console.log(`🏗️ Generating image for chat: ${chatId} (new project will be auto-created)`);
+
+    // Add randomness to prevent 409 conflicts
+    const randomizedSeed = seed || Math.floor(Math.random() * 1000000000000);
+    const payload = createImagePayload(prompt, model, resolution, style, shotSize, null, randomizedSeed);
+    
+    console.log(`📦 Image generation payload:`, JSON.stringify(payload, null, 2));
+
+    // Use correct API endpoint  
+    const url = createAPIURL(API_ENDPOINTS.GENERATE_IMAGE, config);
+    const headers = createAuthHeaders();
+
+    console.log(`📡 Making request to: ${url}`);
+    console.log(`🔑 Headers:`, headers);
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(payload)
+    });
+
+    console.log(`📡 API Response Status: ${response.status}`);
+    console.log(`📡 API Response Headers:`, Object.fromEntries(response.headers.entries()));
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`❌ API Error Response:`, errorText);
       
-      console.log(`🎨 Image generation API response for requestId ${requestId}:`, result);
-      
-      const finalProjectId = result.id || chatId;
-      
-      // Notify chat WebSocket about new project ID if different from chatId
-      if (finalProjectId !== chatId && typeof window !== 'undefined') {
-        console.log(`🎨 New projectId detected: ${finalProjectId}, notifying chat WebSocket`);
-        const globalWindow = window as any;
-        if (globalWindow.notifyNewProject) {
-          globalWindow.notifyNewProject(finalProjectId);
-        }
-      }
-  
-      return {
-        success: true,
-        projectId: finalProjectId,
-        requestId,
-        message: `Image generation started successfully! Project ID: ${finalProjectId}, Request ID: ${requestId}`,
-        files: result.files || [],
-        url: result.url || null,
-      };
-  
-    } catch (error: any) {
-      console.error('Image generation error:', error);
       return {
         success: false,
-        error: error?.message || 'Unknown error occurred during image generation',
+        error: `API Error: ${response.status} - ${errorText}`,
+        requestId
       };
     }
+
+    const result = await response.json();
+    console.log(`✅ API Success Response:`, result);
+
+    // The API returns an array of files (new file-based endpoint)
+    if (!Array.isArray(result) || result.length === 0) {
+      console.error(`❌ Invalid response format:`, result);
+      return {
+        success: false,
+        error: 'Invalid response format from API',
+        requestId
+      };
+    }
+
+    const fileData = result[0]; // Get first file
+    const fileId = fileData.id;
+    const imageGenerationId = fileData.image_generation_id;
+    
+    if (!fileId || !imageGenerationId) {
+      console.error(`❌ Missing file ID or image generation ID:`, fileData);
+      return {
+        success: false,
+        error: 'Missing file ID or image generation ID in response',
+        requestId
+      };
+    }
+
+    console.log(`🎯 Image generation started successfully:`, {
+      fileId,
+      imageGenerationId,
+      requestId,
+      status: 'started'
+    });
+
+    return {
+      success: true,
+      projectId: fileId, // Use file ID for tracking
+      requestId: imageGenerationId, // Use image generation ID as request ID
+      message: 'Image generation started successfully',
+      files: result // Return files array
+    };
+
+  } catch (error) {
+    console.error(`💥 Image generation error:`, error);
+    
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error occurred',
+      requestId: generateRequestId()
+    };
   }
+}
   

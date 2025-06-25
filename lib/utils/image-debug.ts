@@ -49,7 +49,7 @@ class ImageGenerationMonitor {
         if (!imageMap.has(request.imageUrl)) {
           imageMap.set(request.imageUrl, []);
         }
-        imageMap.get(request.imageUrl)!.push(request);
+        imageMap.get(request.imageUrl)?.push(request);
       }
     }
     
@@ -69,7 +69,7 @@ class ImageGenerationMonitor {
       if (!projectMap.has(request.projectId)) {
         projectMap.set(request.projectId, []);
       }
-      projectMap.get(request.projectId)!.push(request);
+      projectMap.get(request.projectId)?.push(request);
     }
     
     const issues = [];

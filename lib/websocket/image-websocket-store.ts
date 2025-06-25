@@ -1,3 +1,5 @@
+import { getSuperduperAIConfig, createWSURL } from '@/lib/config/superduperai';
+
 export interface ImageWSMessage {
   type: string;
   object?: any;
@@ -207,7 +209,8 @@ class ImageWebsocketStore {
   // Clean up handlers for specific project
   cleanupProject(projectId: string) {
     console.log('🧹 Cleaning up project:', projectId);
-    const projectUrl = `wss://editor.superduperai.co/api/v1/ws/project.${projectId}`;
+    const config = getSuperduperAIConfig();
+    const projectUrl = createWSURL(`/api/v1/ws/project.${projectId}`, config);
     
     // Remove from active projects
     this.activeProjects.delete(projectId);
@@ -451,7 +454,7 @@ class ImageWebsocketStore {
         
         // Extract clean project ID from incoming event data
         let messageProjectId = eventData.projectId;
-        if (messageProjectId && messageProjectId.startsWith('project.')) {
+        if (messageProjectId?.startsWith('project.')) {
           messageProjectId = messageProjectId.substring(8);
         }
         

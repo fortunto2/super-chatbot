@@ -16,7 +16,7 @@ import { Button } from './ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
 import { MessageEditor } from './message-editor';
 import { MessageReasoning } from './message-reasoning';
-import { type UseChatHelpers } from '@ai-sdk/react';
+import type { UseChatHelpers } from '@ai-sdk/react';
 import { MediaSettings } from './artifacts/media-settings';
 import type { ImageGenerationConfig, ImageSettings, VideoGenerationConfig, VideoSettings as VideoSettingsType } from '@/lib/types/media-settings';
 import { useArtifact } from '@/hooks/use-artifact';
@@ -205,7 +205,7 @@ const PurePreviewMessage = ({
                       <div key={toolCallId} className="p-4">
                         <MediaSettings
                           config={config}
-                          onConfirm={(settings: ImageSettings) => {
+                          onConfirm={(settings: ImageSettings | VideoSettingsType) => {
                             console.log('Image settings selected:', settings);
                           }}
                           selectedChatModel={selectedChatModel}

@@ -1,7 +1,8 @@
 // Console helper functions for quick debugging in browser
 import { imageWebsocketStore } from '@/lib/websocket/image-websocket-store';
+import { getSuperduperAIConfig } from '@/lib/config/superduperai';
 import { imageMonitor, getImageDebugInfo } from './image-debug';
-import { logSystemHealth, performSystemHealthCheck } from './image-system-check';
+import { performSystemHealthCheck } from './image-system-check';
 
 // Helper functions to expose in browser console
 export const consoleHelpers = {
@@ -89,7 +90,7 @@ export const consoleHelpers = {
   },
 
   // Monitor for issues
-  monitor: (duration: number = 30000) => {
+  monitor: (duration = 30000) => {
     console.log(`👁️ Starting monitoring for ${duration/1000} seconds...`);
     
     const startTime = Date.now();
@@ -127,7 +128,8 @@ const chatWebSocket = {
     console.log('🔍 Current WebSocket state:', debugInfo);
     
     // Test URL formation
-    const baseUrl = process.env.NEXT_PUBLIC_WS_URL || 'https://editor.superduperai.co';
+    const config = getSuperduperAIConfig();
+    const baseUrl = config.wsURL.replace('wss://', 'https://').replace('ws://', 'http://');
     const url = `${baseUrl.replace('https://', 'wss://')}/api/v1/ws/project.${projectId}`;
     console.log('🔗 Would connect to URL:', url);
     
@@ -152,13 +154,14 @@ const chatWebSocket = {
     
     // Try to get the chat WebSocket instance and connect to project
     const chatInstance = (window as any).chatWebSocketInstance;
-    if (chatInstance && chatInstance.connectToProject) {
+    if (chatInstance?.connectToProject) {
       chatInstance.connectToProject(projectId);
       console.log('✅ Connection request sent to chat WebSocket');
     } else {
       console.log('❌ Chat WebSocket instance not found, using store directly');
       const store = (window as any).imageWebsocketStore || imageWebsocketStore;
-      const baseUrl = process.env.NEXT_PUBLIC_WS_URL || 'https://editor.superduperai.co';
+      const config = getSuperduperAIConfig();
+      const baseUrl = config.wsURL.replace('wss://', 'https://').replace('ws://', 'http://');
       const url = `${baseUrl.replace('https://', 'wss://')}/api/v1/ws/project.${projectId}`;
       
       const testHandler = (data: any) => {
@@ -174,7 +177,7 @@ const chatWebSocket = {
     
     // Try to get the chat WebSocket instance and force connect
     const chatInstance = (window as any).chatWebSocketInstance;
-    if (chatInstance && chatInstance.forceConnectToProject) {
+    if (chatInstance?.forceConnectToProject) {
       chatInstance.forceConnectToProject(projectId);
       console.log('✅ Force connection request sent to chat WebSocket');
          } else {
@@ -206,7 +209,7 @@ const chatWebSocket = {
     
     // Show connected projects from chat instance if available
     const chatInstance = (window as any).chatWebSocketInstance;
-    if (chatInstance && chatInstance.connectedProjects) {
+    if (chatInstance?.connectedProjects) {
       console.log('📡 Connected projects from chat:', chatInstance.connectedProjects);
       
       // Check connection status for each project
@@ -219,7 +222,7 @@ const chatWebSocket = {
     return debugInfo;
   },
   
-  simulateEvent: (projectId: string, eventType: string = 'file') => {
+  simulateEvent: (projectId: string, eventType = 'file') => {
     console.log('🎭 Simulating WebSocket event for projectId:', projectId);
     const store = (window as any).imageWebsocketStore || imageWebsocketStore;
     
@@ -282,7 +285,7 @@ const chatWebSocket = {
     console.log('📢 Notifying chat WebSocket about new project:', projectId);
     
     const chatInstance = (window as any).chatWebSocketInstance;
-    if (chatInstance && chatInstance.forceConnectToProject) {
+    if (chatInstance?.forceConnectToProject) {
       chatInstance.forceConnectToProject(projectId);
       console.log('✅ Chat WebSocket notified about new project');
          } else {
@@ -331,6 +334,7 @@ if (typeof window !== 'undefined') {
   console.log('  forceUpdateArtifact(imageUrl, projectId, requestId) - Force update artifact with image');
   console.log('  applyLastImageUrl() - Apply the last received image URL to current artifact');
   console.log('  quickImageFix() - Quick fix to apply the last generated image from console logs');
+  console.log('  addImageToChat(url?) - Add image to chat history (persistent after artifact closed)');
   
   // Expose helper to store chat WebSocket instance for debugging
   (window as any).setChatWebSocketInstance = (instance: any) => {
@@ -355,7 +359,7 @@ if (typeof window !== 'undefined') {
     
     // Try to get messages from chat instance
     const chatInstance = (window as any).chatWebSocketInstance;
-    if (chatInstance && chatInstance.messages) {
+    if (chatInstance?.messages) {
       console.log('📬 Found messages in chat instance:', chatInstance.messages.length);
       (window as any).debugChatArtifacts(chatInstance.messages);
     } else {
@@ -373,7 +377,7 @@ if (typeof window !== 'undefined') {
     // Method 1: Try to access global artifact state
     try {
       const artifactInstance = (window as any).artifactInstance;
-      if (artifactInstance && artifactInstance.artifact) {
+      if (artifactInstance?.artifact) {
         const artifact = artifactInstance.artifact;
         console.log('🎨 Found artifact in global instance:', {
           documentId: artifact.documentId,
@@ -392,7 +396,7 @@ if (typeof window !== 'undefined') {
               projectId: parsedContent.projectId,
               requestId: parsedContent.requestId,
               hasImageUrl: !!parsedContent.imageUrl,
-              imageUrl: parsedContent.imageUrl?.substring(0, 100) + '...' || 'none'
+              imageUrl: `${parsedContent.imageUrl?.substring(0, 100)}...` || 'none'
             });
           } catch (error) {
             console.log('🎨 Could not parse artifact content as JSON');
@@ -464,7 +468,7 @@ if (typeof window !== 'undefined') {
             type: part.type,
             hasText: 'text' in part && !!part.text,
             textLength: 'text' in part ? part.text?.length : 0,
-            textPreview: 'text' in part && part.text ? part.text.substring(0, 100) + '...' : 'no text'
+            textPreview: 'text' in part && part.text ? `${part.text.substring(0, 100)}...` : 'no text'
           });
           
           if (part.type === 'text' && 'text' in part && part.text) {
@@ -486,7 +490,7 @@ if (typeof window !== 'undefined') {
                 let artifactContent = null;
                 
                 // Pattern 1: Standard ```json block
-                let artifactMatch = part.text.match(/```json\n(.*?)\n```/s);
+                const artifactMatch = part.text.match(/```json\n(.*?)\n```/s);
                 if (artifactMatch) {
                   artifactContent = JSON.parse(artifactMatch[1]);
                 } else {
@@ -503,7 +507,7 @@ if (typeof window !== 'undefined') {
                     projectId: artifactContent.projectId,
                     requestId: artifactContent.requestId,
                     hasImageUrl: !!artifactContent.imageUrl,
-                    imageUrl: artifactContent.imageUrl?.substring(0, 50) + '...' || 'none',
+                    imageUrl: `${artifactContent.imageUrl?.substring(0, 50)}...` || 'none',
                     messageId: message.id
                   });
                   
@@ -546,7 +550,7 @@ if (typeof window !== 'undefined') {
           message.experimental_attachments.map((att: any) => ({
             name: att.name,
             contentType: att.contentType,
-            url: att.url?.substring(0, 50) + '...'
+            url: `${att.url?.substring(0, 50)}...`
           }))
         );
       }
@@ -566,7 +570,7 @@ if (typeof window !== 'undefined') {
   // Global function to force update artifact with image
   (window as any).forceUpdateArtifact = (imageUrl: string, projectId?: string, requestId?: string) => {
     console.log('💪 Force updating artifact with image:', {
-      imageUrl: imageUrl?.substring(0, 100) + '...',
+      imageUrl: `${imageUrl?.substring(0, 100)}...`,
       projectId,
       requestId
     });
@@ -622,7 +626,7 @@ if (typeof window !== 'undefined') {
     console.log('🔍 Chat WebSocket instance:', !!chatWebSocketInstance);
     console.log('🔍 Last image URL in instance:', chatWebSocketInstance?.lastImageUrl);
     
-    if (chatWebSocketInstance && chatWebSocketInstance.lastImageUrl) {
+    if (chatWebSocketInstance?.lastImageUrl) {
       console.log('✅ Found last image URL in chat WebSocket:', chatWebSocketInstance.lastImageUrl);
       (window as any).forceUpdateArtifact(chatWebSocketInstance.lastImageUrl);
       return;
@@ -662,5 +666,75 @@ if (typeof window !== 'undefined') {
      console.log('💡 Then call: forceUpdateArtifact("YOUR_CORRECT_URL_HERE")');
      
      (window as any).forceUpdateArtifact(lastSeenUrl);
+   };
+
+   // Global function to add current image to chat history
+   (window as any).addImageToChat = (imageUrl?: string) => {
+     console.log('💬 Adding image to chat history...');
+     
+     const chatSSEInstance = (window as any).chatSSEInstance || (window as any).chatWebSocketInstance;
+     let effectiveImageUrl = imageUrl || chatSSEInstance?.lastImageUrl;
+     
+     // If no URL provided, try to get from current artifact
+     if (!effectiveImageUrl) {
+       const artifactInstance = (window as any).artifactInstance;
+       if (artifactInstance?.artifact?.content) {
+         try {
+           const content = JSON.parse(artifactInstance.artifact.content);
+           if (content.imageUrl) {
+             effectiveImageUrl = content.imageUrl;
+             console.log('💡 Using image URL from current artifact:', effectiveImageUrl.substring(0, 50) + '...');
+           }
+         } catch (error) {
+           // Silent fail
+         }
+       }
+     }
+     
+     if (!effectiveImageUrl) {
+       console.log('❌ No image URL found');
+       console.log('💡 Usage: addImageToChat("https://your-image-url.com/image.jpg")');
+       console.log('💡 Or: generate an image first, then call addImageToChat()');
+       console.log('💡 Or: copy URL from console logs and call addImageToChat("URL")');
+       return;
+     }
+     
+     const setMessages = chatSSEInstance?.setMessages;
+     
+     if (!setMessages) {
+       console.log('❌ No setMessages function available');
+       console.log('💡 Make sure you are in an active chat');
+       return;
+     }
+     
+     try {
+       const imageAttachment = {
+         name: `generated-image-${Date.now()}.webp`,
+         url: effectiveImageUrl,
+         contentType: 'image/webp',
+       };
+
+       const newMessage = {
+         id: `img-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+         role: 'assistant' as const,
+         content: 'Generated image added to chat history',
+         parts: [
+           {
+             type: 'text' as const,
+             text: 'Generated image added to chat history'
+           }
+         ],
+         experimental_attachments: [imageAttachment],
+         createdAt: new Date(),
+       };
+
+       setMessages((prev: any[]) => [...prev, newMessage]);
+       
+       console.log('✅ Image added to chat history successfully!');
+       console.log('🔗 Image URL:', effectiveImageUrl);
+       console.log('💡 Now you can see the image in chat even after closing the artifact');
+     } catch (error) {
+       console.error('❌ Error adding image to chat:', error);
+     }
    };
  } 

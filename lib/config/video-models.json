@@ -1,0 +1,329 @@
+{
+    "model_metadata": {
+        "comfyui/ltx": {
+            "category": "image_to_video",
+            "ui_label": "LTX Video",
+            "ui_description": "Budget-friendly image-to-video generation",
+            "recommended_settings": {
+                "quality": "hd",
+                "dynamic": 1,
+                "aspect_ratio": "16:9",
+                "voiceover_volume": 0,
+                "music_volume": 0.5,
+                "sound_effect_volume": 0.3,
+                "transition": {
+                    "type": "fade"
+                },
+                "zoom": {
+                    "type": "slow",
+                    "ease": "linear"
+                }
+            },
+            "best_for": [
+                "social_media",
+                "quick_prototypes",
+                "budget_projects"
+            ]
+        },
+        "google-cloud/veo3": {
+            "category": "image_to_video",
+            "ui_label": "Google VEO3",
+            "ui_description": "Premium cinematic image-to-video",
+            "recommended_settings": {
+                "quality": "full_hd",
+                "dynamic": 2,
+                "aspect_ratio": "16:9",
+                "transition": {
+                    "type": "dissolve"
+                },
+                "zoom": {
+                    "type": "dramatic",
+                    "ease": "ease-in-out"
+                }
+            },
+            "best_for": [
+                "professional_content",
+                "cinematic_videos",
+                "high_quality_output"
+            ]
+        },
+        "google-cloud/veo3-text2video": {
+            "category": "text_to_video",
+            "ui_label": "Google VEO3 Text-to-Video",
+            "ui_description": "Premium text-to-video generation",
+            "recommended_settings": {
+                "quality": "full_hd",
+                "dynamic": 2,
+                "aspect_ratio": "16:9",
+                "transition": {
+                    "type": "fade"
+                },
+                "zoom": {
+                    "type": "slow",
+                    "ease": "ease-in-out"
+                }
+            },
+            "best_for": [
+                "concept_videos",
+                "storyboarding",
+                "creative_content"
+            ]
+        },
+        "azure-openai/sora": {
+            "category": "text_to_video",
+            "ui_label": "OpenAI Sora",
+            "ui_description": "Advanced text-to-video with long duration support",
+            "recommended_settings": {
+                "quality": "full_hd",
+                "dynamic": 1,
+                "aspect_ratio": "16:9",
+                "transition": {
+                    "type": "cut"
+                },
+                "zoom": {
+                    "type": "static",
+                    "ease": "linear"
+                }
+            },
+            "best_for": [
+                "long_form_content",
+                "storytelling",
+                "narrative_videos"
+            ]
+        },
+        "comfyui/lip-sync": {
+            "category": "video_to_video",
+            "ui_label": "LipSync",
+            "ui_description": "Video-to-video lip synchronization",
+            "recommended_settings": {
+                "quality": "hd",
+                "dynamic": 0,
+                "preserve_audio": true,
+                "sync_accuracy": "high"
+            },
+            "best_for": [
+                "dubbing",
+                "voice_replacement",
+                "audio_sync"
+            ]
+        }
+    },
+    "model_categories": {
+        "text_to_video": {
+            "label": "Text-to-Video",
+            "description": "Generate video directly from text prompts",
+            "requires_source_image": false,
+            "icon": "📝",
+            "use_cases": [
+                "Concept visualization",
+                "Storyboarding",
+                "Creative content from scratch"
+            ]
+        },
+        "image_to_video": {
+            "label": "Image-to-Video",
+            "description": "Generate video from source image and text prompt",
+            "requires_source_image": true,
+            "icon": "🖼️",
+            "use_cases": [
+                "Animate existing images",
+                "Product demonstrations",
+                "Photo-to-video conversion"
+            ]
+        },
+        "video_to_video": {
+            "label": "Video-to-Video",
+            "description": "Transform existing video with new effects or modifications",
+            "requires_source_video": true,
+            "icon": "🎬",
+            "use_cases": [
+                "Style transfer",
+                "Audio synchronization",
+                "Video enhancement"
+            ]
+        }
+    },
+    "pricing_tiers": {
+        "budget": {
+            "label": "Budget (≤$0.5/sec)",
+            "max_price": 0.5,
+            "icon": "💰",
+            "description": "Affordable options for testing and personal projects"
+        },
+        "standard": {
+            "label": "Standard ($0.5-$1.5/sec)",
+            "max_price": 1.5,
+            "icon": "⭐",
+            "description": "Balanced quality and price for most use cases"
+        },
+        "premium": {
+            "label": "Premium ($1.5-$2.5/sec)",
+            "max_price": 2.5,
+            "icon": "💎",
+            "description": "High-quality models for professional content"
+        },
+        "luxury": {
+            "label": "Luxury (>$2.5/sec)",
+            "max_price": 999,
+            "icon": "👑",
+            "description": "Top-tier models for cinematic quality"
+        }
+    },
+    "ui_presets": {
+        "social_media": {
+            "label": "Social Media",
+            "aspect_ratio": "9:16",
+            "quality": "hd",
+            "duration": 5,
+            "recommended_models": [
+                "comfyui/ltx"
+            ]
+        },
+        "youtube": {
+            "label": "YouTube",
+            "aspect_ratio": "16:9",
+            "quality": "hd",
+            "duration": 8,
+            "recommended_models": [
+                "google-cloud/veo3",
+                "azure-openai/sora"
+            ]
+        },
+        "cinematic": {
+            "label": "Cinematic",
+            "aspect_ratio": "21:9",
+            "quality": "full_hd",
+            "duration": 6,
+            "recommended_models": [
+                "google-cloud/veo3"
+            ]
+        },
+        "quick_test": {
+            "label": "Quick Test",
+            "aspect_ratio": "1:1",
+            "quality": "hd",
+            "duration": 3,
+            "recommended_models": [
+                "comfyui/ltx"
+            ]
+        }
+    },
+    "default_config": {
+        "prompt": "",
+        "dynamic": 1,
+        "aspect_ratio": "16:9",
+        "quality": "hd",
+        "seed": 0,
+        "voiceover_volume": 0,
+        "music_volume": 0.5,
+        "sound_effect_volume": 0.3,
+        "transition": {
+            "type": "fade"
+        },
+        "zoom": {
+            "type": "slow",
+            "ease": "linear"
+        }
+    },
+    "aspect_ratios": {
+        "16:9": {
+            "label": "Widescreen",
+            "description": "Standard video format, good for most content",
+            "recommended_for": [
+                "youtube",
+                "presentations",
+                "general_content"
+            ]
+        },
+        "1:1": {
+            "label": "Square",
+            "description": "Perfect for social media posts",
+            "recommended_for": [
+                "instagram",
+                "facebook",
+                "social_media"
+            ]
+        },
+        "9:16": {
+            "label": "Vertical",
+            "description": "Mobile-first format for stories and reels",
+            "recommended_for": [
+                "tiktok",
+                "instagram_stories",
+                "mobile_content"
+            ]
+        },
+        "21:9": {
+            "label": "Ultra-wide",
+            "description": "Cinematic format for dramatic content",
+            "recommended_for": [
+                "cinematic",
+                "trailers",
+                "artistic_content"
+            ]
+        }
+    },
+    "quality_settings": {
+        "hd": {
+            "label": "High Definition",
+            "description": "Best quality, longer generation time",
+            "recommended_for": "final_output"
+        },
+        "sd": {
+            "label": "Standard Definition",
+            "description": "Faster generation, lower quality",
+            "recommended_for": "testing_and_preview"
+        },
+        "full_hd": {
+            "label": "Full HD",
+            "description": "Maximum quality, premium models only",
+            "recommended_for": "professional_content"
+        }
+    },
+    "transition_types": {
+        "fade": {
+            "label": "Fade",
+            "description": "Smooth fade transition between scenes"
+        },
+        "cut": {
+            "label": "Cut",
+            "description": "Sharp cut transition"
+        },
+        "dissolve": {
+            "label": "Dissolve",
+            "description": "Gradual dissolve between scenes"
+        }
+    },
+    "zoom_types": {
+        "slow": {
+            "label": "Slow Zoom",
+            "description": "Gentle, slow zoom effect"
+        },
+        "dramatic": {
+            "label": "Dramatic Zoom",
+            "description": "Fast, dramatic zoom effect"
+        },
+        "static": {
+            "label": "No Zoom",
+            "description": "No zoom movement"
+        }
+    },
+    "ease_functions": {
+        "linear": {
+            "label": "Linear",
+            "description": "Constant speed throughout"
+        },
+        "ease-in": {
+            "label": "Ease In",
+            "description": "Starts slow, speeds up"
+        },
+        "ease-out": {
+            "label": "Ease Out",
+            "description": "Starts fast, slows down"
+        },
+        "ease-in-out": {
+            "label": "Ease In-Out",
+            "description": "Smooth acceleration and deceleration"
+        }
+    }
+}

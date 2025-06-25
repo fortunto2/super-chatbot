@@ -40,6 +40,7 @@ import { differenceInSeconds } from 'date-fns';
 import * as Sentry from '@sentry/nextjs';
 import { configureImageGeneration } from '@/lib/ai/tools/configure-image-generation';
 import { configureVideoGeneration } from '@/lib/ai/tools/configure-video-generation';
+import { listVideoModels, findBestVideoModel } from '@/lib/ai/tools/list-video-models';
 
 export const maxDuration = 60;
 
@@ -523,6 +524,8 @@ export async function POST(request: Request) {
               : [
                   'configureImageGeneration',
                   'configureVideoGeneration',
+                  'listVideoModels',
+                  'findBestVideoModel',
                   'createDocument',
                   'updateDocument',
                   'requestSuggestions',
@@ -537,6 +540,8 @@ export async function POST(request: Request) {
             configureVideoGeneration: configureVideoGeneration({
               createDocument: tools.createDocument,
             }),
+            listVideoModels,
+            findBestVideoModel,
           },
           onFinish: async ({ response }) => {
             if (session.user?.id) {

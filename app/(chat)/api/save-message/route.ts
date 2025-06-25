@@ -1,13 +1,13 @@
 import { auth } from '@/app/(auth)/auth';
 import { saveMessages, getMessageById } from '@/lib/db/queries';
-import { NextRequest, NextResponse } from 'next/server';
+import { type NextRequest, NextResponse } from 'next/server';
 import { eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import { message } from '@/lib/db/schema';
 
 // Initialize database connection
-const client = postgres(process.env.POSTGRES_URL!);
+const client = postgres(process.env.POSTGRES_URL || '');
 const db = drizzle(client);
 
 export async function POST(request: NextRequest) {
@@ -21,7 +21,17 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { chatId, message: messageData } = body;
 
+    console.log('💾 API save-message received:', {
+      chatId,
+      messageId: messageData?.id,
+      role: messageData?.role,
+      partsCount: messageData?.parts?.length || 0,
+      attachmentsCount: messageData?.attachments?.length || 0,
+      hasContent: !!messageData?.content
+    });
+
     if (!chatId || !messageData) {
+      console.error('💾 API save-message error: Missing required data');
       return NextResponse.json(
         { error: 'Missing chatId or message' }, 
         { status: 400 }

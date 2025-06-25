@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -18,9 +18,7 @@ import type {
   VideoSettings,
   MediaResolution,
   MediaOption,
-  ImageModel,
-  VideoModel,
-  MediaGenerationConfig 
+  AdaptedModel,
 } from '@/lib/types/media-settings';
 import { generateUUID } from '@/lib/utils';
 import type { UseChatHelpers } from '@ai-sdk/react';
@@ -53,7 +51,7 @@ export function MediaSettings({
   const [selectedShotSize, setSelectedShotSize] = useState<MediaOption>(
     config.defaultSettings.shotSize
   );
-  const [selectedModel, setSelectedModel] = useState<ImageModel | VideoModel>(
+  const [selectedModel, setSelectedModel] = useState<AdaptedModel>(
     config.defaultSettings.model
   );
   const [seed, setSeed] = useState<string>('');
@@ -61,13 +59,13 @@ export function MediaSettings({
   
   // Video-specific states
   const [selectedFrameRate, setSelectedFrameRate] = useState<number>(
-    isVideoConfig ? videoConfig!.defaultSettings.frameRate : 30
+    isVideoConfig ? videoConfig?.defaultSettings.frameRate || 30 : 30
   );
   const [duration, setDuration] = useState<number>(
-    isVideoConfig ? videoConfig!.defaultSettings.duration : 10
+    isVideoConfig ? videoConfig?.defaultSettings.duration || 10 : 10
   );
   const [negativePrompt, setNegativePrompt] = useState<string>(
-    isVideoConfig ? videoConfig!.defaultSettings.negativePrompt || '' : ''
+    isVideoConfig ? videoConfig?.defaultSettings.negativePrompt || '' : ''
   );
 
   const handleConfirm = () => {
@@ -76,7 +74,7 @@ export function MediaSettings({
       style: selectedStyle,
       shotSize: selectedShotSize,
       model: selectedModel,
-      seed: seed ? parseInt(seed) : undefined,
+      seed: seed ? Number.parseInt(seed) : undefined,
     };
 
     const settings: ImageSettings | VideoSettings = isVideoConfig 
@@ -89,7 +87,7 @@ export function MediaSettings({
       : baseSettings as ImageSettings;
 
     // Create user message for the selection
-    const userMessage = `Выбрано разрешение: ${selectedResolution.width}x${selectedResolution.height}, стиль: ${selectedStyle.label}, размер кадра: ${selectedShotSize.label}, модель: ${selectedModel.label}${seed ? `, сид: ${seed}` : ''}`;
+    const userMessage = `Selected resolution: ${selectedResolution.width}x${selectedResolution.height}, style: ${selectedStyle.label}, shot size: ${selectedShotSize.label}, model: ${selectedModel.label}${seed ? `, seed: ${seed}` : ''}`;
 
     if (append) {
       append({
@@ -107,8 +105,9 @@ export function MediaSettings({
       return;
     }
 
-    // Send message to generate image with current settings
-    const generateMessage = `Создай изображение: ${prompt}. Используй разрешение ${selectedResolution.label}, стиль "${selectedStyle.label}", план "${selectedShotSize.label}", модель "${selectedModel.label}"${seed ? `, сид ${seed}` : ''}.`;
+    // Generate appropriate message based on media type
+    const mediaType = isVideoConfig ? 'video' : 'image';
+    const generateMessage = `Generate ${mediaType}: ${prompt}. Use resolution ${selectedResolution.label}, style "${selectedStyle.label}", shot size "${selectedShotSize.label}", model "${selectedModel.label}"${seed ? `, seed ${seed}` : ''}${isVideoConfig && selectedFrameRate ? `, frame rate ${selectedFrameRate} FPS` : ''}${isVideoConfig && duration ? `, duration ${duration} sec` : ''}.`;
 
     if (append) {
       append({
@@ -137,8 +136,9 @@ export function MediaSettings({
 
       {/* Prompt Input Section */}
       <div className="mb-4 sm:mb-6 space-y-2">
-        <label className="text-xs sm:text-sm font-medium">Prompt *</label>
+        <label htmlFor="prompt-input" className="text-xs sm:text-sm font-medium">Prompt *</label>
         <Textarea
+          id="prompt-input"
           placeholder={`Describe the ${mediaTypeLabel.toLowerCase()} you want to generate...`}
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
@@ -154,7 +154,7 @@ export function MediaSettings({
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-4 sm:mb-6">
         {/* Resolution Selector */}
         <div className="space-y-2">
-          <label className="text-xs sm:text-sm font-medium">Resolution</label>
+          <label htmlFor="resolution-select" className="text-xs sm:text-sm font-medium">Resolution</label>
           <Select
             value={`${selectedResolution.width}x${selectedResolution.height}`}
             onValueChange={(value) => {
@@ -191,7 +191,7 @@ export function MediaSettings({
 
         {/* Style Selector */}
         <div className="space-y-2">
-          <label className="text-xs sm:text-sm font-medium">Style</label>
+          <label htmlFor="style-select" className="text-xs sm:text-sm font-medium">Style</label>
           <Select
             value={selectedStyle.id}
             onValueChange={(value) => {
@@ -223,7 +223,7 @@ export function MediaSettings({
 
         {/* Shot Size Selector */}
         <div className="space-y-2">
-          <label className="text-xs sm:text-sm font-medium">Shot Size</label>
+          <label htmlFor="shot-size-select" className="text-xs sm:text-sm font-medium">Shot Size</label>
           <Select
             value={selectedShotSize.id}
             onValueChange={(value) => {
@@ -255,7 +255,7 @@ export function MediaSettings({
 
         {/* Model Selector */}
         <div className="space-y-2">
-          <label className="text-xs sm:text-sm font-medium">Model</label>
+          <label htmlFor="model-select" className="text-xs sm:text-sm font-medium">Model</label>
           <Select
             value={selectedModel.id}
             onValueChange={(value) => {
@@ -291,10 +291,10 @@ export function MediaSettings({
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-4 sm:mb-6">
           {/* Frame Rate Selector */}
           <div className="space-y-2">
-            <label className="text-xs sm:text-sm font-medium">Frame Rate</label>
+            <label htmlFor="frame-rate-select" className="text-xs sm:text-sm font-medium">Frame Rate</label>
             <Select
               value={selectedFrameRate.toString()}
-              onValueChange={(value) => setSelectedFrameRate(parseInt(value))}
+              onValueChange={(value) => setSelectedFrameRate(Number.parseInt(value))}
             >
               <SelectTrigger className="w-full h-9 sm:h-10">
                 <SelectValue placeholder="Select frame rate" />
@@ -311,12 +311,13 @@ export function MediaSettings({
 
           {/* Duration Input */}
           <div className="space-y-2">
-            <label className="text-xs sm:text-sm font-medium">Duration (seconds)</label>
+            <label htmlFor="duration-input" className="text-xs sm:text-sm font-medium">Duration (seconds)</label>
             <Input
+              id="duration-input"
               type="number"
               placeholder="Duration in seconds"
               value={duration}
-              onChange={(e) => setDuration(parseInt(e.target.value) || 10)}
+              onChange={(e) => setDuration(Number.parseInt(e.target.value) || 10)}
               className="w-full h-9 sm:h-10 text-sm"
               min="1"
               max="60"
@@ -325,8 +326,9 @@ export function MediaSettings({
 
           {/* Negative Prompt */}
           <div className="space-y-2 sm:col-span-2 lg:col-span-1">
-            <label className="text-xs sm:text-sm font-medium">Negative Prompt (Optional)</label>
+            <label htmlFor="negative-prompt-input" className="text-xs sm:text-sm font-medium">Negative Prompt (Optional)</label>
             <Input
+              id="negative-prompt-input"
               placeholder="What you don't want to see..."
               value={negativePrompt}
               onChange={(e) => setNegativePrompt(e.target.value)}
@@ -339,9 +341,10 @@ export function MediaSettings({
       {/* Seed Input - Compact */}
       <div className="mb-4 sm:mb-6">
         <div className="space-y-2">
-          <label className="text-xs sm:text-sm font-medium">Seed (Optional)</label>
+          <label htmlFor="seed-input" className="text-xs sm:text-sm font-medium">Seed (Optional)</label>
           <div className='flex flex-col sm:flex-row items-start sm:items-center gap-2'>
             <Input
+              id="seed-input"
               type="number"
               placeholder="Enter seed number for reproducible results"
               value={seed}

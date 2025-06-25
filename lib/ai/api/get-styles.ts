@@ -1,3 +1,5 @@
+import { getSuperduperAIConfig } from '@/lib/config/superduperai';
+
 export type INextCursor = {
   offset: number;
   limit: number;
@@ -21,22 +23,22 @@ export type IResponsePaginated_IStyleRead_ = {
 
 // Cache for styles to avoid repeated API calls
 let stylesCache: IResponsePaginated_IStyleRead_ | null = null;
-let cacheExpiry: number = 0;
+let cacheExpiry = 0;
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
 export const getStyles = async () => {
     // Check cache first
     if (stylesCache && Date.now() < cacheExpiry) {
-      console.log('🎨 Using cached styles, count:', stylesCache.items?.length || 0);
+  
       return stylesCache;
     }
 
     try {
-      // const url = "https://editor.superduperai.co"
-      const url = process.env.NEXT_PUBLIC_API_URL || "https://editor.superduperai.co"
-      const token = !!process.env.NEXT_PUBLIC_API_URL ? "9ab6d5b74e654a7887015a4fa2b10e7f" : "afda4dc28cf1420db6d3e35a291c2d5f"
+      const config = getSuperduperAIConfig();
+      const token = config.token;
+      const url = config.url;
       
-      console.log('🎨 Fetching styles from API...');
+  
       const response = await fetch(`${url}/api/v1/style?order_by=name&order=descendent&limit=100`, {
         method: "GET",
         headers: {
@@ -72,12 +74,7 @@ export const getStyles = async () => {
       stylesCache = result;
       cacheExpiry = Date.now() + CACHE_DURATION;
       
-      console.log('🎨 ✅ Fetched styles successfully, count:', result.items?.length || 0);
-      
       // Log some example styles for debugging
-      if (result.items && result.items.length > 0) {
-        console.log('🎨 📋 Sample styles:', result.items.slice(0, 5).map(s => `${s.name} (${s.title || 'no title'})`).join(', '));
-      }
       
       return result;
 
@@ -94,5 +91,5 @@ export const getStyles = async () => {
 export const clearStylesCache = () => {
   stylesCache = null;
   cacheExpiry = 0;
-  console.log('🎨 🗑️ Styles cache cleared');
+
 }
