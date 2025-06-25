@@ -46,7 +46,7 @@ export async function getImageGenerationConfig(): Promise<ImageGenerationConfig>
       // Client-side: fetch from API endpoint
       const response = await fetch('/api/config/models');
       const data = await response.json();
-      imageModels = data.imageModels || [];
+      imageModels = data?.data?.imageModels || [];
     } else {
       // Server-side: direct function call
       configureSuperduperAI();
