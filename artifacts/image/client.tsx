@@ -91,11 +91,89 @@ const ImageArtifactWrapper = memo(function ImageArtifactWrapper(props: any) {
     return state;
   }, [parsedContent]);
 
+  // Set up polling fallback for artifacts in case SSE doesn't work
+  useEffect(() => {
+    const fileId = parsedContent?.projectId;
+    if (!fileId || parsedContent?.status === 'completed') return;
+    
+
+    
+    // Start polling after 30 seconds if image still not completed
+    const pollTimeout = setTimeout(async () => {
+  
+      
+      let attempts = 0;
+      const maxAttempts = 6; // 6 attempts * 10s = 60s total
+      
+      const pollCheck = async () => {
+        attempts++;
+        
+        try {
+          const response = await fetch(`/api/file/${fileId}`);
+          if (!response.ok) {
+            return false;
+          }
+          
+          const file = await response.json();
+          
+          // Check if file is image and has URL
+          if (file.url && file.type === 'image') {
+            // Update artifact content
+            setArtifact((prev: any) => {
+              try {
+                const currentContent = JSON.parse(prev.content || '{}');
+                const updatedContent = {
+                  ...currentContent,
+                  status: 'completed',
+                  imageUrl: file.url,
+                  progress: 100
+                };
+                
+                saveArtifactToDatabase(prev.documentId || prev.id, prev.title, JSON.stringify(updatedContent));
+                
+                return {
+                  ...prev,
+                  content: JSON.stringify(updatedContent)
+                };
+              } catch (error) {
+                console.error('Failed to update artifact via polling:', error);
+                return prev;
+              }
+            });
+            
+            return true; // Found image, stop polling
+          }
+          
+          return false;
+        } catch (error) {
+          console.error('Artifact polling error:', error);
+          return false;
+        }
+      };
+      
+      // Start polling interval
+      const pollInterval = setInterval(async () => {
+        const found = await pollCheck();
+        if (found || attempts >= maxAttempts) {
+          clearInterval(pollInterval);
+        }
+      }, 10000);
+      
+      // Cleanup interval after max time
+      setTimeout(() => {
+        clearInterval(pollInterval);
+      }, 65000);
+    }, 30000); // 30 second delay before starting polling
+    
+    return () => {
+      clearTimeout(pollTimeout);
+    };
+  }, [parsedContent?.projectId, parsedContent?.status, setArtifact]);
+
   // Connect to SSE for real-time updates using fileId directly
   const artifactSSE = useImageSSE({
     fileId: parsedContent?.projectId || '', // projectId is actually fileId from generate-image.ts
     eventHandlers: parsedContent?.projectId ? [(message: any) => {
-      console.log('🎨 Artifact SSE message:', message);
       
       // Handle file events for image completion
       if (message.type === 'file' && message.object) {
@@ -103,16 +181,9 @@ const ImageArtifactWrapper = memo(function ImageArtifactWrapper(props: any) {
         
         // Handle direct URL in file object
         if (fileObject.url && (fileObject.type === 'image' || fileObject.contentType?.startsWith('image/'))) {
-          console.log('🎨 ✅ Image completed via SSE file event:', fileObject.url);
-          
           // Update artifact content with completed image
           setArtifact((prev: any) => {
             try {
-              console.log('🎨 📄 Artifact state before update:', { 
-                id: prev.id, 
-                documentId: prev.documentId, 
-                title: prev.title 
-              });
               
               const currentContent = JSON.parse(prev.content || '{}');
               const updatedContent = {
@@ -129,15 +200,14 @@ const ImageArtifactWrapper = memo(function ImageArtifactWrapper(props: any) {
                 ...prev,
                 content: JSON.stringify(updatedContent)
               };
-            } catch (error) {
-              console.error('🎨 ❌ Failed to update artifact content:', error);
-              return prev;
-            }
+                          } catch (error) {
+                console.error('Failed to update artifact content:', error);
+                return prev;
+              }
           });
         }
         // Handle file_id case - need to resolve to URL
         else if (fileObject.file_id) {
-          console.log('🎨 File ID received via SSE, resolving:', fileObject.file_id);
           
           // Import FileService dynamically to resolve file_id to URL
           import('@/lib/api').then(async ({ FileService, FileTypeEnum }) => {
@@ -145,7 +215,6 @@ const ImageArtifactWrapper = memo(function ImageArtifactWrapper(props: any) {
               const fileResponse = await FileService.fileGetById({ id: fileObject.file_id });
               
               if (fileResponse && fileResponse.url && fileResponse.type === FileTypeEnum.IMAGE) {
-                console.log('🎨 ✅ File ID resolved to image URL via SSE:', fileResponse.url);
                 
                 // Update artifact content with completed image
                 setArtifact((prev: any) => {
@@ -165,16 +234,16 @@ const ImageArtifactWrapper = memo(function ImageArtifactWrapper(props: any) {
                       ...prev,
                       content: JSON.stringify(updatedContent)
                     };
-                  } catch (error) {
-                    console.error('🎨 ❌ Failed to update artifact content with file_id:', error);
-                    return prev;
-                  }
+                                      } catch (error) {
+                      console.error('Failed to update artifact content with file_id:', error);
+                      return prev;
+                    }
                 });
               } else {
-                console.log('🎨 ⚠️ File ID resolved to non-image file via SSE:', fileResponse?.type);
+                // File ID resolved but not an image
               }
             } catch (error) {
-              console.error('🎨 ❌ Failed to resolve file ID via SSE:', error);
+              console.error('Failed to resolve file ID via SSE:', error);
             }
           });
         }
@@ -182,7 +251,6 @@ const ImageArtifactWrapper = memo(function ImageArtifactWrapper(props: any) {
       
       // Handle render_progress events
       if (message.type === 'render_progress' && message.object?.progress !== undefined) {
-        console.log('🎨 Render progress via SSE:', message.object.progress);
         
         setArtifact((prev: any) => {
           try {
@@ -196,17 +264,16 @@ const ImageArtifactWrapper = memo(function ImageArtifactWrapper(props: any) {
               ...prev,
               content: JSON.stringify(updatedContent)
             };
-          } catch (error) {
-            console.error('🎨 ❌ Failed to update progress:', error);
-            return prev;
-          }
+                      } catch (error) {
+              console.error('Failed to update progress:', error);
+              return prev;
+            }
         });
       }
       
       // Handle render_result events
       if (message.type === 'render_result' && (message.object?.url || message.object?.file_url)) {
         const imageUrl = message.object.url || message.object.file_url;
-        console.log('🎨 ✅ Render result via SSE:', imageUrl);
         
         setArtifact((prev: any) => {
           try {

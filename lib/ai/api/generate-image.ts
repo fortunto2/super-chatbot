@@ -3,7 +3,8 @@ import type { ImageModel } from '@/lib/config/superduperai';
 import { 
   getSuperduperAIConfig, 
   createAuthHeaders, 
-  createAPIURL, 
+  createAPIURL,
+  API_ENDPOINTS, 
 } from '@/lib/config/superduperai';
 // import { ensureProjectForChatId } from '@/lib/utils/simple-project';
 
@@ -24,7 +25,7 @@ function generateRequestId(): string {
 
 // Validate style before sending to API
 function validateStyleForAPI(style: MediaOption): string {
-  console.log(`🎨 Validating style for API:`, { id: style.id, label: style.label });
+
   
   // AICODE-NOTE: Use flux_watercolor as it exists in DB (based on working payload example)
   console.log(`🔧 Using flux_watercolor style (confirmed working)`);
@@ -60,10 +61,10 @@ function createImagePayload(
     style_name: styleId, // Move style_name outside config
     config: {
       prompt: prompt,
-      shot_size: shotSize.label, // Use label instead of id for shot_size
+      shot_size: shotSize.id, // FIXED: Use id instead of label for snake_case format
       style_name: styleId, // Keep for backward compatibility
       seed: String(actualSeed), // Convert to string
-      aspecRatio: resolution.aspectRatio || "16:9", // Add aspecRatio (typo in API, but correct)
+      aspect_ratio: resolution.aspectRatio || "16:9", // FIXED: Use correct aspect_ratio parameter name
       batch_size: 3, // Use batch_size 3 like in working example
       entity_ids: [],
       generation_config_name: model.name,
@@ -109,8 +110,8 @@ export async function generateImage(
     
     console.log(`📦 Image generation payload:`, JSON.stringify(payload, null, 2));
 
-    // Use proxy endpoint directly
-    const url = createAPIURL('/api/generate/image', config);
+    // Use correct API endpoint  
+    const url = createAPIURL(API_ENDPOINTS.GENERATE_IMAGE, config);
     const headers = createAuthHeaders();
 
     console.log(`📡 Making request to: ${url}`);

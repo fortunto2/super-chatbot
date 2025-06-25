@@ -1,9 +1,8 @@
 import { getAvailableVideoModels, getAvailableImageModels, configureSuperduperAI, getDefaultImageModel, } from './superduperai';
-import type { ImageGenerationConfig, VideoGenerationConfig } from '../types/media-settings';
+import type { ImageGenerationConfig, VideoGenerationConfig, MediaOption } from '../types/media-settings';
 import type { IGenerationConfigRead } from '../api/models/IGenerationConfigRead';
 import { ShotSizeEnum } from '@/lib/api/models/ShotSizeEnum';
 import { getStyles } from '@/lib/ai/api/get-styles';
-import type { MediaOption } from '@/lib/types/media-settings';
 
 // Adapter function to convert OpenAPI model to MediaSettings format
 function adaptModelForMediaSettings(model: IGenerationConfigRead): IGenerationConfigRead & {
@@ -57,8 +56,9 @@ export async function getImageGenerationConfig(): Promise<ImageGenerationConfig>
     console.error('Failed to load image models:', error);
     imageModels = [];
   }
-  
+  console.log('🎬 Image models:', imageModels);
   const adaptedImageModels = imageModels.map(adaptModelForMediaSettings);
+  console.log('🎬 Image models:', adaptedImageModels);
   
   // Get the default model using priority system
   let defaultModel: IGenerationConfigRead | undefined;
@@ -192,7 +192,7 @@ export async function getVideoGenerationConfig(): Promise<VideoGenerationConfig>
       // Client-side: fetch from API endpoint
       const response = await fetch('/api/config/models');
       const data = await response.json();
-      videoModels = data.videoModels || [];
+      videoModels = data?.data?.videoModels || [];
     } else {
       // Server-side: direct function call
       configureSuperduperAI();
@@ -204,6 +204,7 @@ export async function getVideoGenerationConfig(): Promise<VideoGenerationConfig>
   }
   
   const adaptedVideoModels = videoModels.map(adaptModelForMediaSettings);
+
   
   // Get styles from API (same as image generation)
   let availableStyles: MediaOption[] = [];

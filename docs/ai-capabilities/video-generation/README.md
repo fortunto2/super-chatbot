@@ -63,6 +63,35 @@ The video generation system consists of:
 - **[Video Generation Progress Improvement](./video-generation-progress-improvement.md)** - Fixed "Image Generation" texts to "Video Generation" and removed redundant manual check button
 - **[SSE Polling Improvement](./sse-polling-improvement.md)** - Comprehensive fix for video results not appearing in frontend interface
 
+## Known Issues & Solutions
+
+### ✅ Video Duplication Issue (RESOLVED)
+
+**Issue**: Video generation produced duplicate videos due to concurrent SSE and polling mechanisms.
+
+**Solution**: Implemented deduplication mechanism with completion tracking flags:
+
+- Added `completedRef` to prevent duplicate processing of same video URL
+- Enhanced timeout logic to skip polling if video already completed via SSE
+- Fixed tool chatId UUID issues with separate local-only save logic
+
+**Files**: `use-video-generator.ts`, `use-video-effects.ts`  
+**Status**: ✅ Fully resolved in latest version
+
+See: [Video Generation Duplication Fix](../../maintenance/changelog/video-generation-duplication-fix.md)
+
+### 🔧 SSE Connection Optimization
+
+- 60-second timeout for video generation (longer than images)
+- Smart fallback to polling only when SSE fails and video not yet completed
+- Proper cleanup of connections and timeouts
+
+### 🗄️ Database Integration
+
+- Tool chats (video-generator-tool) save locally only to avoid UUID conflicts
+- Real chat sessions save to both database and local chat
+- Graceful error handling for database save failures
+
 ## Related Documentation
 
 - [AI Capabilities Overview](../README.md)

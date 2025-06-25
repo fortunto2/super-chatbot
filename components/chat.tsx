@@ -20,6 +20,7 @@ import { useSearchParams } from 'next/navigation';
 import { useChatVisibility } from '@/hooks/use-chat-visibility';
 import { useAutoResume } from '@/hooks/use-auto-resume';
 import { useChatImageSSE } from '@/hooks/use-chat-image-sse';
+import { useChatVideoSSE } from '@/hooks/use-chat-video-sse';
 import { ChatWebSocketCleanup } from '@/lib/utils/chat-websocket-cleanup';
 import { LoaderIcon } from './icons';
 
@@ -145,8 +146,15 @@ function ChatContent({
     ChatWebSocketCleanup.setActiveChat(id);
   }, [id]);
 
-  // Global WebSocket connection for image generation
+  // Global SSE connections for media generation
   const chatImageSSE = useChatImageSSE({
+    chatId: id,
+    messages,
+    setMessages,
+    enabled: !isReadonly, // Only enable for non-readonly chats
+  });
+
+  const chatVideoSSE = useChatVideoSSE({
     chatId: id,
     messages,
     setMessages,
@@ -166,14 +174,16 @@ function ChatContent({
         // Update with current SSE data while preserving lastImageUrl
         Object.assign(globalWindow.chatWebSocketInstance, {
           ...chatImageSSE,
+          ...chatVideoSSE,
           messages,
-          lastImageUrl: globalWindow.chatWebSocketInstance.lastImageUrl // Preserve existing URL
+          lastImageUrl: globalWindow.chatWebSocketInstance.lastImageUrl, // Preserve existing URL
+          lastVideoUrl: globalWindow.chatWebSocketInstance.lastVideoUrl // Preserve existing video URL
         });
         
         // Debugging instance stored silently
       }
     }
-  }, [chatImageSSE, messages]);
+  }, [chatImageSSE, chatVideoSSE, messages]);
 
   return (
     <>
