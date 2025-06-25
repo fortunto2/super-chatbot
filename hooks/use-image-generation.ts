@@ -149,15 +149,24 @@ export function useImageGeneration(chatId?: string): UseImageGenerationReturn {
 
   // Create stable WebSocket options with chatIdState dependency
   const websocketOptions = useMemo(() => {
-    const shouldConnect = !!chatIdState && mountedRef.current;
-    // Reduce WebSocket logging
+    // Only connect if we have a real projectId (fileId) from active generation, not just chatId
+    const hasActiveGeneration = !!(state.projectId && state.isGenerating);
+    const shouldConnect = !!chatIdState && mountedRef.current && hasActiveGeneration;
+    
+    console.log('🔌 WebSocket options:', {
+      fileId: state.projectId, // This should be the actual fileId from API response
+      chatId: chatIdState,
+      hasActiveGeneration,
+      shouldConnect,
+      isGenerating: state.isGenerating
+    });
     
     return {
-      fileId: chatIdState || '',
+      fileId: state.projectId ?? '', // FIXED: Use only state.projectId (which contains fileId from API)
       eventHandlers,
       enabled: shouldConnect,
     };
-  }, [chatIdState, eventHandlers]);
+  }, [chatIdState, eventHandlers, state.projectId, state.isGenerating]);
 
   // Improved cleanup for React Strict Mode
   useEffect(() => {
@@ -242,8 +251,10 @@ export function useImageGeneration(chatId?: string): UseImageGenerationReturn {
         ...initialState,
         isGenerating: true,
         status: 'processing', // Show processing immediately
-        projectId: chatId,
+        // Don't set projectId yet - wait for API response with fileId
       });
+
+      console.log('🚀 Starting image generation for chat:', chatId);
 
       // Start image generation
       const result: ImageGenerationResult = await generateImage(
@@ -256,6 +267,7 @@ export function useImageGeneration(chatId?: string): UseImageGenerationReturn {
       );
 
       if (!result.success) {
+        console.error('❌ Image generation failed:', result.error);
         setState(prev => ({
           ...prev,
           isGenerating: false,
@@ -265,21 +277,138 @@ export function useImageGeneration(chatId?: string): UseImageGenerationReturn {
         return;
       }
 
+      console.log('✅ Image generation API success:', {
+        fileId: result.projectId, // This is actually the fileId from API
+        requestId: result.requestId,
+        files: result.files?.length || 0
+      });
+
       // Set request ID for tracking
       if (result.requestId) {
         setCurrentRequestId(result.requestId);
       }
 
-      // Keep the processing state, WebSocket will update it
+      // CRITICAL: Use result.projectId which contains the fileId for SSE connection
       setState(prev => ({
         ...prev,
-        projectId: result.projectId || chatId,
+        projectId: result.projectId, // FIXED: This is the fileId we need for SSE
         requestId: result.requestId,
         status: 'processing',
       }));
 
+      // FALLBACK: Add aggressive polling checks in case SSE doesn't work
+      console.log('⏰ Setting up aggressive fallback polling for project:', result.projectId);
+      const projectIdToCheck = result.projectId;
+      
+      // Check every 10 seconds for 60 seconds total
+      let attempts = 0;
+      const maxAttempts = 6; // 6 attempts * 10s = 60s total
+      
+      const pollCheck = async () => {
+        attempts++;
+        console.log(`⏰ Polling attempt ${attempts}/${maxAttempts} for project:`, projectIdToCheck);
+        
+        try {
+          // Use Next.js API route to check project status
+          const response = await fetch(`/api/project/${projectIdToCheck}`);
+          
+          if (!response.ok) {
+            console.error('⏰ ❌ Fallback polling failed:', response.status);
+            return false;
+          }
+          
+          const project = await response.json();
+          console.log('⏰ Fallback polling result:', {
+            id: project.id,
+            dataCount: project.data?.length || 0,
+          });
+          
+          // Look for image data in project.data
+          const imageData = project.data?.find((data: any) => {
+            if (data.value && typeof data.value === 'object') {
+              const value = data.value as Record<string, any>;
+              const hasUrl = !!value.url;
+              const isImage = value.url?.match(/\.(jpg|jpeg|png|webp|gif|bmp|svg)$/i);
+              
+              return hasUrl && isImage;
+            }
+            return false;
+          });
+          
+          if (imageData?.value && typeof imageData.value === 'object') {
+            const imageUrl = (imageData.value as Record<string, any>).url as string;
+            console.log('⏰ ✅ Image found via fallback polling:', imageUrl);
+            setState(prev => ({
+              ...prev,
+              status: 'completed' as const,
+              imageUrl: imageUrl || undefined,
+              progress: 100,
+              isGenerating: false
+            }));
+            return true; // Found image, stop polling
+          }
+          
+          // Handle file_id case
+          const fileIdData = project.data?.find((data: any) => {
+            return data.value && typeof data.value === 'object' && (data.value as any).file_id;
+          });
+          
+          if (fileIdData?.value && typeof fileIdData.value === 'object') {
+            const fileId = (fileIdData.value as Record<string, any>).file_id as string;
+            console.log('⏰ Found file_id via fallback, resolving:', fileId);
+            
+            // Import and resolve file_id to URL
+            const { FileService, FileTypeEnum } = await import('@/lib/api');
+            const fileResponse = await FileService.fileGetById({ id: fileId });
+            
+            if (fileResponse && fileResponse.url && fileResponse.type === FileTypeEnum.IMAGE) {
+              console.log('⏰ ✅ File ID resolved to image URL via fallback:', fileResponse.url);
+              setState(prev => ({
+                ...prev,
+                status: 'completed' as const,
+                imageUrl: fileResponse.url || undefined,
+                progress: 100,
+                isGenerating: false
+              }));
+              return true; // Found image, stop polling
+            }
+          }
+          
+          console.log('⏰ ⚠️ No image found in fallback polling yet');
+          return false; // Not found, continue polling
+        } catch (error) {
+          console.error('⏰ ❌ Fallback polling error:', error);
+          return false;
+        }
+      };
+      
+      // Start polling after 10 seconds, then every 10 seconds
+      const startPolling = () => {
+        const pollInterval = setInterval(async () => {
+          const found = await pollCheck();
+          if (found || attempts >= maxAttempts) {
+            clearInterval(pollInterval);
+            if (attempts >= maxAttempts && !found) {
+              console.log('⏰ ❌ Polling exhausted, image generation may have failed');
+            }
+          }
+        }, 10000);
+        
+        // Clear interval after max time to prevent memory leaks
+        setTimeout(() => {
+          clearInterval(pollInterval);
+        }, 65000); // 65s to ensure we get all 6 attempts
+      };
+      
+      // Start first check after 10 seconds
+      console.log('⏰ Scheduling polling to start in 10 seconds...');
+      setTimeout(() => {
+        console.log('⏰ 10 seconds elapsed, starting polling now...');
+        startPolling();
+      }, 10000);
+
     } catch (error: any) {
-      console.error('Image generation error:', error);
+      console.error('💥 Image generation error:', error);
       setState(prev => ({
         ...prev,
         isGenerating: false,

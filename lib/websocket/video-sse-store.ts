@@ -1,4 +1,4 @@
-import { getSuperduperAIConfig } from '@/lib/config/superduperai';
+// SSE store for managing video generation events through Next.js proxy
 
 // AICODE-NOTE: Message interface for video SSE events
 export interface VideoSSEMessage {
@@ -268,10 +268,9 @@ class VideoSSEStore {
     this.currentProjectId = projectId;
     this.activeProjects.add(projectId);
     
-    // Convert WebSocket URL format to SSE format
-    const config = getSuperduperAIConfig();
+    // Use Next.js SSE proxy instead of direct backend connection
     const channel = `project.${projectId}`;
-    const sseUrl = `${config.url}/api/v1/events/${channel}`;
+    const sseUrl = `/api/events/${channel}`;
     
     console.log('🔌 Video SSE Channel:', channel);
     console.log('🔌 Final video SSE URL:', sseUrl);

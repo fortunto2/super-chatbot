@@ -360,27 +360,27 @@ export function createAPIURL(endpoint: string, config?: SuperduperAIConfig): str
 }
 
 /**
- * Create SSE URL for file events
+ * Create SSE URL for file events (via Next.js proxy)
  */
 export function createFileSSEURL(fileId: string, config?: SuperduperAIConfig): string {
-  const apiConfig = config || getSuperduperAIConfig();
-  return `${apiConfig.url}/api/v1/events/file.${fileId}`;
+  // Always use Next.js proxy for SSE connections
+  return `/api/events/file.${fileId}`;
 }
 
 /**
- * Create SSE URL for project events  
+ * Create SSE URL for project events (via Next.js proxy)
  */
 export function createProjectSSEURL(projectId: string, config?: SuperduperAIConfig): string {
-  const apiConfig = config || getSuperduperAIConfig();
-  return `${apiConfig.url}/api/v1/events/project.${projectId}`;
+  // Always use Next.js proxy for SSE connections
+  return `/api/events/project.${projectId}`;
 }
 
 /**
- * Create SSE URL for user events
+ * Create SSE URL for user events (via Next.js proxy)
  */
 export function createUserSSEURL(userId: string, config?: SuperduperAIConfig): string {
-  const apiConfig = config || getSuperduperAIConfig();
-  return `${apiConfig.url}/api/v1/events/user.${userId}`;
+  // Always use Next.js proxy for SSE connections
+  return `/api/events/user.${userId}`;
 }
 
 /**

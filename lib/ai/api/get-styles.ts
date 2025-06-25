@@ -29,7 +29,7 @@ const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 export const getStyles = async () => {
     // Check cache first
     if (stylesCache && Date.now() < cacheExpiry) {
-      console.log('🎨 Using cached styles, count:', stylesCache.items?.length || 0);
+  
       return stylesCache;
     }
 
@@ -38,7 +38,7 @@ export const getStyles = async () => {
       const token = config.token;
       const url = config.url;
       
-      console.log('🎨 Fetching styles from API...');
+  
       const response = await fetch(`${url}/api/v1/style?order_by=name&order=descendent&limit=100`, {
         method: "GET",
         headers: {
@@ -74,12 +74,7 @@ export const getStyles = async () => {
       stylesCache = result;
       cacheExpiry = Date.now() + CACHE_DURATION;
       
-      console.log('🎨 ✅ Fetched styles successfully, count:', result.items?.length || 0);
-      
       // Log some example styles for debugging
-      if (result.items && result.items.length > 0) {
-        console.log('🎨 📋 Sample styles:', result.items.slice(0, 5).map(s => `${s.name} (${s.title || 'no title'})`).join(', '));
-      }
       
       return result;
 
@@ -96,5 +91,5 @@ export const getStyles = async () => {
 export const clearStylesCache = () => {
   stylesCache = null;
   cacheExpiry = 0;
-  console.log('🎨 🗑️ Styles cache cleared');
+
 }

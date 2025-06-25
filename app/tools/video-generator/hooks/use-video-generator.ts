@@ -70,6 +70,10 @@ export function useVideoGenerator(): UseVideoGeneratorReturn {
   // AICODE-NOTE: Refs for SSE connection and polling cleanup
   const wsRef = useRef<EventSource | null>(null);
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // AICODE-NOTE: Flag to prevent duplicate processing between SSE and polling
+  const completedRef = useRef<string | null>(null);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const isGenerating = generationStatus.status === 'pending' || generationStatus.status === 'processing';
 
@@ -83,14 +87,35 @@ export function useVideoGenerator(): UseVideoGeneratorReturn {
       clearTimeout(pollingRef.current);
       pollingRef.current = null;
     }
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+    completedRef.current = null;
   }, []);
 
   // AICODE-NOTE: Simple file-based polling (like image generator)
   const startPolling = useCallback((fileId: string) => {
+    // AICODE-NOTE: Skip polling if already completed
+    if (completedRef.current) {
+      console.log('🔄 Skipping polling - video already completed');
+      return;
+    }
+    
     console.log('🔄 Starting video polling for file:', fileId);
     
     const poll = async () => {
       try {
+        // AICODE-NOTE: Skip if already completed during polling
+        if (completedRef.current) {
+          console.log('🔄 Stopping polling - video completed during polling');
+          if (pollingRef.current) {
+            clearTimeout(pollingRef.current);
+            pollingRef.current = null;
+          }
+          return;
+        }
+        
         // Use typed client instead of direct OpenAPI calls
         const fileData: IFileRead = await fileClient.getById(fileId);
         
@@ -229,6 +254,15 @@ export function useVideoGenerator(): UseVideoGeneratorReturn {
 
   // AICODE-NOTE: Handle successful generation
   const handleGenerationSuccess = useCallback((videoUrl: string, fileId?: string) => {
+    // AICODE-NOTE: Prevent duplicate processing of the same video
+    if (completedRef.current === videoUrl) {
+      console.log('🎬 ⏭️ Video already processed, skipping duplicate:', videoUrl.substring(0, 50) + '...');
+      return;
+    }
+    
+    console.log('🎬 ✅ Processing video completion:', videoUrl.substring(0, 50) + '...');
+    completedRef.current = videoUrl;
+    
     cleanup();
     
     const newVideo: GeneratedVideo = {
@@ -285,7 +319,8 @@ export function useVideoGenerator(): UseVideoGeneratorReturn {
       
       // Use fileId if available, otherwise fall back to connectionId (projectId)
       const eventId = fileId || connectionId;
-      const sseUrl = `${config.url}/api/v1/events/file.${eventId}`;
+      // Use Next.js SSE proxy instead of direct backend connection
+      const sseUrl = `/api/events/file.${eventId}`;
       
       console.log('🎬 SSE URL constructed:', sseUrl);
       
@@ -351,10 +386,17 @@ export function useVideoGenerator(): UseVideoGeneratorReturn {
       };
 
       // Fallback timeout (60s for video - longer than image)
-      setTimeout(() => {
-        if (eventSource.readyState !== EventSource.OPEN) {
+      timeoutRef.current = setTimeout(() => {
+        if (eventSource.readyState !== EventSource.OPEN && !completedRef.current) {
           console.log('🎬 SSE connection timeout, falling back to polling');
+          eventSource.close();
+          setConnectionStatus('disconnected');
+          setIsConnected(false);
           startPolling(connectionId);
+        } else if (completedRef.current) {
+          console.log('🎬 SSE timeout but video already completed, not starting polling');
+        } else {
+          console.log('🎬 SSE connected successfully within timeout');
         }
       }, 60000);
 
@@ -375,6 +417,9 @@ export function useVideoGenerator(): UseVideoGeneratorReturn {
     }
 
     try {
+      // AICODE-NOTE: Reset completion flag for new generation
+      completedRef.current = null;
+      
       setGenerationStatus({
         status: 'pending',
         progress: 0,

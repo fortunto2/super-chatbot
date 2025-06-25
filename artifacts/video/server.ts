@@ -1,5 +1,5 @@
 import { createDocumentHandler } from '@/lib/artifacts/server';
-import { generateVideo } from '@/lib/ai/api/generate-video';
+import { generateVideoHybrid } from '@/lib/ai/api/generate-video-hybrid';
 import { getStyles } from '@/lib/ai/api/get-styles';
 import type { MediaOption } from '@/lib/types/media-settings';
 import type { VideoModel } from '@/lib/config/superduperai';
@@ -80,17 +80,16 @@ export const videoDocumentHandler = createDocumentHandler<'video'>({
       }
 
       
-      // Start video generation
-      const result = await generateVideo(
-        style, 
-        resolution, 
-        prompt, 
-        model, 
-        shotSize, 
-        chatId,
-        negativePrompt,
-        frameRate,
+      // Start video generation with hybrid SSE approach
+      const result = await generateVideoHybrid(
+        prompt,
+        model,
+        style,
+        resolution,
+        shotSize,
         duration,
+        frameRate,
+        negativePrompt,
         sourceImageId,
         sourceImageUrl
       );
@@ -107,11 +106,14 @@ export const videoDocumentHandler = createDocumentHandler<'video'>({
         return draftContent;
       }
 
-      // Create content with file info and available options for WebSocket tracking
+      // Create content with hybrid result - video might already be completed!
+      const isCompleted = result.url && result.method;
+      
       draftContent = JSON.stringify({
-        status: 'pending',
+        status: isCompleted ? 'completed' : 'pending',
         fileId: result.fileId || result.projectId || chatId,
         requestId: result.requestId,
+        videoUrl: result.url, // Video URL if already completed
         prompt: prompt,
         negativePrompt: negativePrompt,
         settings: {
@@ -130,7 +132,9 @@ export const videoDocumentHandler = createDocumentHandler<'video'>({
           availableFrameRates: VIDEO_FRAME_RATES,
         },
         timestamp: Date.now(),
-        message: `Video generation started with economical settings (${resolution.label}, ${duration}s), connecting to WebSocket...`
+        message: isCompleted 
+          ? `Video generation completed via ${result.method}! (${resolution.label}, ${duration}s)`
+          : `Video generation started with economical settings (${resolution.label}, ${duration}s), connecting to SSE...`
       });
 
      
@@ -195,17 +199,16 @@ export const videoDocumentHandler = createDocumentHandler<'video'>({
         }];
       }
 
-      // Start new video generation
-      const result = await generateVideo(
-        style, 
-        resolution, 
-        prompt, 
-        model, 
-        shotSize, 
-        chatId,
-        negativePrompt,
-        frameRate,
+      // Start new video generation with hybrid SSE approach
+      const result = await generateVideoHybrid(
+        prompt,
+        model,
+        style,
+        resolution,
+        shotSize,
         duration,
+        frameRate,
+        negativePrompt,
         sourceImageId,
         sourceImageUrl
       );
@@ -219,11 +222,14 @@ export const videoDocumentHandler = createDocumentHandler<'video'>({
         });
       }
 
-      // Update content with new file info
+      // Update content with hybrid result - video might already be completed!
+      const isCompleted = result.url && result.method;
+      
       draftContent = JSON.stringify({
-        status: 'pending',
+        status: isCompleted ? 'completed' : 'pending',
         fileId: result.fileId || result.projectId || chatId,
         requestId: result.requestId,
+        videoUrl: result.url, // Video URL if already completed
         prompt: prompt,
         negativePrompt: negativePrompt,
         settings: {
@@ -241,7 +247,9 @@ export const videoDocumentHandler = createDocumentHandler<'video'>({
           availableFrameRates: VIDEO_FRAME_RATES,
         },
         timestamp: Date.now(),
-        message: `Updated video generation started with economical settings (${resolution.label}, ${duration}s), connecting to WebSocket...`
+        message: isCompleted 
+          ? `Updated video generation completed via ${result.method}! (${resolution.label}, ${duration}s)`
+          : `Updated video generation started with economical settings (${resolution.label}, ${duration}s), connecting to SSE...`
       });
 
     } catch (error: any) {

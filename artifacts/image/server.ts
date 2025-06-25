@@ -57,7 +57,7 @@ export const imageDocumentHandler = createDocumentHandler<'image'>({
       let availableModels: ImageModel[] = [];
       try {
         availableModels = await getAvailableImageModels();
-        console.log('🎨 ✅ Loaded dynamic image models:', availableModels.map(m => `${m.label || m.name} (${m.name})`));
+    
       } catch (error) {
         console.error('🎨 ❌ Failed to load dynamic models:', error);
         // Will use fallback models from getAvailableImageModels()
@@ -116,6 +116,48 @@ export const imageDocumentHandler = createDocumentHandler<'image'>({
         timestamp: Date.now(),
         message: 'Image generation started, connecting to WebSocket...'
       });
+
+      // FALLBACK: Set up immediate polling check for artifacts
+      // Since artifacts don't use hooks, we need server-side polling
+      const fileId = result.projectId;
+      if (fileId) {
+        // Start async polling without blocking the response
+        setTimeout(async () => {
+          
+          try {
+            // Import ProjectService to check project status
+            const { ProjectService } = await import('@/lib/api/services/ProjectService');
+            const project = await ProjectService.projectGetById({ id: fileId });
+            
+            console.log('🎨 ⏰ Artifact polling result:', {
+              id: project.id,
+              dataCount: project.data?.length || 0,
+            });
+            
+            // Look for completed image data
+            const imageData = project.data?.find((data: any) => {
+              if (data.value && typeof data.value === 'object') {
+                const value = data.value as Record<string, any>;
+                const hasUrl = !!value.url;
+                const isImage = value.url?.match(/\.(jpg|jpeg|png|webp|gif|bmp|svg)$/i);
+                return hasUrl && isImage;
+              }
+              return false;
+            });
+            
+            if (imageData?.value && typeof imageData.value === 'object') {
+              const imageUrl = (imageData.value as Record<string, any>).url as string;
+              console.log('🎨 ⏰ ✅ Image found via artifact polling:', imageUrl);
+              
+              // For artifacts, we can't easily update the document from server-side
+              // The client SSE will handle this, or manual refresh will show the result
+            }
+            
+          } catch (error) {
+            console.error('🎨 ⏰ ❌ Artifact polling error:', error);
+          }
+        }, 30000); // 30 second delay
+      }
 
      
 

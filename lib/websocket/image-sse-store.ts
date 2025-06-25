@@ -1,4 +1,4 @@
-import { getSuperduperAIConfig } from '@/lib/config/superduperai';
+// SSE store for managing image generation events through Next.js proxy
 
 // AICODE-NOTE: Message interface compatible with existing WebSocket implementation
 export interface ImageSSEMessage {
@@ -257,26 +257,29 @@ class ImageSSEStore {
 
   // AICODE-NOTE: Initialize SSE connection using EventSource
   initConnection(url: string, handlers: ImageEventHandler[]) {
-    // Extract file ID from URL for tracking (URL format: /api/v1/events/file.{fileId})
+    // Extract ID from URL for tracking (supports both file.{fileId} and project.{projectId})
     const fileIdMatch = url.match(/file\.([^/]+)/);
-    const fileId = fileIdMatch ? fileIdMatch[1] : null;
+    const projectIdMatch = url.match(/project\.([^/]+)/);
     
-    if (!fileId) {
-      console.error('❌ Cannot extract file ID from SSE URL:', url);
+    const fileId = fileIdMatch ? fileIdMatch[1] : null;
+    const projectId = projectIdMatch ? projectIdMatch[1] : null;
+    const trackingId = fileId || projectId;
+    
+    if (!trackingId) {
+      console.error('❌ Cannot extract file/project ID from SSE URL:', url);
       return;
     }
 
-    console.log('🔌 Initializing SSE connection for file:', fileId);
+    console.log('🔌 Initializing SSE connection for ID:', trackingId, fileId ? '(file)' : '(project)');
     console.log('🔌 SSE URL:', url);
     
-    // Track current file
-    this.currentProjectId = fileId;
-    this.activeProjects.add(fileId);
+    // Track current ID
+    this.currentProjectId = trackingId;
+    this.activeProjects.add(trackingId);
     
-         // Convert WebSocket URL format to SSE format
-     const config = getSuperduperAIConfig();
-     const channel = `file.${fileId}`;
-     const sseUrl = `${config.url}/api/v1/events/${channel}`;
+    // Use Next.js SSE proxy instead of direct backend connection
+    const channel = fileId ? `file.${fileId}` : `project.${projectId}`;
+    const sseUrl = `/api/events/${channel}`;
     
     console.log('🔌 SSE Channel:', channel);
     console.log('🔌 Final SSE URL:', sseUrl);
@@ -284,8 +287,8 @@ class ImageSSEStore {
     // Store current channel
     this.currentChannel = channel;
     
-    // Add handlers for this file
-    this.addProjectHandlers(fileId, handlers);
+    // Add handlers for this ID
+    this.addProjectHandlers(trackingId, handlers);
     
     // Clear any existing connection timeout
     if (this.disconnectTimeout) {

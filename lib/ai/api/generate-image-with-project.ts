@@ -30,7 +30,7 @@ function generateProjectId(): string {
 
 // Validate style before sending to API
 function validateStyleForAPI(style: MediaOption): string {
-  console.log(`🎨 Validating style for API:`, { id: style.id, label: style.label });
+
   
   // AICODE-NOTE: Use flux_watercolor as it exists in DB (based on working payload example)
   console.log(`🔧 Using flux_watercolor style (confirmed working)`);
@@ -204,16 +204,6 @@ export const generateImageWithProject = async (
   const actualSeed = seed || Math.floor(Math.random() * 1000000000000);
   const styleId = validateStyleForAPI(style);
 
-  console.log(`🎨 Starting image generation with project:`, {
-    prompt: `${prompt.substring(0, 50)}...`,
-    model: model.name,
-    style: styleId,
-    resolution: `${resolution.width}x${resolution.height}`,
-    shotSize: shotSize.label,
-    seed: actualSeed,
-    requestId
-  });
-
   try {
     // Step 1: Create project to get project_id
     const projectId = await createProject(prompt);
@@ -232,10 +222,10 @@ export const generateImageWithProject = async (
       style_name: styleId, // Move style_name outside config
       config: {
         prompt: prompt,
-        shot_size: shotSize.label, // Use label instead of id
+        shot_size: shotSize.id, // FIXED: Use id instead of label for snake_case format
         style_name: styleId, // Keep for backward compatibility
         seed: String(actualSeed), // Convert to string
-        aspecRatio: resolution.aspectRatio || "16:9", // Add aspecRatio (typo in API)
+        aspect_ratio: resolution.aspectRatio || "16:9", // FIXED: Use correct aspect_ratio parameter name
         batch_size: 3, // Use batch_size 3 like in working example
         entity_ids: [],
         generation_config_name: model.name,

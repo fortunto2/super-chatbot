@@ -110,8 +110,8 @@ export function useImageGenerator(): UseImageGeneratorReturn {
 
   // AICODE-NOTE: SSE connection for real-time updates (replacing WebSocket)
   const connectSSE = useCallback(async (fileId: string) => {
-    const config = await getClientSuperduperAIConfig();
-    const sseUrl = `${config.url}/api/v1/events/file.${fileId}`;
+    // Use Next.js SSE proxy instead of direct backend connection
+    const sseUrl = `/api/events/file.${fileId}`;
     
     setConnectionStatus('connecting');
     setIsConnected(false);

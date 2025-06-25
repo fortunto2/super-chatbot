@@ -6,6 +6,33 @@
 import axios from 'axios';
 import type { AxiosError, AxiosRequestConfig, AxiosResponse, AxiosInstance } from 'axios';
 
+// AICODE: Universal FormData support for both browser and Node.js environments
+// Use native FormData in browser, lazy load form-data for Node.js
+let FormDataClass: any = null;
+
+const getFormDataClass = () => {
+    if (FormDataClass) return FormDataClass;
+    
+    if (typeof window !== 'undefined') {
+        // Browser environment - use native FormData
+        FormDataClass = window.FormData;
+    } else {
+        // Node.js environment - use native FormData (available in Node.js 18+) or form-data package
+        if (typeof globalThis.FormData !== 'undefined') {
+            FormDataClass = globalThis.FormData;
+        } else {
+            // Fallback to form-data package for older Node.js versions
+            try {
+                FormDataClass = eval('require')('form-data');
+            } catch (e) {
+                throw new Error('FormData not available. Please upgrade to Node.js 18+ or install form-data package');
+            }
+        }
+    }
+    
+    return FormDataClass;
+};
+
 import { ApiError } from './ApiError';
 import type { ApiRequestOptions } from './ApiRequestOptions';
 import type { ApiResult } from './ApiResult';
@@ -38,8 +65,11 @@ export const isBlob = (value: any): value is Blob => {
     );
 };
 
-export const isFormData = (value: any): value is FormData => {
-    return value instanceof FormData;
+export const isFormData = (value: any): boolean => {
+    // AICODE: Check for both browser FormData and Node.js form-data
+    const FormData = getFormDataClass();
+    return value instanceof FormData || 
+           (typeof window === 'undefined' && value && typeof value.append === 'function');
 };
 
 export const isSuccess = (status: number): boolean => {
@@ -108,8 +138,9 @@ const getUrl = (config: OpenAPIConfig, options: ApiRequestOptions): string => {
     return url;
 };
 
-export const getFormData = (options: ApiRequestOptions): FormData | undefined => {
+export const getFormData = (options: ApiRequestOptions): any => {
     if (options.formData) {
+        const FormData = getFormDataClass();
         const formData = new FormData();
 
         const process = (key: string, value: any) => {
@@ -144,11 +175,12 @@ export const resolve = async <T>(options: ApiRequestOptions, resolver?: T | Reso
     return resolver;
 };
 
-export const getHeaders = async (config: OpenAPIConfig, options: ApiRequestOptions, formData?: FormData): Promise<Record<string, string>> => {
+export const getHeaders = async (config: OpenAPIConfig, options: ApiRequestOptions, formData?: any): Promise<Record<string, string>> => {
     const token = await resolve(options, config.TOKEN);
     const username = await resolve(options, config.USERNAME);
     const password = await resolve(options, config.PASSWORD);
     const additionalHeaders = await resolve(options, config.HEADERS);
+    // AICODE: Support headers from Node.js form-data package (has getHeaders method)
     const formHeaders = typeof formData?.getHeaders === 'function' && formData?.getHeaders() || {}
 
     const headers = Object.entries({
@@ -199,7 +231,7 @@ export const sendRequest = async <T>(
     options: ApiRequestOptions,
     url: string,
     body: any,
-    formData: FormData | undefined,
+    formData: any,
     headers: Record<string, string>,
     onCancel: OnCancel,
     axiosClient: AxiosInstance,
