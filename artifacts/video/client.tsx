@@ -4,9 +4,89 @@ import { VideoEditor } from '@/components/video-editor';
 import { toast } from 'sonner';
 import { memo, useMemo, useEffect } from 'react';
 import { useArtifactSSE } from '@/hooks/use-artifact-sse';
+import { generateUUID } from '@/lib/utils';
 
 // Import console helpers for debugging (auto-exposes in browser)
 import '@/lib/utils/console-helpers';
+
+// Function to save video to chat history
+const saveVideoToChat = async (
+  chatId: string,
+  videoUrl: string,
+  prompt: string,
+  setMessages: any,
+  thumbnailUrl?: string
+) => {
+  try {
+    // Check for duplicates
+    let videoExists = false;
+    setMessages((prevMessages: any[]) => {
+      videoExists = prevMessages.some((message) =>
+        message.experimental_attachments?.some(
+          (attachment: any) => attachment.url === videoUrl,
+        ),
+      );
+      return prevMessages;
+    });
+
+    if (videoExists) {
+      console.log('🎬 Video already exists in chat, skipping duplicate save');
+      return;
+    }
+
+    const videoAttachment = {
+      name: prompt.length > 50 ? `${prompt.substring(0, 50)}...` : prompt,
+      url: videoUrl,
+      contentType: 'video/mp4',
+      thumbnailUrl: thumbnailUrl, // Add thumbnail for preview
+    };
+
+    const videoMessage = {
+      id: generateUUID(),
+      role: 'assistant' as const,
+      content: `Generated video: "${prompt}"`,
+      parts: [
+        {
+          type: 'text' as const,
+          text: `Generated video: "${prompt}"`,
+        },
+      ],
+      experimental_attachments: [videoAttachment],
+      createdAt: new Date(),
+    };
+
+    setMessages((prevMessages: any[]) => [...prevMessages, videoMessage]);
+    console.log('🎬 ✅ Video added to chat history!');
+
+    // Save to database
+    try {
+      const response = await fetch('/api/save-message', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chatId,
+          message: {
+            id: videoMessage.id,
+            role: videoMessage.role,
+            parts: videoMessage.parts,
+            attachments: videoMessage.experimental_attachments,
+            createdAt: videoMessage.createdAt,
+          },
+        }),
+      });
+
+      if (response.ok) {
+        console.log('🎬 ✅ Video saved to database!');
+      } else {
+        console.warn('🎬 ⚠️ Failed to save to database, but video is in chat locally');
+      }
+    } catch (dbError) {
+      console.warn('🎬 ⚠️ Database save failed:', dbError);
+    }
+  } catch (error) {
+    console.error('🎬 ❌ Failed to save video to chat:', error);
+  }
+};
 
 // Wrapper component that handles the artifact content for VideoEditor
 const VideoArtifactWrapper = memo(function VideoArtifactWrapper(props: any) {
@@ -75,6 +155,20 @@ const VideoArtifactWrapper = memo(function VideoArtifactWrapper(props: any) {
               status: 'idle' as const
             };
           });
+        }
+
+        // Auto-save video to chat history if we have required data
+        if (otherProps.setMessages && otherProps.chatId && parsedContent?.prompt) {
+          console.log('🎬 Video completed via SSE, auto-saving to chat...');
+          setTimeout(() => {
+            saveVideoToChat(
+              otherProps.chatId,
+              videoUrl,
+              parsedContent.prompt,
+              otherProps.setMessages,
+              thumbnailUrl
+            );
+          }, 500);
         }
       }
     }] : [],

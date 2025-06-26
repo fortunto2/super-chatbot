@@ -70,23 +70,32 @@ export const useChatVideoSSE = ({
         return;
       }
 
-      // Only handle completed videos that have URL
-      if (eventData.type === 'file' && eventData.object?.url) {
-        const videoUrl = eventData.object.url;
-        const requestId = eventData.requestId;
+              // Only handle completed videos that have URL
+        if (eventData.type === 'file' && eventData.object?.url) {
+          const videoUrl = eventData.object.url;
+          const thumbnailUrl = (eventData.object as any)?.thumbnail_url;
+          const requestId = eventData.requestId;
 
-        // Check if it's a video file
-        if (videoUrl.match(/\.(mp4|mov|webm|avi|mkv)$/i) || 
-            eventData.object.contentType?.startsWith('video/')) {
+          // Check if it's a video file
+          if (videoUrl.match(/\.(mp4|mov|webm|avi|mkv)$/i) || 
+              eventData.object.contentType?.startsWith('video/')) {
 
-          console.log('🎬 Chat SSE: Received video completion for project:', targetProjectId, 'URL:', videoUrl);
-
-          // Store the last video URL for debugging and try direct artifact update
-          if (typeof window !== 'undefined') {
-            const chatSSEInstance = (window as any).chatSSEInstance;
-            if (chatSSEInstance) {
-              chatSSEInstance.lastVideoUrl = videoUrl;
+            console.log('🎬 Chat SSE: Received video completion for project:', targetProjectId, 'URL:', videoUrl);
+            if (thumbnailUrl) {
+              console.log('🎬 Chat SSE: Video thumbnail available:', thumbnailUrl);
             }
+
+                      // Store the last video URL for debugging and try direct artifact update
+            if (typeof window !== 'undefined') {
+              const chatSSEInstance = (window as any).chatSSEInstance;
+              if (chatSSEInstance) {
+                chatSSEInstance.lastVideoUrl = videoUrl;
+                chatSSEInstance.lastThumbnailUrl = thumbnailUrl;
+                console.log('🎬 💾 Stored last video URL for debugging:', videoUrl);
+                if (thumbnailUrl) {
+                  console.log('🎬 💾 Stored last thumbnail URL for debugging:', thumbnailUrl);
+                }
+              }
 
             // Try direct artifact update immediately
             const artifactInstance = (window as any).artifactInstance;
@@ -208,6 +217,47 @@ export const useChatVideoSSE = ({
                 if (messageToSave) {
                   saveMessageToDatabase(chatId, messageToSave);
                 }
+              }
+
+              // Auto-save video to chat as separate attachment message
+              if (!foundArtifact) {
+                console.log('🎬 Chat SSE: No artifact found, creating new video message in chat');
+                
+                // Extract prompt from SSE message using the actual structure
+                const prompt = (eventData.object as any)?.video_generation?.prompt || 
+                             (eventData.object as any)?.prompt || 
+                             (eventData as any)?.video_generation?.prompt || 
+                             'Generated video';
+
+                // Create video attachment message
+                const videoAttachment = {
+                  name: prompt.length > 50 ? `${prompt.substring(0, 50)}...` : prompt,
+                  url: videoUrl,
+                  contentType: 'video/mp4',
+                  thumbnailUrl: thumbnailUrl,
+                };
+
+                const newVideoMessage = {
+                  id: `video-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                  role: 'assistant' as const,
+                  content: `Generated video: "${prompt}"`,
+                  parts: [
+                    {
+                      type: 'text' as const,
+                      text: `Generated video: "${prompt}"`
+                    }
+                  ],
+                  experimental_attachments: [videoAttachment],
+                  createdAt: new Date(),
+                };
+
+                updatedMessages.push(newVideoMessage);
+                console.log('🎬 Chat SSE: Added new video message to chat history');
+
+                // Save to database
+                setTimeout(() => {
+                  saveMessageToDatabase(chatId, newVideoMessage);
+                }, 100);
               }
               
               return updatedMessages;
