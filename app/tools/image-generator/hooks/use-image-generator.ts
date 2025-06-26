@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
+import { saveImage, getStoredImages, deleteStoredImage, clearStoredImages, type StoredImage } from '@/lib/utils/local-storage';
 // import { generateImage } from '@/lib/ai/api/generate-image'; // AICODE-NOTE: Removed direct import - using API endpoint instead
 import { getImageGenerationConfig } from '@/lib/config/media-settings-factory';
 import { getClientSuperduperAIConfig, configureClientOpenAPI } from '@/lib/config/superduperai';
@@ -85,6 +86,22 @@ export function useImageGenerator(): UseImageGeneratorReturn {
   
   const [currentGeneration, setCurrentGeneration] = useState<GeneratedImage | null>(null);
   const [generatedImages, setGeneratedImages] = useState<GeneratedImage[]>([]);
+  
+  // AICODE-NOTE: Load stored images on component mount
+  useEffect(() => {
+    const storedImages = getStoredImages();
+    const convertedImages: GeneratedImage[] = storedImages.map(stored => ({
+      id: stored.id,
+      url: stored.url,
+      prompt: stored.prompt,
+      timestamp: stored.timestamp,
+      projectId: stored.projectId,
+      requestId: stored.requestId,
+      settings: stored.settings
+    }));
+    setGeneratedImages(convertedImages);
+    console.log('🖼️ 📂 Loaded', convertedImages.length, 'stored images from localStorage');
+  }, []);
   
   // AICODE-NOTE: Connection state for SSE  
   const [isConnected, setIsConnected] = useState(false);
@@ -359,10 +376,13 @@ export function useImageGenerator(): UseImageGeneratorReturn {
     
     cleanup();
     
+    // Get current generation settings for proper metadata
+    const currentSettings = generationStatus;
+    
     const newImage: GeneratedImage = {
       id: `img_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       url: imageUrl,
-      prompt: 'Generated image',
+      prompt: currentSettings.message?.replace('Generating: ', '') || 'Generated image',
       timestamp: Date.now(),
       projectId,
       settings: {
@@ -373,6 +393,24 @@ export function useImageGenerator(): UseImageGeneratorReturn {
       }
     };
 
+    // AICODE-NOTE: Save to localStorage
+    const storedImage: StoredImage = {
+      id: newImage.id,
+      url: newImage.url,
+      prompt: newImage.prompt,
+      timestamp: newImage.timestamp,
+      projectId: newImage.projectId,
+      requestId: newImage.requestId,
+      settings: newImage.settings
+    };
+    
+    try {
+      saveImage(storedImage);
+      console.log('🖼️ 💾 Image saved to localStorage');
+    } catch (error) {
+      console.warn('🖼️ ⚠️ Failed to save image to localStorage:', error);
+    }
+
     setCurrentGeneration(newImage);
     setGeneratedImages(prev => [newImage, ...prev]);
     
@@ -382,7 +420,7 @@ export function useImageGenerator(): UseImageGeneratorReturn {
     });
 
     toast.success('Image generated successfully!');
-  }, [cleanup]);
+  }, [cleanup, generationStatus]);
 
   // AICODE-NOTE: Handle generation error
   const handleGenerationError = useCallback((error: string) => {
@@ -484,6 +522,14 @@ export function useImageGenerator(): UseImageGeneratorReturn {
   const deleteImage = useCallback((imageId: string) => {
     setGeneratedImages(prev => prev.filter(img => img.id !== imageId));
     
+    // Delete from localStorage
+    try {
+      deleteStoredImage(imageId);
+      console.log('🖼️ 🗑️ Image deleted from localStorage');
+    } catch (error) {
+      console.warn('🖼️ ⚠️ Failed to delete image from localStorage:', error);
+    }
+    
     // Clear current generation if it matches
     if (currentGeneration?.id === imageId) {
       clearCurrentGeneration();
@@ -496,6 +542,15 @@ export function useImageGenerator(): UseImageGeneratorReturn {
   const clearAllImages = useCallback(() => {
     setGeneratedImages([]);
     clearCurrentGeneration();
+    
+    // Clear from localStorage
+    try {
+      clearStoredImages();
+      console.log('🖼️ 🗑️ All images cleared from localStorage');
+    } catch (error) {
+      console.warn('🖼️ ⚠️ Failed to clear images from localStorage:', error);
+    }
+    
     toast.success('All images cleared');
   }, [clearCurrentGeneration]);
 
