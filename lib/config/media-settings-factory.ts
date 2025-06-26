@@ -48,17 +48,14 @@ export async function getImageGenerationConfig(): Promise<ImageGenerationConfig>
       const data = await response.json();
       imageModels = data?.data?.imageModels || [];
     } else {
-      // Server-side: direct function call
-      configureSuperduperAI();
+      // Server-side: direct function call   configureSuperduperAI();
       imageModels = await getAvailableImageModels();
     }
   } catch (error) {
     console.error('Failed to load image models:', error);
     imageModels = [];
   }
-  console.log('🎬 Image models:', imageModels);
   const adaptedImageModels = imageModels.map(adaptModelForMediaSettings);
-  console.log('🎬 Image models:', adaptedImageModels);
   
   // Get the default model using priority system
   let defaultModel: IGenerationConfigRead | undefined;

@@ -93,6 +93,8 @@ export function useImageGenerator(): UseImageGeneratorReturn {
   // AICODE-NOTE: Refs for SSE connection and polling cleanup
   const wsRef = useRef<EventSource | null>(null);
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
+  // AICODE-NOTE: Ref to track completed images and prevent duplicates
+  const completedRef = useRef<string | null>(null);
 
   const isGenerating = generationStatus.status === 'pending' || generationStatus.status === 'processing';
 
@@ -106,6 +108,7 @@ export function useImageGenerator(): UseImageGeneratorReturn {
       clearTimeout(pollingRef.current);
       pollingRef.current = null;
     }
+    completedRef.current = null;
   }, []);
 
   // AICODE-NOTE: SSE connection for real-time updates (replacing WebSocket)
@@ -139,6 +142,7 @@ export function useImageGenerator(): UseImageGeneratorReturn {
           } else if (message.type === 'render_result') {
             const imageUrl = message.object?.url || message.object?.file_url;
             if (imageUrl) {
+              console.log('📡 🖼️ SSE render_result: calling handleGenerationSuccess');
               handleGenerationSuccess(imageUrl, message.object?.projectId);
             } else {
               handleGenerationError('No image URL in result');
@@ -148,6 +152,7 @@ export function useImageGenerator(): UseImageGeneratorReturn {
             
             if (imageUrl.match(/\.(jpg|jpeg|png|webp|gif|bmp|svg)$/i) || 
                 message.object.contentType?.startsWith('image/')) {
+              console.log('📡 🖼️ SSE file event: calling handleGenerationSuccess');
               handleGenerationSuccess(imageUrl, message.object.projectId);
             }
           } else if (message.type === 'task_status' && message.object?.status === 'COMPLETED') {
@@ -169,7 +174,7 @@ export function useImageGenerator(): UseImageGeneratorReturn {
       };
 
       setTimeout(() => {
-        if (eventSource.readyState !== EventSource.OPEN) {
+        if (eventSource.readyState !== EventSource.OPEN && !completedRef.current) {
           startPolling(fileId);
         }
       }, 10000);
@@ -184,10 +189,26 @@ export function useImageGenerator(): UseImageGeneratorReturn {
   }, []);
 
   const startPolling = useCallback((fileId: string) => {
+    // AICODE-NOTE: Skip polling if already completed
+    if (completedRef.current) {
+      console.log('🔄 Skipping polling - image already completed');
+      return;
+    }
+    
     console.log('🔄 Starting polling for file:', fileId);
     
     const poll = async () => {
       try {
+        // AICODE-NOTE: Skip if already completed during polling
+        if (completedRef.current) {
+          console.log('🔄 Stopping polling - image completed during polling');
+          if (pollingRef.current) {
+            clearTimeout(pollingRef.current);
+            pollingRef.current = null;
+          }
+          return;
+        }
+        
         // Use typed client instead of direct OpenAPI calls
         const fileData: IFileRead = await fileClient.getById(fileId);
         
@@ -196,6 +217,7 @@ export function useImageGenerator(): UseImageGeneratorReturn {
         // Check if file has URL (completed)
         if (fileData.url) {
           console.log('✅ Image generation completed with URL:', fileData.url);
+          console.log('🔄 📋 About to call handleGenerationSuccess from polling');
           const projectId = fileData.tasks?.[0]?.project_id || undefined;
           handleGenerationSuccess(fileData.url, projectId);
           if (pollingRef.current) {
@@ -322,12 +344,25 @@ export function useImageGenerator(): UseImageGeneratorReturn {
 
   // AICODE-NOTE: Handle successful generation
   const handleGenerationSuccess = useCallback((imageUrl: string, projectId?: string) => {
+    console.log('🖼️ 🔍 handleGenerationSuccess called with URL:', imageUrl.substring(0, 50) + '...');
+    console.log('🖼️ 🔍 Current completedRef value:', completedRef.current?.substring(0, 50) + '...' || 'null');
+    
+    // AICODE-NOTE: Prevent duplicate processing of the same image
+    if (completedRef.current === imageUrl) {
+      console.log('🖼️ ⏭️ Image already processed, skipping duplicate:', imageUrl.substring(0, 50) + '...');
+      return;
+    }
+    
+    console.log('🖼️ ✅ Processing image completion:', imageUrl.substring(0, 50) + '...');
+    completedRef.current = imageUrl;
+    console.log('🖼️ 🔍 Set completedRef to:', completedRef.current.substring(0, 50) + '...');
+    
     cleanup();
     
     const newImage: GeneratedImage = {
       id: `img_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       url: imageUrl,
-      prompt: generationStatus.message || 'Generated image',
+      prompt: 'Generated image',
       timestamp: Date.now(),
       projectId,
       settings: {
@@ -347,7 +382,7 @@ export function useImageGenerator(): UseImageGeneratorReturn {
     });
 
     toast.success('Image generated successfully!');
-  }, [generationStatus.message, cleanup]);
+  }, [cleanup]);
 
   // AICODE-NOTE: Handle generation error
   const handleGenerationError = useCallback((error: string) => {
@@ -376,6 +411,9 @@ export function useImageGenerator(): UseImageGeneratorReturn {
       });
 
       setCurrentGeneration(null);
+      
+      // AICODE-NOTE: Reset completion flag for new generation
+      completedRef.current = null;
 
       // Load configuration to get proper objects for API call
       const config = await getImageGenerationConfig();
@@ -438,6 +476,8 @@ export function useImageGenerator(): UseImageGeneratorReturn {
     setCurrentGeneration(null);
     setGenerationStatus({ status: 'idle' });
     cleanup();
+    // AICODE-NOTE: Reset completion flag when clearing
+    completedRef.current = null;
   }, [cleanup]);
 
   // AICODE-NOTE: Delete image from history
