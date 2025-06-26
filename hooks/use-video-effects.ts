@@ -44,12 +44,13 @@ const checkVideoExistsInChat = (
   return videoExists;
 };
 
-// AICODE-NOTE: Function to save generated video as a permanent chat message with attachment
+// Function to save generated video as a permanent chat message with attachment
 const saveVideoToChat = async (
   chatId: string,
   videoUrl: string,
   prompt: string,
   setMessages?: UseChatHelpers['setMessages'],
+  thumbnailUrl?: string,
 ) => {
   if (!setMessages || !chatId) {
     console.log(
@@ -77,6 +78,7 @@ const saveVideoToChat = async (
       name: prompt.length > 50 ? `${prompt.substring(0, 50)}...` : prompt, // Use prompt as name
       url: videoUrl,
       contentType: 'video/mp4',
+      thumbnailUrl: thumbnailUrl, // Add thumbnail for preview
     };
 
     // Create message with video attachment and valid UUID

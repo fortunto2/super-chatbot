@@ -737,4 +737,80 @@ if (typeof window !== 'undefined') {
        console.error('❌ Error adding image to chat:', error);
      }
    };
+
+   // Helper function to add video to chat history
+   (window as any).addVideoToChat = 
+   (videoUrl?: string, thumbnailUrl?: string) => {
+     console.log('🎬 Adding video to chat history...');
+     
+     const chatSSEInstance = (window as any).chatSSEInstance || (window as any).chatWebSocketInstance;
+     let effectiveVideoUrl = videoUrl || chatSSEInstance?.lastVideoUrl;
+     
+     // If no URL provided, try to get from current artifact
+     if (!effectiveVideoUrl) {
+       const artifactInstance = (window as any).artifactInstance;
+       if (artifactInstance?.artifact?.content) {
+         try {
+           const content = JSON.parse(artifactInstance.artifact.content);
+           if (content.videoUrl) {
+             effectiveVideoUrl = content.videoUrl;
+             thumbnailUrl = thumbnailUrl || content.thumbnailUrl;
+             console.log('💡 Using video URL from current artifact:', effectiveVideoUrl.substring(0, 50) + '...');
+           }
+         } catch (error) {
+           // Silent fail
+         }
+       }
+     }
+     
+     if (!effectiveVideoUrl) {
+       console.log('❌ No video URL found');
+       console.log('💡 Usage: addVideoToChat("https://your-video-url.com/video.mp4")');
+       console.log('💡 Or: generate a video first, then call addVideoToChat()');
+       console.log('💡 Or: copy URL from console logs and call addVideoToChat("URL")');
+       return;
+     }
+     
+     const setMessages = chatSSEInstance?.setMessages;
+     
+     if (!setMessages) {
+       console.log('❌ No setMessages function available');
+       console.log('💡 Make sure you are in an active chat');
+       return;
+     }
+     
+     try {
+       const videoAttachment = {
+         name: `generated-video-${Date.now()}.mp4`,
+         url: effectiveVideoUrl,
+         contentType: 'video/mp4',
+         thumbnailUrl: thumbnailUrl,
+       };
+
+       const newMessage = {
+         id: `video-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+         role: 'assistant' as const,
+         content: 'Generated video added to chat history',
+         parts: [
+           {
+             type: 'text' as const,
+             text: 'Generated video added to chat history'
+           }
+         ],
+         experimental_attachments: [videoAttachment],
+         createdAt: new Date(),
+       };
+
+       setMessages((prev: any[]) => [...prev, newMessage]);
+       
+       console.log('✅ Video added to chat history successfully!');
+       console.log('🔗 Video URL:', effectiveVideoUrl);
+       if (thumbnailUrl) {
+         console.log('🖼️ Thumbnail URL:', thumbnailUrl);
+       }
+       console.log('💡 Now you can see the video in chat even after closing the artifact');
+     } catch (error) {
+       console.error('❌ Error adding video to chat:', error);
+     }
+   };
  } 

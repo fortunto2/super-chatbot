@@ -12,7 +12,8 @@ const fetch = globalThis.fetch;
 // Configuration
 const SUPERDUPERAI_TOKEN = process.env.SUPERDUPERAI_TOKEN;
 const SUPERDUPERAI_URL = process.env.SUPERDUPERAI_URL || 'https://dev-editor.superduperai.co';
-const WS_BASE_URL = process.env.NEXT_PUBLIC_WS_URL || SUPERDUPERAI_URL;
+// SECURITY: Use server-side URL, not NEXT_PUBLIC_
+const WS_BASE_URL = SUPERDUPERAI_URL;
 
 console.log('🎨 Image Generation Debug Test');
 console.log('='.repeat(50));

@@ -8,7 +8,7 @@ import type { VideoModel } from '@/lib/config/superduperai';
 import { getStyles } from '../api/get-styles';
 import { findStyle } from './configure-image-generation';
 import { createVideoMediaSettings } from '@/lib/config/media-settings-factory';
-import { VIDEO_RESOLUTIONS, SHOT_SIZES, VIDEO_FRAME_RATES, DEFAULT_VIDEO_RESOLUTION, DEFAULT_VIDEO_DURATION } from '@/lib/config/video-constants';
+import { VIDEO_RESOLUTIONS, SHOT_SIZES, VIDEO_FRAME_RATES, DEFAULT_VIDEO_RESOLUTION, DEFAULT_VIDEO_DURATION, getModelCompatibleResolutions, getDefaultResolutionForModel } from '@/lib/config/video-constants';
 
 // AICODE-NOTE: Now using unified VideoModel type from superduperai.ts
 function convertToVideoModel(sdModel: VideoModel): VideoModel {
@@ -77,13 +77,13 @@ export const configureVideoGeneration = (params?: CreateVideoDocumentParams) => 
       console.log('🔧 No prompt provided, returning video configuration panel');
       const config: VideoGenerationConfig = {
         type: 'video-generation-settings',
-        availableResolutions: VIDEO_RESOLUTIONS,
+        availableResolutions: getModelCompatibleResolutions(defaultModel.name || defaultModel.id || ''),
         availableStyles: styles,
         availableShotSizes: SHOT_SIZES,
         availableModels: availableModels,
         availableFrameRates: VIDEO_FRAME_RATES,
         defaultSettings: {
-          resolution: defaultResolution,
+          resolution: getDefaultResolutionForModel(defaultModel.name || defaultModel.id || ''),
           style: defaultStyle,
           shotSize: defaultShotSize,
           model: defaultModel,
@@ -104,13 +104,13 @@ export const configureVideoGeneration = (params?: CreateVideoDocumentParams) => 
       console.log('🔧 ❌ createDocument not available, returning basic config');
       const config: VideoGenerationConfig = {
         type: 'video-generation-settings',
-        availableResolutions: VIDEO_RESOLUTIONS,
+        availableResolutions: getModelCompatibleResolutions(defaultModel.name || defaultModel.id || ''),
         availableStyles: styles,
         availableShotSizes: SHOT_SIZES,
         availableModels: availableModels,
         availableFrameRates: VIDEO_FRAME_RATES,
         defaultSettings: {
-          resolution: defaultResolution,
+          resolution: getDefaultResolutionForModel(defaultModel.name || defaultModel.id || ''),
           style: defaultStyle,
           shotSize: defaultShotSize,
           model: defaultModel,
@@ -124,10 +124,33 @@ export const configureVideoGeneration = (params?: CreateVideoDocumentParams) => 
     }
 
     try {
-      // Find the selected options or use defaults
-      const selectedResolution = resolution ? 
-        VIDEO_RESOLUTIONS.find(r => r.label === resolution) || defaultResolution : 
-        defaultResolution;
+      // Find the selected model first (for resolution compatibility check)
+      const selectedModel = model ? 
+        availableModels.find(m => m.label === model || m.id === model || (m as any).apiName === model) || defaultModel : 
+        defaultModel;
+
+      // Get model-compatible resolutions
+      const compatibleResolutions = getModelCompatibleResolutions(selectedModel.name || selectedModel.id || '');
+      
+      // Find the selected resolution, but ensure it's compatible with the model
+      let selectedResolution = defaultResolution;
+      if (resolution) {
+        const requestedResolution = VIDEO_RESOLUTIONS.find(r => r.label === resolution);
+        if (requestedResolution) {
+          // Check if requested resolution is compatible with the model
+          const isCompatible = compatibleResolutions.some(r => r.label === requestedResolution.label);
+          if (isCompatible) {
+            selectedResolution = requestedResolution;
+          } else {
+            // Use model-compatible default instead
+            selectedResolution = getDefaultResolutionForModel(selectedModel.name || selectedModel.id || '');
+            console.log(`🔧 ⚠️ Resolution ${resolution} not compatible with model ${selectedModel.name}, using ${selectedResolution.label} instead`);
+          }
+        }
+      } else {
+        // No resolution specified, use model-compatible default
+        selectedResolution = getDefaultResolutionForModel(selectedModel.name || selectedModel.id || '');
+      }
       
       let selectedStyle: MediaOption = defaultStyle;
       if (style) {
@@ -189,10 +212,6 @@ export const configureVideoGeneration = (params?: CreateVideoDocumentParams) => 
       const selectedShotSize = shotSize ? 
         SHOT_SIZES.find(s => s.label === shotSize || s.id === shotSize) || defaultShotSize : 
         defaultShotSize;
-      
-      const selectedModel = model ? 
-        availableModels.find(m => m.label === model || m.id === model || (m as any).apiName === model) || defaultModel : 
-        defaultModel;
 
       // AICODE-NOTE: Check if selected model is image-to-video based on actual type field from API
       const isImageToVideoModel = selectedModel.type === 'image_to_video';
@@ -234,9 +253,10 @@ export const configureVideoGeneration = (params?: CreateVideoDocumentParams) => 
       if (params?.createDocument) {
         console.log('🔧 ✅ CALLING CREATE DOCUMENT WITH KIND: video');
         try {
-          // Call createDocument if available - передаем параметры через title поле
+          // Call createDocument with readable title and embedded JSON params
+          const readableTitle = `Video: "${prompt}" (${selectedModel.label}, ${selectedResolution.label}, ${duration || DEFAULT_VIDEO_DURATION}s) ${JSON.stringify(videoParams)}`;
           const result = await params.createDocument.execute({
-            title: JSON.stringify(videoParams), // Возвращаем JSON для сервера
+            title: readableTitle,
             kind: 'video'
           });
           
@@ -255,10 +275,11 @@ export const configureVideoGeneration = (params?: CreateVideoDocumentParams) => 
 
       console.log('🔧 ❌ CREATE DOCUMENT NOT AVAILABLE, RETURNING FALLBACK');
       // Fallback to simple message
+      const readableTitle = `Video: "${prompt}" (${selectedModel.label}, ${selectedResolution.label}, ${duration || DEFAULT_VIDEO_DURATION}s) ${JSON.stringify(videoParams)}`;
       return {
         message: `I'll create a video with description: "${prompt}". However, artifact cannot be created - createDocument unavailable.`,
         parameters: {
-          title: JSON.stringify(videoParams), // Возвращаем JSON для сервера
+          title: readableTitle,
           kind: 'video'
         }
       };
@@ -269,13 +290,13 @@ export const configureVideoGeneration = (params?: CreateVideoDocumentParams) => 
         error: `Failed to create video document: ${error.message}`,
         fallbackConfig: {
           type: 'video-generation-settings',
-          availableResolutions: VIDEO_RESOLUTIONS,
+          availableResolutions: getModelCompatibleResolutions(defaultModel.name || defaultModel.id || ''),
           availableStyles: styles,
           availableShotSizes: SHOT_SIZES,
           availableModels: availableModels,
           availableFrameRates: VIDEO_FRAME_RATES,
           defaultSettings: {
-            resolution: defaultResolution,
+            resolution: getDefaultResolutionForModel(defaultModel.name || defaultModel.id || ''),
             style: defaultStyle,
             shotSize: defaultShotSize,
             model: defaultModel,

@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
+import { saveVideo, getStoredVideos, deleteStoredVideo, clearStoredVideos, type StoredVideo } from '@/lib/utils/local-storage';
 import { getVideoGenerationConfig } from '@/lib/config/media-settings-factory';
 import type { VideoGenerationFormData } from '../components/video-generator-form';
 import type { GenerationStatus } from '../../image-generator/components/generation-progress';
@@ -62,6 +63,22 @@ export function useVideoGenerator(): UseVideoGeneratorReturn {
   
   const [currentGeneration, setCurrentGeneration] = useState<GeneratedVideo | null>(null);
   const [generatedVideos, setGeneratedVideos] = useState<GeneratedVideo[]>([]);
+  
+  // AICODE-NOTE: Load stored videos on component mount
+  useEffect(() => {
+    const storedVideos = getStoredVideos();
+    const convertedVideos: GeneratedVideo[] = storedVideos.map(stored => ({
+      id: stored.id,
+      url: stored.url,
+      prompt: stored.prompt,
+      timestamp: stored.timestamp,
+      fileId: stored.fileId,
+      requestId: stored.requestId,
+      settings: stored.settings
+    }));
+    setGeneratedVideos(convertedVideos);
+    console.log('🎥 📂 Loaded', convertedVideos.length, 'stored videos from localStorage');
+  }, []);
   
   // AICODE-NOTE: Connection state for SSE  
   const [connectionStatus, setConnectionStatus] = useState<'disconnected' | 'connecting' | 'connected'>('disconnected');
@@ -268,7 +285,7 @@ export function useVideoGenerator(): UseVideoGeneratorReturn {
     const newVideo: GeneratedVideo = {
       id: `video_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       url: videoUrl,
-      prompt: generationStatus.message || 'Generated video',
+      prompt: generationStatus.message?.replace('Generating video: ', '') || 'Generated video',
       timestamp: Date.now(),
       fileId,
       settings: {
@@ -280,6 +297,24 @@ export function useVideoGenerator(): UseVideoGeneratorReturn {
         frameRate: 30,
       }
     };
+
+    // AICODE-NOTE: Save to localStorage
+    const storedVideo: StoredVideo = {
+      id: newVideo.id,
+      url: newVideo.url,
+      prompt: newVideo.prompt,
+      timestamp: newVideo.timestamp,
+      fileId: newVideo.fileId,
+      requestId: newVideo.requestId,
+      settings: newVideo.settings
+    };
+    
+    try {
+      saveVideo(storedVideo);
+      console.log('🎥 💾 Video saved to localStorage');
+    } catch (error) {
+      console.warn('🎥 ⚠️ Failed to save video to localStorage:', error);
+    }
 
     setCurrentGeneration(newVideo);
     setGeneratedVideos(prev => [newVideo, ...prev]);
@@ -309,12 +344,17 @@ export function useVideoGenerator(): UseVideoGeneratorReturn {
     console.log('🎬 Connecting SSE for video:', { connectionId, fileId });
     
     try {
-      // Force SuperDuperAI config (avoid localhost routing)
-      const baseUrl = process.env.NEXT_PUBLIC_SUPERDUPERAI_URL || 'https://dev-editor.superduperai.co';
+      // Get config from secure API endpoint
+      const configResponse = await fetch('/api/config/superduperai');
+      if (!configResponse.ok) {
+        throw new Error('Failed to get configuration');
+      }
+      const configData = await configResponse.json();
+      
       const config = {
-        url: baseUrl,
-        token: process.env.NEXT_PUBLIC_SUPERDUPERAI_TOKEN || '',
-        wsURL: baseUrl.replace('https://', 'wss://').replace('http://', 'ws://')
+        url: configData.url,
+        wsURL: configData.wsURL,
+        token: '', // SECURITY FIX: Never expose token on client-side
       };
       
       // Use fileId if available, otherwise fall back to connectionId (projectId)
@@ -499,6 +539,14 @@ export function useVideoGenerator(): UseVideoGeneratorReturn {
   const deleteVideo = useCallback((videoId: string) => {
     setGeneratedVideos(prev => prev.filter(video => video.id !== videoId));
     
+    // Delete from localStorage
+    try {
+      deleteStoredVideo(videoId);
+      console.log('🎥 🗑️ Video deleted from localStorage');
+    } catch (error) {
+      console.warn('🎥 ⚠️ Failed to delete video from localStorage:', error);
+    }
+    
     // Clear current generation if it matches
     if (currentGeneration?.id === videoId) {
       clearCurrentGeneration();
@@ -511,6 +559,15 @@ export function useVideoGenerator(): UseVideoGeneratorReturn {
   const clearAllVideos = useCallback(() => {
     setGeneratedVideos([]);
     clearCurrentGeneration();
+    
+    // Clear from localStorage
+    try {
+      clearStoredVideos();
+      console.log('🎥 🗑️ All videos cleared from localStorage');
+    } catch (error) {
+      console.warn('🎥 ⚠️ Failed to clear videos from localStorage:', error);
+    }
+    
     toast.success('All videos cleared');
   }, [clearCurrentGeneration]);
 

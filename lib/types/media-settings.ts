@@ -32,6 +32,7 @@ export interface ImageSettings {
   shotSize: MediaOption;
   model: AdaptedModel;
   seed?: number;
+  batchSize?: number;
 }
 
 export interface ImageGenerationConfig {

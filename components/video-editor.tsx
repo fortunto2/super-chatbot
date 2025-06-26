@@ -114,13 +114,13 @@ function VideoDisplay({
   onGenerateNew: () => void;
 }) {
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 px-4">
       <div className="flex items-center gap-2">
         <h3 className="text-lg font-semibold">Generated Video</h3>
         <button
           type="button"
           onClick={onCopyUrl}
-          className="p-1 hover:bg-gray-100 rounded"
+          className="p-1 hover:bg-gray-600 rounded"
           title="Copy video URL"
         >
           <CopyIcon size={16} />
@@ -143,16 +143,6 @@ function VideoDisplay({
           &ldquo;{prompt}&rdquo;
         </div>
       )}
-      
-      <div className="flex justify-center pt-4">
-        <Button
-          onClick={onGenerateNew}
-          variant="outline"
-          size="sm"
-        >
-          Generate New Video
-        </Button>
-      </div>
     </div>
   );
 }
@@ -197,6 +187,13 @@ export function VideoEditor({
     }
   }, [hasInitialized]);
 
+  // Update videoUrl when initialState changes (from SSE updates)
+  useEffect(() => {
+    if (initialState?.videoUrl && initialState.videoUrl !== videoUrl) {
+      setVideoUrl(initialState.videoUrl);
+    }
+  }, [initialState?.videoUrl, videoUrl]);
+
   // Temporary implementation - we'll implement proper video generation hooks later
   const status = isGenerating ? 'processing' : videoUrl ? 'completed' : 'pending';
   
@@ -208,7 +205,6 @@ export function VideoEditor({
 
   const handleGenerateNew = () => {
     // This will be implemented when we add the video generation panel
-    console.log('Generate new video');
   };
 
   // Get global WebSocket connection status

@@ -40,7 +40,8 @@ function createImagePayload(
   style: MediaOption,
   shotSize: MediaOption,
   projectId: string | null,
-  seed?: number
+  seed?: number,
+  batchSize?: number
 ) {
   const actualSeed = seed || Math.floor(Math.random() * 1000000000000);
   const styleId = validateStyleForAPI(style);
@@ -65,7 +66,7 @@ function createImagePayload(
       style_name: styleId, // Keep for backward compatibility
       seed: String(actualSeed), // Convert to string
       aspect_ratio: resolution.aspectRatio || "16:9", // FIXED: Use correct aspect_ratio parameter name
-      batch_size: 3, // Use batch_size 3 like in working example
+      batch_size: batchSize || 1, // Use user-specified batch size (1-3)
       entity_ids: [],
       generation_config_name: model.name,
       height: String(resolution.height), // Convert to string
@@ -85,7 +86,8 @@ export async function generateImage(
   style: MediaOption,
   shotSize: MediaOption,
   chatId: string,
-  seed?: number
+  seed?: number,
+  batchSize?: number
 ): Promise<ImageGenerationResult> {
   try {
     const config = getSuperduperAIConfig();
@@ -106,7 +108,7 @@ export async function generateImage(
 
     // Add randomness to prevent 409 conflicts
     const randomizedSeed = seed || Math.floor(Math.random() * 1000000000000);
-    const payload = createImagePayload(prompt, model, resolution, style, shotSize, null, randomizedSeed);
+    const payload = createImagePayload(prompt, model, resolution, style, shotSize, null, randomizedSeed, batchSize);
     
     console.log(`📦 Image generation payload:`, JSON.stringify(payload, null, 2));
 

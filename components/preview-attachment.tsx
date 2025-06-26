@@ -15,7 +15,7 @@ export const PreviewAttachment = ({
   const { name, url, contentType } = attachment;
   const { setArtifact } = useArtifact();
 
-  const handleImageClick = () => {
+  const handleAttachmentClick = () => {
     if (contentType?.startsWith('image')) {
       setArtifact((prev) => ({
         ...prev,
@@ -28,6 +28,19 @@ export const PreviewAttachment = ({
           projectId: chatId,
         }),
         title: name || 'Image',
+      }));
+    } else if (contentType?.startsWith('video')) {
+      setArtifact((prev) => ({
+        ...prev,
+        isVisible: true,
+        kind: 'video',
+        content: JSON.stringify({
+          status: 'completed',
+          videoUrl: url,
+          prompt: name || '',
+          projectId: chatId,
+        }),
+        title: name || 'Video',
       }));
     }
   };
@@ -44,8 +57,31 @@ export const PreviewAttachment = ({
               src={url}
               alt={name ?? 'An image attachment'}
               className="rounded-md size-full object-cover cursor-pointer"
-              onClick={handleImageClick}
+              onClick={handleAttachmentClick}
             />
+          ) : contentType.startsWith('video') ? (
+            <div
+              className="rounded-md size-full bg-black cursor-pointer flex items-center justify-center relative"
+              onClick={handleAttachmentClick}
+            >
+              {/* Use thumbnail if available (from attachment.thumbnailUrl) */}
+              {(attachment as any).thumbnailUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={(attachment as any).thumbnailUrl}
+                  alt={name ?? 'Video thumbnail'}
+                  className="rounded-md size-full object-cover"
+                />
+              ) : (
+                <span className="text-white text-lg">🎬</span>
+              )}
+              {/* Play button overlay */}
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="bg-black/50 rounded-full p-1">
+                  <span className="text-white text-xs">▶</span>
+                </div>
+              </div>
+            </div>
           ) : (
             <div className="" />
           )

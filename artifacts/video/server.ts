@@ -4,7 +4,7 @@ import { getStyles } from '@/lib/ai/api/get-styles';
 import type { MediaOption } from '@/lib/types/media-settings';
 import type { VideoModel } from '@/lib/config/superduperai';
 import { getAvailableVideoModels } from '@/lib/config/superduperai';
-import { VIDEO_RESOLUTIONS, SHOT_SIZES, VIDEO_FRAME_RATES, DEFAULT_VIDEO_RESOLUTION, DEFAULT_VIDEO_DURATION } from '@/lib/config/video-constants';
+import { VIDEO_RESOLUTIONS, SHOT_SIZES, VIDEO_FRAME_RATES, DEFAULT_VIDEO_RESOLUTION, DEFAULT_VIDEO_DURATION, getModelCompatibleResolutions, getDefaultResolutionForModel } from '@/lib/config/video-constants';
 import { GenerationTypeEnum } from '@/lib/api/models/GenerationTypeEnum';
 import { GenerationSourceEnum } from '@/lib/api/models/GenerationSourceEnum';
 
@@ -20,8 +20,20 @@ export const videoDocumentHandler = createDocumentHandler<'video'>({
     let draftContent = '';
 
     try {
-      // Parse the title to extract video generation parameters
-      const params = JSON.parse(title);
+      // Check if title starts with "Video:" (readable format) or is JSON
+      let params;
+      if (title.startsWith('Video:')) {
+        // Extract JSON from the end of readable title
+        const jsonMatch = title.match(/\{.*\}$/);
+        if (jsonMatch) {
+          params = JSON.parse(jsonMatch[0]);
+        } else {
+          throw new Error('No JSON parameters found in readable title');
+        }
+      } else {
+        // Fallback to old method of parsing entire title as JSON
+        params = JSON.parse(title);
+      }
      
       
       const {
@@ -37,14 +49,13 @@ export const videoDocumentHandler = createDocumentHandler<'video'>({
         sourceImageUrl
       } = params;
 
-      // AICODE-NOTE: Load dynamic models from SuperDuperAI API
+      // Load dynamic models from SuperDuperAI API
       let availableModels: VideoModel[] = [];
       try {
         const superDuperModels = await getAvailableVideoModels();
         availableModels = superDuperModels.map(convertToVideoModel);
-        console.log('🎬 ✅ Loaded dynamic video models:', availableModels.map(m => m.name));
       } catch (error) {
-        console.error('🎬 ❌ Failed to load dynamic models:', error);
+        console.error('Failed to load dynamic video models:', error);
         // Fallback to default LTX model
         availableModels = [{
           name: 'comfyui/ltx',
@@ -68,7 +79,7 @@ export const videoDocumentHandler = createDocumentHandler<'video'>({
       try {
         const response = await getStyles();
         if ("error" in response) {
-          console.error('🎬 ❌ FAILED TO GET STYLES:', response.error);
+          console.error('Failed to get styles:', response.error);
         } else {
           availableStyles = response.items.map(style => ({
             id: style.name,
@@ -76,7 +87,7 @@ export const videoDocumentHandler = createDocumentHandler<'video'>({
           }));
         }
       } catch (err) {
-        console.error('🎬 ❌ ERROR GETTING STYLES:', err);
+        console.error('Error getting styles:', err);
       }
 
       
@@ -112,6 +123,7 @@ export const videoDocumentHandler = createDocumentHandler<'video'>({
       draftContent = JSON.stringify({
         status: isCompleted ? 'completed' : 'pending',
         fileId: result.fileId || result.projectId || chatId,
+        projectId: result.projectId || result.fileId || chatId, // Add projectId for SSE
         requestId: result.requestId,
         videoUrl: result.url, // Video URL if already completed
         prompt: prompt,
@@ -125,7 +137,7 @@ export const videoDocumentHandler = createDocumentHandler<'video'>({
           duration,
           negativePrompt,
           // Include available options for the UI
-          availableResolutions: VIDEO_RESOLUTIONS,
+          availableResolutions: getModelCompatibleResolutions(model.name || model.id || ''),
           availableStyles,
           availableShotSizes: SHOT_SIZES,
           availableModels: availableModels, // AICODE-NOTE: Use dynamic models
@@ -140,9 +152,7 @@ export const videoDocumentHandler = createDocumentHandler<'video'>({
      
 
     } catch (error: any) {
-      console.error('🎬 ❌ VIDEO GENERATION ERROR:', error);
-      console.error('🎬 ❌ ERROR MESSAGE:', error?.message);
-      console.error('🎬 ❌ ERROR STACK:', error?.stack);
+      console.error('Video generation error:', error);
 
       draftContent = JSON.stringify({
         status: 'failed',
@@ -181,7 +191,7 @@ export const videoDocumentHandler = createDocumentHandler<'video'>({
         const superDuperModels = await getAvailableVideoModels();
         availableModels = superDuperModels.map(convertToVideoModel);
       } catch (error) {
-        console.error('🎬 ❌ Failed to load dynamic models for update:', error);
+        console.error('Failed to load dynamic models for update:', error);
         availableModels = [{
           name: 'comfyui/ltx',
           label: 'LTX Video',
@@ -228,6 +238,7 @@ export const videoDocumentHandler = createDocumentHandler<'video'>({
       draftContent = JSON.stringify({
         status: isCompleted ? 'completed' : 'pending',
         fileId: result.fileId || result.projectId || chatId,
+        projectId: result.projectId || result.fileId || chatId, // Add projectId for SSE
         requestId: result.requestId,
         videoUrl: result.url, // Video URL if already completed
         prompt: prompt,
@@ -240,7 +251,7 @@ export const videoDocumentHandler = createDocumentHandler<'video'>({
           frameRate,
           duration,
           negativePrompt,
-          availableResolutions: VIDEO_RESOLUTIONS,
+          availableResolutions: getModelCompatibleResolutions(model.name || model.id || ''),
           availableStyles: [],
           availableShotSizes: SHOT_SIZES,
           availableModels: availableModels, // AICODE-NOTE: Use dynamic models

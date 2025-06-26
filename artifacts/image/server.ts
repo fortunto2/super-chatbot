@@ -82,7 +82,7 @@ export const imageDocumentHandler = createDocumentHandler<'image'>({
 
       
       // Start image generation
-      const result = await generateImage(prompt, model, resolution, style, shotSize, chatId);
+      const result = await generateImage(prompt, model, resolution, style, shotSize, chatId, params.seed, params.batchSize);
 
     
       if (!result.success) {
@@ -216,7 +216,7 @@ export const imageDocumentHandler = createDocumentHandler<'image'>({
       }
 
       // Start new image generation
-      const result = await generateImage(prompt, model, resolution, style, shotSize, chatId);
+      const result = await generateImage(prompt, model, resolution, style, shotSize, chatId, params.seed, params.batchSize);
 
       if (!result.success) {
         // Return error content as string

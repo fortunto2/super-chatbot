@@ -6,18 +6,19 @@ import type { MediaResolution, MediaOption } from '@/lib/types/media-settings';
  */
 
 export const VIDEO_RESOLUTIONS: MediaResolution[] = [
-  // AICODE-NOTE: Reordered to put more economical options first
+  // SORA-COMPATIBLE RESOLUTIONS (16:9, 1:1, 9:16 only)
   { width: 1344, height: 768, label: "1344x768", aspectRatio: "16:9", qualityType: "hd" },
-  { width: 1152, height: 896, label: "1152x896", aspectRatio: "4:3", qualityType: "hd" },
   { width: 1024, height: 1024, label: "1024x1024", aspectRatio: "1:1", qualityType: "hd" },
-  { width: 1024, height: 1280, label: "1024x1280", aspectRatio: "4:5", qualityType: "hd" },
   { width: 768, height: 1344, label: "768x1344", aspectRatio: "9:16", qualityType: "hd" },
-  // Premium options (more expensive)
+  // Premium Sora-compatible options
   { width: 1920, height: 1080, label: "1920×1080", aspectRatio: "16:9", qualityType: "full_hd" },
-  { width: 1664, height: 1216, label: "1664x1216", aspectRatio: "4:3", qualityType: "full_hd" },
   { width: 1408, height: 1408, label: "1408×1408", aspectRatio: "1:1", qualityType: "full_hd" },
-  { width: 1408, height: 1760, label: "1408×1760", aspectRatio: "4:5", qualityType: "full_hd" },
   { width: 1080, height: 1920, label: "1080×1920", aspectRatio: "9:16", qualityType: "full_hd" },
+  // NON-SORA COMPATIBLE (4:3, 4:5) - for other models only
+  { width: 1152, height: 896, label: "1152x896 (Non-Sora)", aspectRatio: "4:3", qualityType: "hd" },
+  { width: 1024, height: 1280, label: "1024x1280 (Non-Sora)", aspectRatio: "4:5", qualityType: "hd" },
+  { width: 1664, height: 1216, label: "1664x1216 (Non-Sora)", aspectRatio: "4:3", qualityType: "full_hd" },
+  { width: 1408, height: 1760, label: "1408×1760 (Non-Sora)", aspectRatio: "4:5", qualityType: "full_hd" },
 ];
 
 export const SHOT_SIZES: MediaOption[] = [
@@ -37,6 +38,38 @@ export const VIDEO_FRAME_RATES = [
   { value: 60, label: "60 FPS (Smooth)" },
   { value: 120, label: "120 FPS (High Speed)" },
 ];
+
+// Sora-compatible aspect ratios
+export const SORA_COMPATIBLE_ASPECT_RATIOS = ['16:9', '1:1', '9:16'];
+
+/**
+ * Get video resolutions compatible with the specified model
+ */
+export function getModelCompatibleResolutions(modelName: string): MediaResolution[] {
+  const isSoraModel = modelName.includes('sora') || modelName.includes('azure-openai');
+  
+  if (isSoraModel) {
+    // Filter only Sora-compatible resolutions
+    return VIDEO_RESOLUTIONS.filter(res => 
+      SORA_COMPATIBLE_ASPECT_RATIOS.includes(res.aspectRatio || '')
+    );
+  }
+  
+  // For other models, return all resolutions
+  return VIDEO_RESOLUTIONS;
+}
+
+/**
+ * Get default resolution for the specified model
+ */
+export function getDefaultResolutionForModel(modelName: string): MediaResolution {
+  const compatibleResolutions = getModelCompatibleResolutions(modelName);
+  
+  // Always prefer 16:9 HD as default
+  return compatibleResolutions.find(r => r.aspectRatio === '16:9' && r.qualityType === 'hd') 
+    || compatibleResolutions[0] 
+    || DEFAULT_VIDEO_RESOLUTION;
+}
 
 export enum ShotSizeEnum {
   EXTREME_LONG_SHOT = 'Extreme Long Shot',

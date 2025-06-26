@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
+import { saveImage, getStoredImages, deleteStoredImage, clearStoredImages, type StoredImage } from '@/lib/utils/local-storage';
 // import { generateImage } from '@/lib/ai/api/generate-image'; // AICODE-NOTE: Removed direct import - using API endpoint instead
 import { getImageGenerationConfig } from '@/lib/config/media-settings-factory';
 import { getClientSuperduperAIConfig, configureClientOpenAPI } from '@/lib/config/superduperai';
@@ -86,6 +87,22 @@ export function useImageGenerator(): UseImageGeneratorReturn {
   const [currentGeneration, setCurrentGeneration] = useState<GeneratedImage | null>(null);
   const [generatedImages, setGeneratedImages] = useState<GeneratedImage[]>([]);
   
+  // AICODE-NOTE: Load stored images on component mount
+  useEffect(() => {
+    const storedImages = getStoredImages();
+    const convertedImages: GeneratedImage[] = storedImages.map(stored => ({
+      id: stored.id,
+      url: stored.url,
+      prompt: stored.prompt,
+      timestamp: stored.timestamp,
+      projectId: stored.projectId,
+      requestId: stored.requestId,
+      settings: stored.settings
+    }));
+    setGeneratedImages(convertedImages);
+    console.log('🖼️ 📂 Loaded', convertedImages.length, 'stored images from localStorage');
+  }, []);
+  
   // AICODE-NOTE: Connection state for SSE  
   const [isConnected, setIsConnected] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<'disconnected' | 'connecting' | 'connected'>('disconnected');
@@ -93,6 +110,8 @@ export function useImageGenerator(): UseImageGeneratorReturn {
   // AICODE-NOTE: Refs for SSE connection and polling cleanup
   const wsRef = useRef<EventSource | null>(null);
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
+  // AICODE-NOTE: Ref to track completed images and prevent duplicates
+  const completedRef = useRef<string | null>(null);
 
   const isGenerating = generationStatus.status === 'pending' || generationStatus.status === 'processing';
 
@@ -106,6 +125,7 @@ export function useImageGenerator(): UseImageGeneratorReturn {
       clearTimeout(pollingRef.current);
       pollingRef.current = null;
     }
+    completedRef.current = null;
   }, []);
 
   // AICODE-NOTE: SSE connection for real-time updates (replacing WebSocket)
@@ -139,6 +159,7 @@ export function useImageGenerator(): UseImageGeneratorReturn {
           } else if (message.type === 'render_result') {
             const imageUrl = message.object?.url || message.object?.file_url;
             if (imageUrl) {
+              console.log('📡 🖼️ SSE render_result: calling handleGenerationSuccess');
               handleGenerationSuccess(imageUrl, message.object?.projectId);
             } else {
               handleGenerationError('No image URL in result');
@@ -148,6 +169,7 @@ export function useImageGenerator(): UseImageGeneratorReturn {
             
             if (imageUrl.match(/\.(jpg|jpeg|png|webp|gif|bmp|svg)$/i) || 
                 message.object.contentType?.startsWith('image/')) {
+              console.log('📡 🖼️ SSE file event: calling handleGenerationSuccess');
               handleGenerationSuccess(imageUrl, message.object.projectId);
             }
           } else if (message.type === 'task_status' && message.object?.status === 'COMPLETED') {
@@ -169,7 +191,7 @@ export function useImageGenerator(): UseImageGeneratorReturn {
       };
 
       setTimeout(() => {
-        if (eventSource.readyState !== EventSource.OPEN) {
+        if (eventSource.readyState !== EventSource.OPEN && !completedRef.current) {
           startPolling(fileId);
         }
       }, 10000);
@@ -184,10 +206,26 @@ export function useImageGenerator(): UseImageGeneratorReturn {
   }, []);
 
   const startPolling = useCallback((fileId: string) => {
+    // AICODE-NOTE: Skip polling if already completed
+    if (completedRef.current) {
+      console.log('🔄 Skipping polling - image already completed');
+      return;
+    }
+    
     console.log('🔄 Starting polling for file:', fileId);
     
     const poll = async () => {
       try {
+        // AICODE-NOTE: Skip if already completed during polling
+        if (completedRef.current) {
+          console.log('🔄 Stopping polling - image completed during polling');
+          if (pollingRef.current) {
+            clearTimeout(pollingRef.current);
+            pollingRef.current = null;
+          }
+          return;
+        }
+        
         // Use typed client instead of direct OpenAPI calls
         const fileData: IFileRead = await fileClient.getById(fileId);
         
@@ -196,6 +234,7 @@ export function useImageGenerator(): UseImageGeneratorReturn {
         // Check if file has URL (completed)
         if (fileData.url) {
           console.log('✅ Image generation completed with URL:', fileData.url);
+          console.log('🔄 📋 About to call handleGenerationSuccess from polling');
           const projectId = fileData.tasks?.[0]?.project_id || undefined;
           handleGenerationSuccess(fileData.url, projectId);
           if (pollingRef.current) {
@@ -322,12 +361,28 @@ export function useImageGenerator(): UseImageGeneratorReturn {
 
   // AICODE-NOTE: Handle successful generation
   const handleGenerationSuccess = useCallback((imageUrl: string, projectId?: string) => {
+    console.log('🖼️ 🔍 handleGenerationSuccess called with URL:', imageUrl.substring(0, 50) + '...');
+    console.log('🖼️ 🔍 Current completedRef value:', completedRef.current?.substring(0, 50) + '...' || 'null');
+    
+    // AICODE-NOTE: Prevent duplicate processing of the same image
+    if (completedRef.current === imageUrl) {
+      console.log('🖼️ ⏭️ Image already processed, skipping duplicate:', imageUrl.substring(0, 50) + '...');
+      return;
+    }
+    
+    console.log('🖼️ ✅ Processing image completion:', imageUrl.substring(0, 50) + '...');
+    completedRef.current = imageUrl;
+    console.log('🖼️ 🔍 Set completedRef to:', completedRef.current.substring(0, 50) + '...');
+    
     cleanup();
+    
+    // Get current generation settings for proper metadata
+    const currentSettings = generationStatus;
     
     const newImage: GeneratedImage = {
       id: `img_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       url: imageUrl,
-      prompt: generationStatus.message || 'Generated image',
+      prompt: currentSettings.message?.replace('Generating: ', '') || 'Generated image',
       timestamp: Date.now(),
       projectId,
       settings: {
@@ -338,6 +393,24 @@ export function useImageGenerator(): UseImageGeneratorReturn {
       }
     };
 
+    // AICODE-NOTE: Save to localStorage
+    const storedImage: StoredImage = {
+      id: newImage.id,
+      url: newImage.url,
+      prompt: newImage.prompt,
+      timestamp: newImage.timestamp,
+      projectId: newImage.projectId,
+      requestId: newImage.requestId,
+      settings: newImage.settings
+    };
+    
+    try {
+      saveImage(storedImage);
+      console.log('🖼️ 💾 Image saved to localStorage');
+    } catch (error) {
+      console.warn('🖼️ ⚠️ Failed to save image to localStorage:', error);
+    }
+
     setCurrentGeneration(newImage);
     setGeneratedImages(prev => [newImage, ...prev]);
     
@@ -347,7 +420,7 @@ export function useImageGenerator(): UseImageGeneratorReturn {
     });
 
     toast.success('Image generated successfully!');
-  }, [generationStatus.message, cleanup]);
+  }, [cleanup, generationStatus]);
 
   // AICODE-NOTE: Handle generation error
   const handleGenerationError = useCallback((error: string) => {
@@ -376,6 +449,9 @@ export function useImageGenerator(): UseImageGeneratorReturn {
       });
 
       setCurrentGeneration(null);
+      
+      // AICODE-NOTE: Reset completion flag for new generation
+      completedRef.current = null;
 
       // Load configuration to get proper objects for API call
       const config = await getImageGenerationConfig();
@@ -438,11 +514,21 @@ export function useImageGenerator(): UseImageGeneratorReturn {
     setCurrentGeneration(null);
     setGenerationStatus({ status: 'idle' });
     cleanup();
+    // AICODE-NOTE: Reset completion flag when clearing
+    completedRef.current = null;
   }, [cleanup]);
 
   // AICODE-NOTE: Delete image from history
   const deleteImage = useCallback((imageId: string) => {
     setGeneratedImages(prev => prev.filter(img => img.id !== imageId));
+    
+    // Delete from localStorage
+    try {
+      deleteStoredImage(imageId);
+      console.log('🖼️ 🗑️ Image deleted from localStorage');
+    } catch (error) {
+      console.warn('🖼️ ⚠️ Failed to delete image from localStorage:', error);
+    }
     
     // Clear current generation if it matches
     if (currentGeneration?.id === imageId) {
@@ -456,6 +542,15 @@ export function useImageGenerator(): UseImageGeneratorReturn {
   const clearAllImages = useCallback(() => {
     setGeneratedImages([]);
     clearCurrentGeneration();
+    
+    // Clear from localStorage
+    try {
+      clearStoredImages();
+      console.log('🖼️ 🗑️ All images cleared from localStorage');
+    } catch (error) {
+      console.warn('🖼️ ⚠️ Failed to clear images from localStorage:', error);
+    }
+    
     toast.success('All images cleared');
   }, [clearCurrentGeneration]);
 

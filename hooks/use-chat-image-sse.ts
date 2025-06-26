@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useRef } from 'react';
 import { imageSSEStore } from '@/lib/websocket/image-sse-store';
-import { getSuperduperAIConfig } from '@/lib/config/superduperai';
 import type { UseChatHelpers } from '@ai-sdk/react';
 
 interface ChatImageSSEOptions {
@@ -230,9 +229,8 @@ export const useChatImageSSE = ({
     // Add handlers to SSE store
     imageSSEStore.addProjectHandlers(projectId, [eventHandler]);
     
-    // Initialize SSE connection for this project
-    const config = getSuperduperAIConfig();
-    const sseUrl = `${config.url}/api/v1/events/project.${projectId}`;
+    // Initialize SSE connection for this project using Next.js proxy
+    const sseUrl = `/api/events/project.${projectId}`;
     
     imageSSEStore.initConnection(sseUrl, [eventHandler]);
     
