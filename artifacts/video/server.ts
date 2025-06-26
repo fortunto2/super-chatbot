@@ -4,7 +4,7 @@ import { getStyles } from '@/lib/ai/api/get-styles';
 import type { MediaOption } from '@/lib/types/media-settings';
 import type { VideoModel } from '@/lib/config/superduperai';
 import { getAvailableVideoModels } from '@/lib/config/superduperai';
-import { VIDEO_RESOLUTIONS, SHOT_SIZES, VIDEO_FRAME_RATES, DEFAULT_VIDEO_RESOLUTION, DEFAULT_VIDEO_DURATION } from '@/lib/config/video-constants';
+import { VIDEO_RESOLUTIONS, SHOT_SIZES, VIDEO_FRAME_RATES, DEFAULT_VIDEO_RESOLUTION, DEFAULT_VIDEO_DURATION, getModelCompatibleResolutions, getDefaultResolutionForModel } from '@/lib/config/video-constants';
 import { GenerationTypeEnum } from '@/lib/api/models/GenerationTypeEnum';
 import { GenerationSourceEnum } from '@/lib/api/models/GenerationSourceEnum';
 
@@ -137,7 +137,7 @@ export const videoDocumentHandler = createDocumentHandler<'video'>({
           duration,
           negativePrompt,
           // Include available options for the UI
-          availableResolutions: VIDEO_RESOLUTIONS,
+          availableResolutions: getModelCompatibleResolutions(model.name || model.id || ''),
           availableStyles,
           availableShotSizes: SHOT_SIZES,
           availableModels: availableModels, // AICODE-NOTE: Use dynamic models
@@ -251,7 +251,7 @@ export const videoDocumentHandler = createDocumentHandler<'video'>({
           frameRate,
           duration,
           negativePrompt,
-          availableResolutions: VIDEO_RESOLUTIONS,
+          availableResolutions: getModelCompatibleResolutions(model.name || model.id || ''),
           availableStyles: [],
           availableShotSizes: SHOT_SIZES,
           availableModels: availableModels, // AICODE-NOTE: Use dynamic models
