@@ -126,35 +126,35 @@ export function MediaSettings({
   const mediaTypeLabel = isVideoConfig ? 'Video' : 'Image';
 
   return (
-    <div className="w-full max-w-none mx-auto p-3 sm:p-4 lg:p-6 border rounded-lg bg-card">
-      <div className="space-y-2 mb-4 sm:mb-6">
-        <h3 className="text-base sm:text-lg lg:text-xl font-semibold">{mediaTypeLabel} Generation Settings</h3>
-        <p className="text-xs sm:text-sm text-muted-foreground">
-          Configure your {mediaTypeLabel.toLowerCase()} generation preferences and describe what you want to create
+    <div className="w-full max-w-none mx-auto p-3 border rounded-lg bg-card">
+      <div className="space-y-1 mb-4">
+        <h3 className="text-sm font-semibold">{mediaTypeLabel} Generation Settings</h3>
+        <p className="text-xs text-muted-foreground">
+          Configure settings and describe what you want to create
         </p>
       </div>
 
       {/* Prompt Input Section */}
-      <div className="mb-4 sm:mb-6 space-y-2">
-        <label htmlFor="prompt-input" className="text-xs sm:text-sm font-medium">Prompt *</label>
+      <div className="mb-4 space-y-1">
+        <label htmlFor="prompt-input" className="text-xs font-medium">Prompt *</label>
         <Textarea
           id="prompt-input"
           placeholder={`Describe the ${mediaTypeLabel.toLowerCase()} you want to generate...`}
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
-          className="min-h-[80px] sm:min-h-[100px] resize-none text-sm"
-          rows={3}
+          className="min-h-[60px] resize-none text-sm"
+          rows={2}
         />
         <p className="text-xs text-muted-foreground">
-          Be specific about what you want to see in your {mediaTypeLabel.toLowerCase()}
+          Be specific about what you want to see
         </p>
       </div>
 
-      {/* Settings Grid - More compact for narrow spaces */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-4 sm:mb-6">
+      {/* Settings Grid - Optimized for artifact layout */}
+      <div className="grid grid-cols-1 gap-3 mb-4">
         {/* Resolution Selector */}
-        <div className="space-y-2">
-          <label htmlFor="resolution-select" className="text-xs sm:text-sm font-medium">Resolution</label>
+        <div className="space-y-1">
+          <label htmlFor="resolution-select" className="text-xs font-medium">Resolution</label>
           <Select
             value={`${selectedResolution.width}x${selectedResolution.height}`}
             onValueChange={(value) => {
@@ -166,7 +166,7 @@ export function MediaSettings({
               }
             }}
           >
-            <SelectTrigger className="w-full h-9 sm:h-10">
+            <SelectTrigger className="w-full h-8">
               <SelectValue placeholder="Select resolution" />
             </SelectTrigger>
             <SelectContent>
@@ -175,10 +175,10 @@ export function MediaSettings({
                   key={`${resolution.width}x${resolution.height}`}
                   value={`${resolution.width}x${resolution.height}`}
                 >
-                  <div className="flex flex-col">
-                    <span className="text-xs sm:text-sm">{resolution.label}</span>
+                  <div className="flex items-center justify-between w-full">
+                    <span className="text-xs">{resolution.label}</span>
                     {resolution.aspectRatio && (
-                      <span className="text-xs text-muted-foreground">
+                      <span className="text-xs text-muted-foreground ml-2">
                         {resolution.aspectRatio}
                       </span>
                     )}
@@ -190,8 +190,8 @@ export function MediaSettings({
         </div>
 
         {/* Style Selector */}
-        <div className="space-y-2">
-          <label htmlFor="style-select" className="text-xs sm:text-sm font-medium">Style</label>
+        <div className="space-y-1">
+          <label htmlFor="style-select" className="text-xs font-medium">Style</label>
           <Select
             value={selectedStyle.id}
             onValueChange={(value) => {
@@ -201,16 +201,16 @@ export function MediaSettings({
               }
             }}
           >
-            <SelectTrigger className="w-full h-9 sm:h-10">
+            <SelectTrigger className="w-full h-8">
               <SelectValue placeholder="Select style" />
             </SelectTrigger>
             <SelectContent>
               {config.availableStyles.map((style) => (
                 <SelectItem key={style.id} value={style.id}>
-                  <div className="flex flex-col">
-                    <span className="text-xs sm:text-sm">{style.label}</span>
+                  <div className="flex items-center justify-between w-full">
+                    <span className="text-xs">{style.label}</span>
                     {style.description && (
-                      <span className="text-xs text-muted-foreground truncate max-w-[150px] sm:max-w-[200px]">
+                      <span className="text-xs text-muted-foreground truncate max-w-[100px] ml-2">
                         {style.description}
                       </span>
                     )}
@@ -222,8 +222,8 @@ export function MediaSettings({
         </div>
 
         {/* Shot Size Selector */}
-        <div className="space-y-2">
-          <label htmlFor="shot-size-select" className="text-xs sm:text-sm font-medium">Shot Size</label>
+        <div className="space-y-1">
+          <label htmlFor="shot-size-select" className="text-xs font-medium">Shot Size</label>
           <Select
             value={selectedShotSize.id}
             onValueChange={(value) => {
@@ -233,16 +233,16 @@ export function MediaSettings({
               }
             }}
           >
-            <SelectTrigger className="w-full h-9 sm:h-10">
+            <SelectTrigger className="w-full h-8">
               <SelectValue placeholder="Select shot size" />
             </SelectTrigger>
             <SelectContent>
               {config.availableShotSizes.map((shotSize) => (
                 <SelectItem key={shotSize.id} value={shotSize.id}>
-                  <div className="flex flex-col">
-                    <span className="text-xs sm:text-sm">{shotSize.label}</span>
+                  <div className="flex items-center justify-between w-full">
+                    <span className="text-xs">{shotSize.label}</span>
                     {shotSize.description && (
-                      <span className="text-xs text-muted-foreground truncate max-w-[150px] sm:max-w-[200px]">
+                      <span className="text-xs text-muted-foreground truncate max-w-[100px] ml-2">
                         {shotSize.description}
                       </span>
                     )}
@@ -254,8 +254,8 @@ export function MediaSettings({
         </div>
 
         {/* Model Selector */}
-        <div className="space-y-2">
-          <label htmlFor="model-select" className="text-xs sm:text-sm font-medium">Model</label>
+        <div className="space-y-1">
+          <label htmlFor="model-select" className="text-xs font-medium">Model</label>
           <Select
             value={selectedModel.id}
             onValueChange={(value) => {
@@ -265,16 +265,16 @@ export function MediaSettings({
               }
             }}
           >
-            <SelectTrigger className="w-full h-9 sm:h-10">
+            <SelectTrigger className="w-full h-8">
               <SelectValue placeholder="Select model" />
             </SelectTrigger>
             <SelectContent>
               {config?.availableModels?.map((model) => (
                 <SelectItem key={model.id} value={model.id}>
-                  <div className="flex flex-col">
-                    <span className="text-xs sm:text-sm">{model.label}</span>
+                  <div className="flex items-center justify-between w-full">
+                    <span className="text-xs">{model.label}</span>
                     {model.description && (
-                      <span className="text-xs text-muted-foreground truncate max-w-[150px] sm:max-w-[200px]">
+                      <span className="text-xs text-muted-foreground truncate max-w-[120px] ml-2">
                         {model.description}
                       </span>
                     )}
@@ -288,21 +288,21 @@ export function MediaSettings({
 
       {/* Video-specific settings */}
       {isVideoConfig && videoConfig && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-4 sm:mb-6">
+        <div className="grid grid-cols-2 gap-3 mb-4">
           {/* Frame Rate Selector */}
-          <div className="space-y-2">
-            <label htmlFor="frame-rate-select" className="text-xs sm:text-sm font-medium">Frame Rate</label>
+          <div className="space-y-1">
+            <label htmlFor="frame-rate-select" className="text-xs font-medium">Frame Rate</label>
             <Select
               value={selectedFrameRate.toString()}
               onValueChange={(value) => setSelectedFrameRate(Number.parseInt(value))}
             >
-              <SelectTrigger className="w-full h-9 sm:h-10">
+              <SelectTrigger className="w-full h-8">
                 <SelectValue placeholder="Select frame rate" />
               </SelectTrigger>
               <SelectContent>
                 {videoConfig.availableFrameRates.map((frameRate) => (
                   <SelectItem key={frameRate.value} value={frameRate.value.toString()}>
-                    <span className="text-xs sm:text-sm">{frameRate.label}</span>
+                    <span className="text-xs">{frameRate.label}</span>
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -310,98 +310,82 @@ export function MediaSettings({
           </div>
 
           {/* Duration Input */}
-          <div className="space-y-2">
-            <label htmlFor="duration-input" className="text-xs sm:text-sm font-medium">Duration (seconds)</label>
+          <div className="space-y-1">
+            <label htmlFor="duration-input" className="text-xs font-medium">Duration (sec)</label>
             <Input
               id="duration-input"
               type="number"
-              placeholder="Duration in seconds"
+              placeholder="Duration"
               value={duration}
               onChange={(e) => setDuration(Number.parseInt(e.target.value) || 10)}
-              className="w-full h-9 sm:h-10 text-sm"
+              className="w-full h-8 text-sm"
               min="1"
               max="60"
             />
           </div>
 
           {/* Negative Prompt */}
-          <div className="space-y-2 sm:col-span-2 lg:col-span-1">
-            <label htmlFor="negative-prompt-input" className="text-xs sm:text-sm font-medium">Negative Prompt (Optional)</label>
+          <div className="space-y-1 col-span-2">
+            <label htmlFor="negative-prompt-input" className="text-xs font-medium">Negative Prompt (Optional)</label>
             <Input
               id="negative-prompt-input"
               placeholder="What you don't want to see..."
               value={negativePrompt}
               onChange={(e) => setNegativePrompt(e.target.value)}
-              className="w-full h-9 sm:h-10 text-sm"
+              className="w-full h-8 text-sm"
             />
           </div>
         </div>
       )}
 
       {/* Seed Input - Compact */}
-      <div className="mb-4 sm:mb-6">
-        <div className="space-y-2">
-          <label htmlFor="seed-input" className="text-xs sm:text-sm font-medium">Seed (Optional)</label>
-          <div className='flex flex-col sm:flex-row items-start sm:items-center gap-2'>
+      <div className="mb-4">
+        <div className="space-y-1">
+          <label htmlFor="seed-input" className="text-xs font-medium">Seed (Optional)</label>
+          <div className='flex items-center gap-2'>
             <Input
               id="seed-input"
               type="number"
-              placeholder="Enter seed number for reproducible results"
+              placeholder="Enter seed number"
               value={seed}
               onChange={(e) => setSeed(e.target.value)}
-              className="w-full sm:flex-1 h-9 sm:h-10 text-sm"
+              className="flex-1 h-8 text-sm"
             />
             <Button 
               variant="outline" 
               onClick={handleGenerateRandomSeed} 
-              className="w-full sm:w-auto h-9 sm:h-10 text-xs sm:text-sm px-3"
+              className="h-8 text-xs px-3 shrink-0"
             >
               Random
             </Button>
           </div>
           <p className="text-xs text-muted-foreground">
-            Leave empty for random generation, or enter a number for reproducible results
+            Leave empty for random generation
           </p>
         </div>
       </div>
 
       {/* Preview of selected settings - Compact */}
-      <div className="space-y-2 sm:space-y-3 mb-4 sm:mb-6 p-3 sm:p-4 bg-muted/50 rounded-lg">
-        <h4 className="text-xs sm:text-sm font-medium">Selected Settings Preview</h4>
-        <div className="grid grid-cols-1 gap-1 sm:gap-2 text-xs sm:text-sm">
+      <div className="mb-4 p-2 bg-muted/50 rounded-lg space-y-2">
+        <h4 className="text-xs font-medium">Settings Summary</h4>
+        <div className="grid grid-cols-1 gap-1 text-xs">
           <div className="flex justify-between">
             <span className="text-muted-foreground">Resolution:</span>
             <span className="font-medium">{selectedResolution.label}</span>
           </div>
           <div className="flex justify-between">
             <span className="text-muted-foreground">Style:</span>
-            <span className="font-medium truncate ml-2">{selectedStyle.label}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Shot Size:</span>
-            <span className="font-medium truncate ml-2">{selectedShotSize.label}</span>
+            <span className="font-medium truncate ml-2 max-w-[120px]">{selectedStyle.label}</span>
           </div>
           <div className="flex justify-between">
             <span className="text-muted-foreground">Model:</span>
-            <span className="font-medium truncate ml-2">{selectedModel.label}</span>
+            <span className="font-medium truncate ml-2 max-w-[120px]">{selectedModel.label}</span>
           </div>
           {isVideoConfig && (
-            <>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Frame Rate:</span>
-                <span className="font-medium">{selectedFrameRate} FPS</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Duration:</span>
-                <span className="font-medium">{duration}s</span>
-              </div>
-              {negativePrompt && (
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Negative:</span>
-                  <span className="font-medium text-xs truncate ml-2">{negativePrompt}</span>
-                </div>
-              )}
-            </>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Video:</span>
+              <span className="font-medium">{selectedFrameRate} FPS, {duration}s</span>
+            </div>
           )}
           {seed && (
             <div className="flex justify-between">
@@ -413,10 +397,10 @@ export function MediaSettings({
       </div>
 
       {/* Action Buttons - Compact */}
-      <div className="flex flex-col gap-2 sm:gap-3">
+      <div className="flex flex-col gap-2">
         <Button 
           onClick={handleGenerate} 
-          className="w-full h-9 sm:h-10 text-sm"
+          className="w-full h-8 text-sm"
           disabled={!prompt.trim()}
         >
           Generate {mediaTypeLabel}
@@ -424,7 +408,7 @@ export function MediaSettings({
         <Button 
           onClick={handleConfirm} 
           variant="outline"
-          className="w-full h-9 sm:h-10 text-sm"
+          className="w-full h-8 text-sm"
         >
           Save Settings Only
         </Button>
