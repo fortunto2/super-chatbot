@@ -175,7 +175,7 @@ export const generateImageHybrid = async (
         style_name: styleId, // Keep for backward compatibility
         seed: String(actualSeed), // Convert to string
         aspect_ratio: resolution.aspectRatio || "16:9", // FIXED: Use correct aspect_ratio parameter name
-        batch_size: 3, // Use batch_size 3 like in working example
+        batch_size: 1, // Use default batch_size
         entity_ids: [],
         generation_config_name: model.name,
         height: String(resolution.height), // Convert to string

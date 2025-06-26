@@ -2,8 +2,8 @@ import { NextResponse } from 'next/server';
 
 export async function GET() {
   try {
-    const url = process.env.NEXT_PUBLIC_SUPERDUPERAI_URL || process.env.SUPERDUPERAI_URL || 'https://dev-editor.superduperai.co';
-    const token = process.env.NEXT_PUBLIC_SUPERDUPERAI_TOKEN || process.env.SUPERDUPERAI_TOKEN || process.env.SUPERDUPERAI_API_KEY || '';
+    const url = process.env.SUPERDUPERAI_URL || 'https://dev-editor.superduperai.co';
+    const token = process.env.SUPERDUPERAI_TOKEN || process.env.SUPERDUPERAI_API_KEY || '';
 
     if (!token) {
       return NextResponse.json(

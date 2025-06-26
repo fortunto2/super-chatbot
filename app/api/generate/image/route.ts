@@ -27,7 +27,8 @@ export async function POST(request: NextRequest) {
       shotSize,
       style,
       sourceImageId,
-      sourceImageUrl
+      sourceImageUrl,
+      batchSize = 1
     } = body;
     
     // Configure OpenAPI client for server-side usage
@@ -45,7 +46,7 @@ export async function POST(request: NextRequest) {
       shot_size: shotSize?.id as ShotSizeEnum || null,
       seed: seed || Math.floor(Math.random() * 1000000000000),
       generation_config_name: model?.name || 'fal-ai/flux-dev',
-      batch_size: 1,
+      batch_size: Math.min(Math.max(batchSize, 1), 3), // Ensure batch size is between 1 and 3
       style_name: style?.id || null,
       references: sourceImageUrl ? [{
         type: ReferenceTypeEnum.SOURCE,

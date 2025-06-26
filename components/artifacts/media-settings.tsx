@@ -56,6 +56,7 @@ export function MediaSettings({
   );
   const [seed, setSeed] = useState<string>('');
   const [prompt, setPrompt] = useState<string>('');
+  const [batchSize, setBatchSize] = useState<number>(1);
   
   // Video-specific states
   const [selectedFrameRate, setSelectedFrameRate] = useState<number>(
@@ -75,6 +76,7 @@ export function MediaSettings({
       shotSize: selectedShotSize,
       model: selectedModel,
       seed: seed ? Number.parseInt(seed) : undefined,
+      batchSize: !isVideoConfig ? batchSize : undefined, // Only for images
     };
 
     const settings: ImageSettings | VideoSettings = isVideoConfig 
@@ -87,7 +89,7 @@ export function MediaSettings({
       : baseSettings as ImageSettings;
 
     // Create user message for the selection
-    const userMessage = `Selected resolution: ${selectedResolution.width}x${selectedResolution.height}, style: ${selectedStyle.label}, shot size: ${selectedShotSize.label}, model: ${selectedModel.label}${seed ? `, seed: ${seed}` : ''}`;
+    const userMessage = `Selected resolution: ${selectedResolution.width}x${selectedResolution.height}, style: ${selectedStyle.label}, shot size: ${selectedShotSize.label}, model: ${selectedModel.label}${seed ? `, seed: ${seed}` : ''}${!isVideoConfig && batchSize > 1 ? `, batch size: ${batchSize}` : ''}`;
 
     if (append) {
       append({
@@ -107,7 +109,7 @@ export function MediaSettings({
 
     // Generate appropriate message based on media type
     const mediaType = isVideoConfig ? 'video' : 'image';
-    const generateMessage = `Generate ${mediaType}: ${prompt}. Use resolution ${selectedResolution.label}, style "${selectedStyle.label}", shot size "${selectedShotSize.label}", model "${selectedModel.label}"${seed ? `, seed ${seed}` : ''}${isVideoConfig && selectedFrameRate ? `, frame rate ${selectedFrameRate} FPS` : ''}${isVideoConfig && duration ? `, duration ${duration} sec` : ''}.`;
+    const generateMessage = `Generate ${mediaType}: ${prompt}. Use resolution ${selectedResolution.label}, style "${selectedStyle.label}", shot size "${selectedShotSize.label}", model "${selectedModel.label}"${seed ? `, seed ${seed}` : ''}${!isVideoConfig && batchSize > 1 ? `, batch size ${batchSize}` : ''}${isVideoConfig && selectedFrameRate ? `, frame rate ${selectedFrameRate} FPS` : ''}${isVideoConfig && duration ? `, duration ${duration} sec` : ''}.`;
 
     if (append) {
       append({
@@ -338,8 +340,9 @@ export function MediaSettings({
         </div>
       )}
 
-      {/* Seed Input - Compact */}
-      <div className="mb-4">
+      {/* Seed and Batch Size - Compact Row */}
+      <div className="mb-4 grid grid-cols-1 gap-3">
+        {/* Seed Input */}
         <div className="space-y-1">
           <label htmlFor="seed-input" className="text-xs font-medium">Seed (Optional)</label>
           <div className='flex items-center gap-2'>
@@ -363,6 +366,44 @@ export function MediaSettings({
             Leave empty for random generation
           </p>
         </div>
+
+        {/* Batch Size - Only for Images */}
+        {!isVideoConfig && (
+          <div className="space-y-1">
+            <label htmlFor="batch-size-select" className="text-xs font-medium">Batch Size</label>
+            <Select
+              value={batchSize.toString()}
+              onValueChange={(value) => setBatchSize(Number.parseInt(value))}
+            >
+              <SelectTrigger className="w-full h-8">
+                <SelectValue placeholder="Select batch size" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="1">
+                  <div className="flex items-center justify-between w-full">
+                    <span className="text-xs">1 image</span>
+                    <span className="text-xs text-muted-foreground ml-2">Standard</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="2">
+                  <div className="flex items-center justify-between w-full">
+                    <span className="text-xs">2 images</span>
+                    <span className="text-xs text-muted-foreground ml-2">Compare</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="3">
+                  <div className="flex items-center justify-between w-full">
+                    <span className="text-xs">3 images</span>
+                    <span className="text-xs text-muted-foreground ml-2">Max variety</span>
+                  </div>
+                </SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Generate multiple variations simultaneously
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Preview of selected settings - Compact */}
@@ -391,6 +432,12 @@ export function MediaSettings({
             <div className="flex justify-between">
               <span className="text-muted-foreground">Seed:</span>
               <span className="font-medium">{seed}</span>
+            </div>
+          )}
+          {!isVideoConfig && batchSize > 1 && (
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Batch Size:</span>
+              <span className="font-medium">{batchSize} image{batchSize > 1 ? 's' : ''}</span>
             </div>
           )}
         </div>

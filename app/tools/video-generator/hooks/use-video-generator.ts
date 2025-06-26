@@ -309,12 +309,17 @@ export function useVideoGenerator(): UseVideoGeneratorReturn {
     console.log('🎬 Connecting SSE for video:', { connectionId, fileId });
     
     try {
-      // Force SuperDuperAI config (avoid localhost routing)
-      const baseUrl = process.env.NEXT_PUBLIC_SUPERDUPERAI_URL || 'https://dev-editor.superduperai.co';
+      // Get config from secure API endpoint
+      const configResponse = await fetch('/api/config/superduperai');
+      if (!configResponse.ok) {
+        throw new Error('Failed to get configuration');
+      }
+      const configData = await configResponse.json();
+      
       const config = {
-        url: baseUrl,
-        token: process.env.NEXT_PUBLIC_SUPERDUPERAI_TOKEN || '',
-        wsURL: baseUrl.replace('https://', 'wss://').replace('http://', 'ws://')
+        url: configData.url,
+        wsURL: configData.wsURL,
+        token: '', // SECURITY FIX: Never expose token on client-side
       };
       
       // Use fileId if available, otherwise fall back to connectionId (projectId)

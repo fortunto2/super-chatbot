@@ -8,7 +8,8 @@
 const WebSocket = require('ws');
 
 // Configuration
-const WS_BASE_URL = process.env.NEXT_PUBLIC_WS_URL || 'https://editor.superduperai.co';
+// SECURITY: Never use NEXT_PUBLIC_ for URLs with sensitive endpoints
+const WS_BASE_URL = 'https://editor.superduperai.co'; // Use fixed URL or get from secure API
 const TEST_PROJECT_ID = 'test-project-123';
 
 // Convert HTTP to WebSocket URL

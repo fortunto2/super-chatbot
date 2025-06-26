@@ -18,9 +18,10 @@ export const configureImageGeneration = (params?: CreateImageDocumentParams) => 
     shotSize: z.string().optional().describe('Shot size/camera angle. Accepts: "close-up", "medium-shot", "long-shot", "extreme-close-up", "portrait", "two-shot", etc.'),
     model: z.string().optional().describe('AI model to use. Models are loaded dynamically from SuperDuperAI API. Use model name like "FLUX" or full model ID.'),
     seed: z.number().optional().describe('Seed for reproducible results'),
+    batchSize: z.number().min(1).max(3).optional().describe('Number of images to generate simultaneously (1-3). Higher batch sizes generate multiple variations at once.'),
   }),
-  execute: async ({ prompt, style, resolution, shotSize, model, seed }) => {
-    console.log('🔧 configureImageGeneration called with:', { prompt, style, resolution, shotSize, model, seed });
+  execute: async ({ prompt, style, resolution, shotSize, model, seed, batchSize }) => {
+    console.log('🔧 configureImageGeneration called with:', { prompt, style, resolution, shotSize, model, seed, batchSize });
     
     // AICODE-NOTE: Use new factory to get configuration with OpenAPI models
     console.log('🖼️ Loading image configuration from OpenAPI factory...');
@@ -77,7 +78,8 @@ export const configureImageGeneration = (params?: CreateImageDocumentParams) => 
         resolution: selectedResolution,
         shotSize: selectedShotSize,
         model: selectedModel,
-        seed: seed || undefined
+        seed: seed || undefined,
+        batchSize: batchSize || 1
       };
 
       console.log('🔧 ✅ CREATING IMAGE DOCUMENT WITH PARAMS:', imageParams);
