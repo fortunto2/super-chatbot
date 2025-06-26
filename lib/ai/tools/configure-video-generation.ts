@@ -234,9 +234,10 @@ export const configureVideoGeneration = (params?: CreateVideoDocumentParams) => 
       if (params?.createDocument) {
         console.log('🔧 ✅ CALLING CREATE DOCUMENT WITH KIND: video');
         try {
-          // Call createDocument if available - передаем параметры через title поле
+          // Call createDocument with readable title and embedded JSON params
+          const readableTitle = `Video: "${prompt}" (${selectedModel.label}, ${selectedResolution.label}, ${duration || DEFAULT_VIDEO_DURATION}s) ${JSON.stringify(videoParams)}`;
           const result = await params.createDocument.execute({
-            title: JSON.stringify(videoParams), // Возвращаем JSON для сервера
+            title: readableTitle,
             kind: 'video'
           });
           
@@ -255,10 +256,11 @@ export const configureVideoGeneration = (params?: CreateVideoDocumentParams) => 
 
       console.log('🔧 ❌ CREATE DOCUMENT NOT AVAILABLE, RETURNING FALLBACK');
       // Fallback to simple message
+      const readableTitle = `Video: "${prompt}" (${selectedModel.label}, ${selectedResolution.label}, ${duration || DEFAULT_VIDEO_DURATION}s) ${JSON.stringify(videoParams)}`;
       return {
         message: `I'll create a video with description: "${prompt}". However, artifact cannot be created - createDocument unavailable.`,
         parameters: {
-          title: JSON.stringify(videoParams), // Возвращаем JSON для сервера
+          title: readableTitle,
           kind: 'video'
         }
       };

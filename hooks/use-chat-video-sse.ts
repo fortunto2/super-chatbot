@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useRef } from 'react';
 import { videoSSEStore, type VideoEventHandler as VideoSSEEventHandler } from '@/lib/websocket/video-sse-store';
-import { getSuperduperAIConfig } from '@/lib/config/superduperai';
 import type { UseChatHelpers } from '@ai-sdk/react';
 
 interface ChatVideoSSEOptions {
@@ -225,7 +224,7 @@ export const useChatVideoSSE = ({
       return;
     }
 
-    console.log('🔌 Chat Video SSE: Connecting to project:', projectId);
+    console.log('🔌 Chat Video SSE: Connecting to:', projectId);
     
     const eventHandler = createEventHandler(projectId);
     handlersMapRef.current.set(projectId, eventHandler);
@@ -233,10 +232,20 @@ export const useChatVideoSSE = ({
     // Add handlers to SSE store
     videoSSEStore.addProjectHandlers(projectId, [eventHandler]);
     
-    // Initialize SSE connection for this project
-    const config = getSuperduperAIConfig();
-    const sseUrl = `${config.url}/api/v1/events/project.${projectId}`;
+    // Initialize SSE connection
+    let sseUrl: string;
     
+    // AICODE-NOTE: Support both file.{fileId} and project.{projectId} formats
+    // Always use Next.js proxy for SSE connections
+    if (projectId.startsWith('file.')) {
+      // Direct file-based SSE (like video generator tool) using Next.js proxy
+      sseUrl = `/api/events/${projectId}`;
+    } else {
+      // Project-based SSE using Next.js proxy
+      sseUrl = `/api/events/project.${projectId}`;
+    }
+    
+    console.log('🔌 Video SSE URL:', sseUrl);
     videoSSEStore.initConnection(sseUrl, [eventHandler]);
     
     connectedProjectsRef.current.add(projectId);
@@ -305,6 +314,10 @@ export const useChatVideoSSE = ({
                 
                 if (artifactContent?.projectId) {
                   projectIds.add(artifactContent.projectId);
+                }
+                // AICODE-NOTE: Also connect to fileId for file-based SSE (like video generator tool)
+                if (artifactContent?.fileId) {
+                  projectIds.add(`file.${artifactContent.fileId}`);
                 }
               }
             } catch (error) {

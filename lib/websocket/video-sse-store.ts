@@ -252,24 +252,28 @@ class VideoSSEStore {
 
   // AICODE-NOTE: Initialize SSE connection using EventSource
   initConnection(url: string, handlers: VideoEventHandler[], requestId?: string) {
-    // Extract project ID from URL for tracking
+    // Extract ID from URL for tracking (supports both file.{fileId} and project.{projectId})
+    const fileIdMatch = url.match(/file\.([^/]+)/);
     const projectIdMatch = url.match(/project\.([^/]+)/);
-    const projectId = projectIdMatch ? projectIdMatch[1] : null;
     
-    if (!projectId) {
-      console.error('❌ Cannot extract project ID from video SSE URL:', url);
+    const fileId = fileIdMatch ? fileIdMatch[1] : null;
+    const projectId = projectIdMatch ? projectIdMatch[1] : null;
+    const trackingId = fileId || projectId;
+    
+    if (!trackingId) {
+      console.error('❌ Cannot extract file/project ID from video SSE URL:', url);
       return;
     }
 
-    console.log('🔌 Initializing video SSE connection for project:', projectId);
+    console.log('🔌 Initializing video SSE connection for ID:', trackingId, fileId ? '(file)' : '(project)');
     console.log('🔌 Video SSE URL:', url);
     
-    // Track current project
-    this.currentProjectId = projectId;
-    this.activeProjects.add(projectId);
+    // Track current ID
+    this.currentProjectId = trackingId;
+    this.activeProjects.add(trackingId);
     
     // Use Next.js SSE proxy instead of direct backend connection
-    const channel = `project.${projectId}`;
+    const channel = fileId ? `file.${fileId}` : `project.${projectId}`;
     const sseUrl = `/api/events/${channel}`;
     
     console.log('🔌 Video SSE Channel:', channel);
@@ -278,8 +282,8 @@ class VideoSSEStore {
     // Store current channel
     this.currentChannel = channel;
     
-    // Add handlers for this project with requestId
-    this.addProjectHandlers(projectId, handlers, requestId);
+    // Add handlers for this ID with requestId
+    this.addProjectHandlers(trackingId, handlers, requestId);
     
     // Clear any existing connection timeout
     if (this.disconnectTimeout) {

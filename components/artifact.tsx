@@ -66,6 +66,30 @@ function getDisplayTitle(title: string, kind: ArtifactKind): string {
       return title;
     }
   }
+  
+  if (kind === 'video') {
+    // Check if title starts with "Video:" (new readable format)
+    if (title.startsWith('Video:')) {
+      // Extract readable part before JSON
+      const jsonMatch = title.match(/\{.*\}$/);
+      if (jsonMatch) {
+        return title.substring(0, title.length - jsonMatch[0].length).trim();
+      }
+      return title; // If no JSON found, return as is
+    }
+    
+    // Fallback: try to parse as JSON (old format)
+    try {
+      const params = JSON.parse(title);
+      if (params.prompt) {
+        return `AI Video: ${params.prompt.substring(0, 60)}${params.prompt.length > 60 ? '...' : ''}`;
+      }
+    } catch {
+      // If not JSON, return as is
+      return title;
+    }
+  }
+  
   return title;
 }
 

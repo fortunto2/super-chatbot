@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { getSuperduperAIConfig } from "@/lib/config/superduperai";
 
 // AICODE-NOTE: Universal SSE message interface for artifacts
 export interface ArtifactSSEMessage {
@@ -53,8 +52,8 @@ export const useArtifactSSE = ({ channel, eventHandlers, enabled = true }: Props
     // Reset attempts for new channel
     setConnectionAttempts(0);
 
-    const config = getSuperduperAIConfig();
-    const sseUrl = `${config.url}/api/v1/events/${channel}`;
+    // AICODE-NOTE: Use Next.js proxy for SSE connections instead of direct backend
+    const sseUrl = `/api/events/${channel}`;
     
     console.log('🔌 Connecting to SSE:', sseUrl);
 

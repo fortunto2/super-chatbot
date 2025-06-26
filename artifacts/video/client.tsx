@@ -12,62 +12,81 @@ import '@/lib/utils/console-helpers';
 const VideoArtifactWrapper = memo(function VideoArtifactWrapper(props: any) {
   const { content, setArtifact, ...otherProps } = props;
   
-  // Memoize parsed content to avoid re-parsing on every render
-  const parsedContent = useMemo(() => {
-    if (!content) {
-      return null; // Don't log for empty content, it's normal during streaming
-    }
-    
-    if (typeof content !== 'string') {
-      return null;
-    }
-    
-    try {
-      const parsed = JSON.parse(content);
-      // Parsed content updated
-      return parsed;
-    } catch (error) {
-      // Only log if content looks like it should be JSON (starts with { or [)
-      // Failed to parse content as JSON
-      return null;
-    }
-  }, [content]);
+      // Memoize parsed content to avoid re-parsing on every render
+    const parsedContent = useMemo(() => {
+      if (!content || typeof content !== 'string') {
+        return null;
+      }
+      
+      try {
+        return JSON.parse(content);
+      } catch (error) {
+        return null;
+      }
+    }, [content]);
 
-  // Memoize initial state to prevent recreating object on every render
-  const initialState = useMemo(() => {
-    if (!parsedContent) return undefined;
-    
-    const state = {
-      status: parsedContent.status,
-      prompt: parsedContent.prompt,
-      negativePrompt: parsedContent.negativePrompt,
-      fileId: parsedContent.fileId,
-      requestId: parsedContent.requestId,
-      timestamp: parsedContent.timestamp,
-      message: parsedContent.message,
-      videoUrl: parsedContent.videoUrl, // Pass videoUrl from completed state
-    };
-    
-    // Created initial state
-    return state;
-  }, [parsedContent]);
+      // Memoize initial state to prevent recreating object on every render
+    const initialState = useMemo(() => {
+      if (!parsedContent) return undefined;
+      
+      return {
+        status: parsedContent.status,
+        prompt: parsedContent.prompt,
+        negativePrompt: parsedContent.negativePrompt,
+        fileId: parsedContent.fileId,
+        requestId: parsedContent.requestId,
+        timestamp: parsedContent.timestamp,
+        message: parsedContent.message,
+        videoUrl: parsedContent.videoUrl,
+      };
+    }, [parsedContent]);
 
   // Connect to SSE for real-time updates (using fileId)
   const artifactSSE = useArtifactSSE({
     channel: parsedContent?.fileId ? `file.${parsedContent.fileId}` : '',
     eventHandlers: parsedContent?.fileId ? [(message) => {
       console.log('🎬 Artifact SSE message:', message);
-      // Handle artifact updates here if needed
+      
+      // Handle video completion events
+      if (message.type === 'file' && message.object?.url && message.object?.type === 'video') {
+        const videoUrl = message.object.url;
+        const thumbnailUrl = message.object.thumbnail_url;
+        
+        console.log('🎬 Video completed via SSE:', videoUrl.substring(0, 50) + '...');
+        
+        // Update artifact with completed video
+        if (setArtifact) {
+          setArtifact((current: any) => {
+            const currentContent = typeof current.content === 'string' ? 
+              JSON.parse(current.content || '{}') : current.content;
+            
+            const updatedContent = {
+              ...currentContent,
+              status: 'completed',
+              videoUrl: videoUrl,
+              thumbnailUrl: thumbnailUrl,
+              timestamp: Date.now(),
+              message: 'Video generation completed!'
+            };
+            
+            return {
+              ...current,
+              content: JSON.stringify(updatedContent),
+              status: 'idle' as const
+            };
+          });
+        }
+      }
     }] : [],
     enabled: !!parsedContent?.fileId && !!parsedContent?.requestId
   });
 
-  // Debug SSE connection status
+  // Debug SSE connection status  
   useEffect(() => {
     if (parsedContent?.fileId && artifactSSE.isConnected) {
       console.log('🔌 SSE connected for video artifact file:', parsedContent.fileId);
     }
-  }, [artifactSSE.isConnected, parsedContent?.fileId, parsedContent?.status]);
+  }, [artifactSSE.isConnected, parsedContent?.fileId]);
 
   // Auto-notify chat WebSocket about new fileId when artifact is created (fallback)
   useEffect(() => {
@@ -76,8 +95,6 @@ const VideoArtifactWrapper = memo(function VideoArtifactWrapper(props: any) {
       const globalWindow = window as any;
       if (globalWindow.notifyNewProject) {
         globalWindow.notifyNewProject(parsedContent.fileId);
-      } else {
-        // notifyNewProject not available
       }
     }
   }, [parsedContent?.fileId]);
@@ -156,7 +173,7 @@ const VideoArtifactWrapper = memo(function VideoArtifactWrapper(props: any) {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 px-2">
       <div className="flex items-center gap-2">
         <h3 className="text-lg font-semibold">Generated Video</h3>
         <button
@@ -175,7 +192,7 @@ const VideoArtifactWrapper = memo(function VideoArtifactWrapper(props: any) {
           <CopyIcon size={16} />
         </button>
       </div>
-      <div className="relative">
+      <div className="relative ">
         <video
           src={videoUrl}
           controls
@@ -224,10 +241,6 @@ const VideoArtifactWrapper = memo(function VideoArtifactWrapper(props: any) {
   
   // Only re-render if something meaningful changed
   const shouldUpdate = Object.values(changes).some(Boolean) || contentChanged;
-  
-  if (shouldUpdate) {
-    // VideoArtifactWrapper will re-render
-  }
   
   return !shouldUpdate; // Return true to prevent re-render, false to allow it
 });

@@ -230,12 +230,19 @@ export const generateVideoHybrid = async (
     console.log(`📨 API Response:`, result);
 
     // Extract fileId and projectId from response
-    const fileId = result.data?.[0]?.value?.file_id || 
+    // AICODE-NOTE: Fixed to use correct API response structure
+    const fileId = result.id ||                        // Primary location in SuperDuperAI API
+                  result.data?.[0]?.value?.file_id || 
                   result.data?.[0]?.id || 
                   result.fileId;
-    const projectId = result.project_id || 
+    const projectId = result.video_generation?.id ||   // Video project ID
+                      result.project_id || 
                       result.data?.[0]?.value?.project_id || 
                       result.projectId;
+
+    console.log(`🔍 Extracted fileId: ${fileId}, projectId: ${projectId}`);
+    console.log(`🔍 result.id: ${result.id}`);
+    console.log(`🔍 result.video_generation?.id: ${result.video_generation?.id}`);
 
     if (!fileId) {
       console.error('❌ No fileId found in response');
@@ -247,50 +254,17 @@ export const generateVideoHybrid = async (
 
     console.log(`🎬 Video generation started - FileId: ${fileId}, ProjectId: ${projectId}`);
 
-    // Step 2: Try SSE approach first (like video generator tool)
-    try {
-      console.log(`🔌 Attempting SSE connection for video file: ${fileId}`);
-      const sseResult = await trySSEApproach(fileId);
-      
-      return {
-        success: true,
-        projectId,
-        requestId,
-        fileId,
-        url: sseResult.url,
-        files: [sseResult],
-        method: 'sse',
-        message: `Video generation completed via SSE! FileId: ${fileId}`,
-      };
-    } catch (sseError) {
-      console.log(`⚠️ SSE failed, falling back to polling:`, sseError);
-      
-      // Step 3: Fallback to polling
-      try {
-        const pollingResult = await pollForCompletion(fileId);
-        
-        return {
-          success: true,
-          projectId,
-          requestId,
-          fileId,
-          url: pollingResult.url,
-          files: [pollingResult],
-          method: 'polling',
-          message: `Video generation completed via polling! FileId: ${fileId}`,
-        };
-      } catch (pollingError) {
-        console.error(`❌ Both SSE and polling failed:`, pollingError);
-        
-        return {
-          success: false,
-          projectId,
-          requestId,
-          fileId,
-          error: `Video generation timeout. FileId: ${fileId} - both SSE and polling failed`,
-        };
-      }
-    }
+    // AICODE-NOTE: Server-side should only return fileId for client-side SSE 
+    // Don't try SSE on server - EventSource not available in Node.js
+    console.log(`🔌 Server-side: returning fileId for client-side SSE/polling: ${fileId}`);
+    
+    return {
+      success: true,
+      projectId,
+      requestId,
+      fileId,
+      message: `Video generation started! FileId: ${fileId} - client will handle SSE/polling`,
+    };
 
   } catch (error: any) {
     console.error(`❌ Video generation error:`, error);
