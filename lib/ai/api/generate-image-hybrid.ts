@@ -32,38 +32,34 @@ function validateStyleForAPI(style: MediaOption): string {
   return 'flux_watercolor';
 }
 
-// Polling function to check file status
-async function pollForCompletion(fileId: string, maxWaitTime = 120000): Promise<any> {
-  const config = getSuperduperAIConfig();
-  const startTime = Date.now();
-  const pollInterval = 2000; // 2 seconds
+// Smart polling function using the new polling manager
+async function pollForCompletion(fileId: string, maxWaitTime = 420000): Promise<any> {
+  console.log(`🔄 Starting smart polling for file: ${fileId} (max: ${maxWaitTime / 1000}s)`);
   
-  console.log(`🔄 Starting polling for file: ${fileId}`);
-  
-  while (Date.now() - startTime < maxWaitTime) {
-    try {
-      const response = await fetch(createAPIURL(`/api/file/${fileId}`, config), {
-        method: 'GET',
-        headers: createAuthHeaders()
-      });
-
-      if (response.ok) {
-        const fileData = await response.json();
-        if (fileData.url) {
-          console.log(`✅ Polling success! File completed: ${fileData.url}`);
-          return fileData;
-        }
+  try {
+    const { pollFileCompletion } = await import('@/lib/utils/smart-polling-manager');
+    
+    const result = await pollFileCompletion(fileId, {
+      maxDuration: maxWaitTime, // Default 7 minutes
+      onProgress: (attempt, elapsed, nextInterval) => {
+        console.log(`🔄 Hybrid image poll attempt ${attempt} (${Math.round(elapsed / 1000)}s elapsed, next: ${nextInterval}ms)`);
+      },
+      onError: (error, attempt) => {
+        console.warn(`⚠️ Hybrid image polling non-critical error at attempt ${attempt}:`, error.message);
       }
-      
-      // Wait before next poll
-      await new Promise(resolve => setTimeout(resolve, pollInterval));
-    } catch (error) {
-      console.error('❌ Polling error:', error);
-      await new Promise(resolve => setTimeout(resolve, pollInterval));
+    });
+    
+    if (result.success && result.data) {
+      console.log(`✅ Smart polling success! File completed: ${result.data.url}`);
+      return result.data;
+    } else {
+      throw new Error(result.error || 'Smart polling timeout - file may still be generating');
     }
+    
+  } catch (error) {
+    console.error('❌ Smart polling system error:', error);
+    throw new Error('Failed to initialize smart polling system');
   }
-  
-  throw new Error('Polling timeout - file may still be generating');
 }
 
 // WebSocket approach (with timeout)

@@ -91,78 +91,61 @@ const ImageArtifactWrapper = memo(function ImageArtifactWrapper(props: any) {
     return state;
   }, [parsedContent]);
 
-  // Set up polling fallback for artifacts in case SSE doesn't work
+  // Set up smart polling fallback for artifacts in case SSE doesn't work
   useEffect(() => {
     const fileId = parsedContent?.projectId;
     if (!fileId || parsedContent?.status === 'completed') return;
     
-
-    
-    // Start polling after 30 seconds if image still not completed
+    // Start smart polling after 30 seconds if image still not completed
     const pollTimeout = setTimeout(async () => {
-  
+      console.log('🔄 Starting artifact smart polling for fileId:', fileId);
       
-      let attempts = 0;
-      const maxAttempts = 6; // 6 attempts * 10s = 60s total
-      
-      const pollCheck = async () => {
-        attempts++;
+      try {
+        const { pollFileCompletion } = await import('@/lib/utils/smart-polling-manager');
         
-        try {
-          const response = await fetch(`/api/file/${fileId}`);
-          if (!response.ok) {
-            return false;
+        const result = await pollFileCompletion(fileId, {
+          maxDuration: 7 * 60 * 1000, // 7 minutes
+          initialInterval: 5000, // Start slower for artifacts (5s)
+          onProgress: (attempt, elapsed, nextInterval) => {
+            console.log(`🔄 Artifact poll attempt ${attempt} (${Math.round(elapsed / 1000)}s elapsed, next: ${nextInterval}ms)`);
+          },
+          onError: (error, attempt) => {
+            console.warn(`⚠️ Artifact polling non-critical error at attempt ${attempt}:`, error.message);
           }
+        });
+        
+        if (result.success && result.data?.url) {
+          console.log('✅ Artifact smart polling completed:', result.data.url);
           
-          const file = await response.json();
-          
-          // Check if file is image and has URL
-          if (file.url && file.type === 'image') {
-            // Update artifact content
-            setArtifact((prev: any) => {
-              try {
-                const currentContent = JSON.parse(prev.content || '{}');
-                const updatedContent = {
-                  ...currentContent,
-                  status: 'completed',
-                  imageUrl: file.url,
-                  progress: 100
-                };
-                
-                saveArtifactToDatabase(prev.documentId || prev.id, prev.title, JSON.stringify(updatedContent));
-                
-                return {
-                  ...prev,
-                  content: JSON.stringify(updatedContent)
-                };
-              } catch (error) {
-                console.error('Failed to update artifact via polling:', error);
-                return prev;
-              }
-            });
-            
-            return true; // Found image, stop polling
-          }
-          
-          return false;
-        } catch (error) {
-          console.error('Artifact polling error:', error);
-          return false;
+          // Update artifact content
+          setArtifact((prev: any) => {
+            try {
+              const currentContent = JSON.parse(prev.content || '{}');
+              const updatedContent = {
+                ...currentContent,
+                status: 'completed',
+                imageUrl: result.data.url,
+                progress: 100
+              };
+              
+              saveArtifactToDatabase(prev.documentId || prev.id, prev.title, JSON.stringify(updatedContent));
+              
+              return {
+                ...prev,
+                content: JSON.stringify(updatedContent)
+              };
+            } catch (error) {
+              console.error('Failed to update artifact via smart polling:', error);
+              return prev;
+            }
+          });
+        } else {
+          console.error('❌ Artifact smart polling failed:', result.error);
         }
-      };
-      
-      // Start polling interval
-      const pollInterval = setInterval(async () => {
-        const found = await pollCheck();
-        if (found || attempts >= maxAttempts) {
-          clearInterval(pollInterval);
-        }
-      }, 10000);
-      
-      // Cleanup interval after max time
-      setTimeout(() => {
-        clearInterval(pollInterval);
-      }, 65000);
+        
+      } catch (error) {
+        console.error('❌ Artifact smart polling system error:', error);
+      }
     }, 30000); // 30 second delay before starting polling
     
     return () => {

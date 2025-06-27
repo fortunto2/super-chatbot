@@ -205,73 +205,48 @@ export function useImageGenerator(): UseImageGeneratorReturn {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const startPolling = useCallback((fileId: string) => {
+  const startPolling = useCallback(async (fileId: string) => {
     // AICODE-NOTE: Skip polling if already completed
     if (completedRef.current) {
       console.log('🔄 Skipping polling - image already completed');
       return;
     }
     
-    console.log('🔄 Starting polling for file:', fileId);
+    console.log('🔄 Starting smart polling for file:', fileId);
     
-    const poll = async () => {
-      try {
-        // AICODE-NOTE: Skip if already completed during polling
-        if (completedRef.current) {
-          console.log('🔄 Stopping polling - image completed during polling');
-          if (pollingRef.current) {
-            clearTimeout(pollingRef.current);
-            pollingRef.current = null;
-          }
-          return;
-        }
-        
-        // Use typed client instead of direct OpenAPI calls
-        const fileData: IFileRead = await fileClient.getById(fileId);
-        
-        console.log('📊 File data:', fileData);
-        
-        // Check if file has URL (completed)
-        if (fileData.url) {
-          console.log('✅ Image generation completed with URL:', fileData.url);
-          console.log('🔄 📋 About to call handleGenerationSuccess from polling');
-          const projectId = fileData.tasks?.[0]?.project_id || undefined;
-          handleGenerationSuccess(fileData.url, projectId);
-          if (pollingRef.current) {
-            clearTimeout(pollingRef.current);
-            pollingRef.current = null;
-          }
-          return;
-        }
-        
-        // Check task status if available
-        if (fileData.tasks && fileData.tasks.length > 0) {
-          const latestTask = fileData.tasks[fileData.tasks.length - 1];
-          console.log('📋 Latest task status:', latestTask.status);
+    try {
+      // Use new smart polling manager with 7-minute timeout
+      const { pollFileCompletion } = await import('@/lib/utils/smart-polling-manager');
+      
+      const result = await pollFileCompletion(fileId, {
+        maxDuration: 7 * 60 * 1000, // 7 minutes
+        onProgress: (attempt, elapsed, nextInterval) => {
+          console.log(`🔄 Image poll attempt ${attempt} (${Math.round(elapsed / 1000)}s elapsed, next: ${nextInterval}ms)`);
           
-          if (latestTask.status === 'error') {
-            console.error('❌ Image generation failed with task error');
-            handleGenerationError('Image generation failed');
-            if (pollingRef.current) {
-              clearTimeout(pollingRef.current);
-              pollingRef.current = null;
-            }
-            return;
-          }
+          // Update generation status with progress info
+          setGenerationStatus(prev => ({
+            ...prev,
+            message: `Checking results... (attempt ${attempt}, ${Math.round(elapsed / 1000)}s elapsed)`
+          }));
+        },
+        onError: (error, attempt) => {
+          console.warn(`⚠️ Image polling non-critical error at attempt ${attempt}:`, error.message);
         }
-        
-        // Continue polling if not completed or failed
-        pollingRef.current = setTimeout(poll, 2000);
-        
-      } catch (error) {
-        console.error('❌ Polling error:', error);
-        // Don't stop polling on single error, might be temporary
-        pollingRef.current = setTimeout(poll, 2000);
+      });
+      
+      if (result.success && result.data) {
+        console.log('✅ Smart polling completed successfully:', result.data.url);
+        const projectId = result.data.tasks?.[0]?.project_id || undefined;
+        handleGenerationSuccess(result.data.url, projectId);
+      } else {
+        console.error('❌ Smart polling failed:', result.error);
+        handleGenerationError(result.error || 'Image generation timeout after 7 minutes');
       }
-    };
-
-    // Initial poll
-    poll();
+      
+    } catch (error) {
+      console.error('❌ Smart polling system error:', error);
+      handleGenerationError('Failed to start polling system');
+    }
   }, []);
 
   // Legacy polling function for project-based polling (kept for compatibility)

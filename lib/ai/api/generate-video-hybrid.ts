@@ -33,38 +33,35 @@ function validateStyleForAPI(style: MediaOption): string {
   return 'flux_watercolor';
 }
 
-// Polling function to check file status
-async function pollForCompletion(fileId: string, maxWaitTime = 180000): Promise<any> {
-  const config = getSuperduperAIConfig();
-  const startTime = Date.now();
-  const pollInterval = 3000; // 3 seconds for video
+// Smart polling function using the new polling manager for video
+async function pollForCompletion(fileId: string, maxWaitTime = 420000): Promise<any> {
+  console.log(`🔄 Starting smart video polling for file: ${fileId} (max: ${maxWaitTime / 1000}s)`);
   
-  console.log(`🔄 Starting video polling for file: ${fileId}`);
-  
-  while (Date.now() - startTime < maxWaitTime) {
-    try {
-      const response = await fetch(createAPIURL(`/api/file/${fileId}`, config), {
-        method: 'GET',
-        headers: createAuthHeaders()
-      });
-
-      if (response.ok) {
-        const fileData = await response.json();
-        if (fileData.url) {
-          console.log(`✅ Video polling success! File completed: ${fileData.url}`);
-          return fileData;
-        }
+  try {
+    const { pollFileCompletion } = await import('@/lib/utils/smart-polling-manager');
+    
+    const result = await pollFileCompletion(fileId, {
+      maxDuration: maxWaitTime, // Default 7 minutes
+      initialInterval: 3000, // Start with 3s for video (slower than images)
+      onProgress: (attempt, elapsed, nextInterval) => {
+        console.log(`🔄 Hybrid video poll attempt ${attempt} (${Math.round(elapsed / 1000)}s elapsed, next: ${nextInterval}ms)`);
+      },
+      onError: (error, attempt) => {
+        console.warn(`⚠️ Hybrid video polling non-critical error at attempt ${attempt}:`, error.message);
       }
-      
-      // Wait before next poll
-      await new Promise(resolve => setTimeout(resolve, pollInterval));
-    } catch (error) {
-      console.error('❌ Video polling error:', error);
-      await new Promise(resolve => setTimeout(resolve, pollInterval));
+    });
+    
+    if (result.success && result.data) {
+      console.log(`✅ Smart video polling success! File completed: ${result.data.url}`);
+      return result.data;
+    } else {
+      throw new Error(result.error || 'Smart video polling timeout - generation may still be in progress');
     }
+    
+  } catch (error) {
+    console.error('❌ Smart video polling system error:', error);
+    throw new Error('Failed to initialize smart video polling system');
   }
-  
-  throw new Error('Video polling timeout - generation may still be in progress');
 }
 
 // SSE approach with inline connection (like video generator tool)
