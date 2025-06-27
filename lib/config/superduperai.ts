@@ -24,6 +24,26 @@ interface SuperduperAIConfig {
 const modelCache = new Map<string, { data: IGenerationConfigRead[]; timestamp: number }>();
 const CACHE_DURATION = 60 * 60 * 1000; // 1 hour
 
+/**
+ * Validate Bearer token format
+ * Ensures token is properly formatted for API authentication
+ */
+function validateBearerToken(token: string): boolean {
+  // Remove 'Bearer ' prefix if present
+  const cleanToken = token.replace(/^Bearer\s+/i, '');
+  
+  // Basic validation: alphanumeric characters, minimum length
+  const tokenRegex = /^[a-zA-Z0-9_-]{32,}$/;
+  
+  if (!tokenRegex.test(cleanToken)) {
+    console.warn('Token validation failed: Invalid format');
+    return false;
+  }
+  
+  // Additional checks can be added here (expiration, JWT validation, etc.)
+  return true;
+}
+
 export function getSuperduperAIConfig(): SuperduperAIConfig {
   if (typeof window === 'undefined') {
     // Server-side: Real external API
@@ -33,6 +53,11 @@ export function getSuperduperAIConfig(): SuperduperAIConfig {
 
     if (!token) {
       throw new Error('SUPERDUPERAI_TOKEN environment variable is required');
+    }
+
+    // Token validation for Bearer token format
+    if (!validateBearerToken(token)) {
+      throw new Error('SUPERDUPERAI_TOKEN must be a valid format. Expected: alphanumeric string, 32+ characters');
     }
 
     return { url, token, wsURL };
@@ -336,11 +361,16 @@ export function createAuthHeaders(config?: SuperduperAIConfig): Record<string, s
     };
   }
   
+  // Enhanced User-Agent with version info and client identification
+  const userAgent = `SuperChatbot/3.0.22 (NextJS/${process.env.NODE_ENV || 'development'}; AI-Chatbot)`;
+  
   // Server-side only - Bearer token authentication as required by SuperDuperAI API
   return {
     'Content-Type': 'application/json',
     'Authorization': `Bearer ${apiConfig.token}`,
-    'User-Agent': 'SuperChatbot/1.0',
+    'User-Agent': userAgent,
+    'X-Client-Version': '3.0.22',
+    'X-Client-Platform': 'NextJS',
   };
 }
 

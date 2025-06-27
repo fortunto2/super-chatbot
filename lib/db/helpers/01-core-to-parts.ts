@@ -11,6 +11,7 @@ import {
 import { drizzle } from 'drizzle-orm/postgres-js';
 import { inArray } from 'drizzle-orm';
 import { appendResponseMessages, type UIMessage } from 'ai';
+import { convertDeprecatedMessagesToUIMessages } from '@/lib/types/message-conversion';
 
 if (!process.env.POSTGRES_URL) {
   throw new Error('POSTGRES_URL environment variable is not set');
@@ -137,8 +138,8 @@ async function migrateMessages() {
           messageSection.length = 0;
         }
 
-        // @ts-expect-error message.content has different type
-        messageSection.push(message);
+        // Database migration script - temporary type conversion
+        messageSection.push(message as any);
       }
 
       if (messageSection.length > 0) {
@@ -153,8 +154,8 @@ async function migrateMessages() {
         try {
           const uiSection = appendResponseMessages({
             messages: [userMessage],
-            // @ts-expect-error: message.content has different type
-            responseMessages: assistantMessages,
+            // Temporary type conversion for migration - this is a database migration script
+            responseMessages: assistantMessages as any,
             _internal: {
               currentDate: () => firstAssistantMessage.createdAt ?? new Date(),
             },
