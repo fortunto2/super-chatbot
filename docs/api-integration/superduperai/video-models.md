@@ -37,9 +37,10 @@ POST /api/v1/project/video
 ## Available Video Models
 
 ### LTX (Lightricks LTX Video)
+
 - **Name**: `comfyui/ltx`
 - **Label**: `LTX`
-- **Type**: `image_to_video`
+- **Type**: `text_to_video`
 - **Workflow Path**: `LTX/default.json`
 - **Price**: `0.4` per second
 - **Available Durations**: Various durations supported
@@ -53,8 +54,8 @@ Based on the API response, here are the available model configurations:
   "video_models": {
     "ltx": {
       "name": "comfyui/ltx",
-      "label": "LTX", 
-      "type": "image_to_video",
+      "label": "LTX",
+      "type": "text_to_video",
       "workflow_path": "LTX/default.json",
       "price_per_second": 0.4,
       "description": "Lightricks LTX Video model for high-quality video generation"
@@ -66,6 +67,7 @@ Based on the API response, here are the available model configurations:
 ## Required Configuration Parameters
 
 ### Core Parameters
+
 - `prompt`: Text description of the video to generate
 - `dynamic`: Set to `1` for dynamic video generation
 - `aspect_ratio`: Video aspect ratio (e.g., "16:9", "1:1", "9:16")
@@ -73,15 +75,18 @@ Based on the API response, here are the available model configurations:
 - `image_model_type`: Base model type (e.g., "flux")
 
 ### Quality Settings
+
 - `quality`: Video quality setting ("hd", "sd")
 - `seed`: Random seed for reproducible results (0 for random)
 
 ### Audio Settings
+
 - `voiceover_volume`: Volume level for voiceover (0-1)
-- `music_volume`: Volume level for background music (0-1) 
+- `music_volume`: Volume level for background music (0-1)
 - `sound_effect_volume`: Volume level for sound effects (0-1)
 
 ### Visual Effects
+
 - `transition`: Transition effects configuration
   - `type`: Transition type ("fade", "cut", etc.)
 - `zoom`: Zoom effects configuration
@@ -91,6 +96,7 @@ Based on the API response, here are the available model configurations:
 ## Usage Examples
 
 ### Basic Video Generation
+
 ```json
 {
   "config": {
@@ -116,6 +122,7 @@ Based on the API response, here are the available model configurations:
 ```
 
 ### Cinematic Video with Effects
+
 ```json
 {
   "config": {
@@ -123,7 +130,7 @@ Based on the API response, here are the available model configurations:
     "dynamic": 1,
     "aspect_ratio": "21:9",
     "image_generation_config_name": "comfyui/ltx",
-    "image_model_type": "flux", 
+    "image_model_type": "flux",
     "quality": "hd",
     "seed": 42,
     "voiceover_volume": 0,
@@ -143,6 +150,7 @@ Based on the API response, here are the available model configurations:
 ## Response Format
 
 The API returns a project configuration with:
+
 - Project ID for tracking generation progress
 - WebSocket URL for real-time updates
 - Estimated generation time and cost
@@ -150,6 +158,7 @@ The API returns a project configuration with:
 ## Error Handling
 
 Common errors:
+
 - `400 Bad Request`: Missing required parameters (e.g., "Template is required")
 - `401 Unauthorized`: Invalid API token
 - `429 Too Many Requests`: Rate limit exceeded
@@ -174,4 +183,4 @@ Common errors:
 2. **Seed Values**: Use consistent seeds for reproducible outputs
 3. **Audio Balance**: Adjust volume levels based on content type
 4. **Quality Settings**: Use "hd" for final output, "sd" for testing
-5. **Aspect Ratio**: Choose based on intended platform/use case 
+5. **Aspect Ratio**: Choose based on intended platform/use case

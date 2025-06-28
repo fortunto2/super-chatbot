@@ -41,6 +41,7 @@ import * as Sentry from '@sentry/nextjs';
 import { configureImageGeneration } from '@/lib/ai/tools/configure-image-generation';
 import { configureVideoGeneration } from '@/lib/ai/tools/configure-video-generation';
 import { listVideoModels, findBestVideoModel } from '@/lib/ai/tools/list-video-models';
+import { convertDBMessagesToUIMessages } from '@/lib/types/message-conversion';
 
 export const maxDuration = 60;
 
@@ -367,8 +368,7 @@ export async function POST(request: Request) {
     const previousMessages = await getMessagesByChatId({ id });
 
     const messages = appendClientMessage({
-      // @ts-expect-error: todo add type conversion from DBMessage[] to UIMessage[]
-      messages: previousMessages,
+      messages: convertDBMessagesToUIMessages(previousMessages),
       message,
     });
 

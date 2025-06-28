@@ -33,7 +33,7 @@ export function useModels(): UseModelsReturn {
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
 
-  const loadModels = useCallback(async (forceRefresh: boolean = false) => {
+  const loadModels = useCallback(async (forceRefresh = false) => {
     try {
       setIsLoading(true);
       setError(null);

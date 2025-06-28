@@ -112,7 +112,7 @@ export function ImageGallery({
           
           {/* Overlay with actions */}
           <div className="absolute inset-0 bg-black/0 group-hover:bg-black/60 transition-all duration-200 flex items-center justify-center">
-            <div className="opacity-0 group-hover:opacity-100 transition-opacity space-x-2">
+            <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center space-x-2">
               <Button
                 size="sm"
                 variant="secondary"

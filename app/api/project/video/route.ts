@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { type NextRequest, NextResponse } from 'next/server';
 import { getSuperduperAIConfig } from '@/lib/config/superduperai';
 
 export async function POST(request: NextRequest) {

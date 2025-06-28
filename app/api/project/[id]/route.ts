@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { type NextRequest, NextResponse } from 'next/server';
 import { ProjectService } from '@/lib/api/services/ProjectService';
 import { auth } from '@/app/(auth)/auth';
 

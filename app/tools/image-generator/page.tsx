@@ -7,6 +7,7 @@ import { ImageGallery } from './components/image-gallery';
 import { useImageGenerator } from './hooks/use-image-generator';
 import { Separator } from '@/components/ui/separator';
 import { ImageIcon, Sparkles, Zap } from 'lucide-react';
+import { ToolsNavigation } from '@/components/tools-navigation';
 
 // AICODE-NOTE: Main page component for standalone image generator tool
 export default function ImageGeneratorPage() {
@@ -28,6 +29,9 @@ export default function ImageGeneratorPage() {
 
   return (
     <div className="space-y-8">
+      {/* Navigation */}
+      <ToolsNavigation />
+      
       {/* Header */}
       <div className="text-center space-y-4">
         <div className="flex items-center justify-center space-x-2">

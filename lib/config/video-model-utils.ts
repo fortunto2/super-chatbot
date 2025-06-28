@@ -81,7 +81,7 @@ export async function getEnhancedVideoModels(): Promise<EnhancedVideoModel[]> {
     return [{
       name: 'comfyui/ltx',
       label: 'LTX Video',
-      type: GenerationTypeEnum.IMAGE_TO_VIDEO,
+      type: GenerationTypeEnum.TEXT_TO_VIDEO,
       source: 'superduperai' as any,
       params: {
         price_per_second: 0.4,
@@ -92,13 +92,13 @@ export async function getEnhancedVideoModels(): Promise<EnhancedVideoModel[]> {
         supportedAspectRatios: ['16:9', '1:1', '9:16'],
         supportedQualities: ['hd'],
       },
-      category: 'image_to_video',
+      category: 'text_to_video',
       uiLabel: 'LTX Video',
-      uiDescription: 'Budget-friendly image-to-video generation',
+      uiDescription: 'Budget-friendly text-to-video generation',
       recommendedSettings: videoModelsConfig.model_metadata['comfyui/ltx']?.recommended_settings || {},
       bestFor: ['social_media', 'quick_prototypes', 'budget_projects'],
       priceTier: 'budget',
-      requiresSourceImage: true,
+      requiresSourceImage: false,
       requiresSourceVideo: false,
     }];
   }

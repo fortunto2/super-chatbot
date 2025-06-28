@@ -24,6 +24,26 @@ interface SuperduperAIConfig {
 const modelCache = new Map<string, { data: IGenerationConfigRead[]; timestamp: number }>();
 const CACHE_DURATION = 60 * 60 * 1000; // 1 hour
 
+/**
+ * Validate Bearer token format
+ * Ensures token is properly formatted for API authentication
+ */
+function validateBearerToken(token: string): boolean {
+  // Remove 'Bearer ' prefix if present
+  const cleanToken = token.replace(/^Bearer\s+/i, '');
+  
+  // Basic validation: alphanumeric characters, minimum length
+  const tokenRegex = /^[a-zA-Z0-9_-]{32,}$/;
+  
+  if (!tokenRegex.test(cleanToken)) {
+    console.warn('Token validation failed: Invalid format');
+    return false;
+  }
+  
+  // Additional checks can be added here (expiration, JWT validation, etc.)
+  return true;
+}
+
 export function getSuperduperAIConfig(): SuperduperAIConfig {
   if (typeof window === 'undefined') {
     // Server-side: Real external API
@@ -33,6 +53,11 @@ export function getSuperduperAIConfig(): SuperduperAIConfig {
 
     if (!token) {
       throw new Error('SUPERDUPERAI_TOKEN environment variable is required');
+    }
+
+    // Token validation for Bearer token format
+    if (!validateBearerToken(token)) {
+      throw new Error('SUPERDUPERAI_TOKEN must be a valid format. Expected: alphanumeric string, 32+ characters');
     }
 
     return { url, token, wsURL };
@@ -92,6 +117,25 @@ export function configureClientOpenAPI(): void {
 }
 
 /**
+ * Fix model types for known problematic models
+ * AICODE-NOTE: Override incorrect API configurations
+ */
+function fixModelTypes(models: IGenerationConfigRead[]): IGenerationConfigRead[] {
+  return models.map(model => {
+    // Fix LTX model type - should be text_to_video, not image_to_video
+    if (model.name === 'comfyui/ltx' && model.type === GenerationTypeEnum.IMAGE_TO_VIDEO) {
+      console.log(`🔧 Fixing LTX model type: ${model.type} → ${GenerationTypeEnum.TEXT_TO_VIDEO}`);
+      return {
+        ...model,
+        type: GenerationTypeEnum.TEXT_TO_VIDEO
+      };
+    }
+    
+    return model;
+  });
+}
+
+/**
  * Get all available generation models from SuperDuperAI API
  * This function should only be called server-side
  */
@@ -121,13 +165,16 @@ export async function getAvailableModels(): Promise<IGenerationConfigRead[]> {
 
     const models = response.items || [];
     
+    // AICODE-NOTE: Fix problematic model types
+    const fixedModels = fixModelTypes(models);
+    
     // Cache the results
     modelCache.set(cacheKey, {
-      data: models,
+      data: fixedModels,
       timestamp: Date.now()
     });
 
-    return models;
+    return fixedModels;
   } catch (error) {
     console.error('Failed to fetch generation models:', error);
     return [];
@@ -197,19 +244,29 @@ export async function findImageModel(name: string): Promise<ImageModel | undefin
 export async function getDefaultVideoModel(): Promise<VideoModel | undefined> {
   const videoModels = await getAvailableVideoModels();
   
-  // Priority order for default video models
+  // Priority order for default video models - prioritize text-to-video models!
   const defaultPriority = [
-    'comfyui/ltx', // LTX Video
-    'google-cloud/veo2', // VEO2 Image-to-Video
-    'google-cloud/veo2-text2video', // VEO2 Text-to-Video
+    'azure-openai/sora', // Sora Text-to-Video (FIRST PRIORITY for text prompts!)
+    'google-cloud/veo2-text2video', // VEO2 Text-to-Video  
+    'google-cloud/veo3-text2video', // VEO3 Text-to-Video
+    'comfyui/ltx', // LTX Video (only if configured as text_to_video)
+    'google-cloud/veo2', // VEO2 Image-to-Video (fallback)
+    'google-cloud/veo3', // VEO3 Image-to-Video (fallback)
   ];
+  
+  console.log('🎬 Looking for default video model from priority list:', defaultPriority);
+  console.log('🎬 Available video models:', videoModels.map(m => `${m.name} (${m.type})`));
   
   for (const modelName of defaultPriority) {
     const model = findModel(modelName, videoModels);
-    if (model) return model;
+    if (model) {
+      console.log('✅ Selected default video model:', model.name, '(type:', model.type, ')');
+      return model;
+    }
   }
   
   // Fallback to first available video model
+  console.log('⚠️ Using first available video model:', videoModels[0]?.name);
   return videoModels[0];
 }
 
@@ -336,11 +393,16 @@ export function createAuthHeaders(config?: SuperduperAIConfig): Record<string, s
     };
   }
   
+  // Enhanced User-Agent with version info and client identification
+  const userAgent = `SuperChatbot/3.0.22 (NextJS/${process.env.NODE_ENV || 'development'}; AI-Chatbot)`;
+  
   // Server-side only - Bearer token authentication as required by SuperDuperAI API
   return {
     'Content-Type': 'application/json',
     'Authorization': `Bearer ${apiConfig.token}`,
-    'User-Agent': 'SuperChatbot/1.0',
+    'User-Agent': userAgent,
+    'X-Client-Version': '3.0.22',
+    'X-Client-Platform': 'NextJS',
   };
 }
 

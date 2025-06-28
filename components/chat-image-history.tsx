@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
-import { LoaderIcon } from './icons';
 
 interface ChatImageArtifact {
   id: string;
@@ -73,6 +72,7 @@ export function ChatImageHistory({ chatId, isVisible, onImageSelect }: ChatImage
       <div className="flex items-center justify-between mb-3">
         <h3 className="font-medium text-sm">Chat Image History</h3>
         <button
+          type="button"
           onClick={loadChatImages}
           disabled={loading}
           className="text-xs text-muted-foreground hover:text-foreground transition-colors"
@@ -81,32 +81,31 @@ export function ChatImageHistory({ chatId, isVisible, onImageSelect }: ChatImage
         </button>
       </div>
 
-      {loading && (
-        <div className="flex items-center justify-center py-8">
-          <LoaderIcon size={20} />
-          <span className="ml-2 text-sm text-muted-foreground">Loading images...</span>
-        </div>
-      )}
-
       {error && (
-        <div className="text-sm text-red-500 py-4 text-center">
+        <div className="text-red-500 text-xs mb-3 p-2 bg-red-50 rounded">
           {error}
         </div>
       )}
 
-      {!loading && !error && images.length === 0 && (
-        <div className="text-sm text-muted-foreground py-8 text-center">
-          No images found in this chat
+      {images.length === 0 ? (
+        <div className="text-center text-muted-foreground text-xs py-4">
+          {loading ? 'Loading images...' : 'No images found in this chat'}
         </div>
-      )}
-
-      {!loading && !error && images.length > 0 && (
+      ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
           {images.map((image) => (
             <div
               key={image.id}
+              role="button"
+              tabIndex={0}
               className="group relative aspect-square rounded-lg overflow-hidden border cursor-pointer hover:border-primary transition-colors"
               onClick={() => handleImageClick(image.url)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  handleImageClick(image.url);
+                }
+              }}
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img

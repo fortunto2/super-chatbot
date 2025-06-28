@@ -1,11 +1,4 @@
-/**
- * Typed clients for Generation API operations
- * Uses OpenAPI models for type safety
- */
 
-import type { GenerateImagePayload } from '@/lib/api/models/GenerateImagePayload';
-import type { GenerateVideoPayload } from '@/lib/api/models/GenerateVideoPayload';
-import type { IFileRead } from '@/lib/api/models/IFileRead';
 
 export interface GenerationResponse {
   success: boolean;
@@ -43,7 +36,7 @@ export interface VideoGenerationInput {
 export class GenerationClient {
   private baseUrl: string;
 
-  constructor(baseUrl: string = '') {
+  constructor(baseUrl = '') {
     this.baseUrl = baseUrl;
   }
 

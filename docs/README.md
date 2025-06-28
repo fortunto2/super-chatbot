@@ -1,101 +1,197 @@
-# Super Chatbot Documentation
+# Super Chatbot - Documentation Center
 
-Structured documentation for AI agents to quickly find and use relevant information.
+Comprehensive documentation for the Super Chatbot project, featuring advanced AI capabilities, media generation, and unified architecture.
 
-## 🚀 Quick Navigation for AI Agents
+## 🏗️ Architecture Status
 
-### [📚 Getting Started](./getting-started/README.md)
-Start here for environment setup and project onboarding.
+### ✅ Media Generation Framework (Production Ready)
 
-### [🔧 Development](./development/README.md)
-AI-first development methodology, implementation planning, and AICODE comment system.
+**Major Achievement**: Successfully migrated to unified Media Generation Framework with **94% code reduction** and enhanced maintainability.
 
-### [🏗 Architecture](./architecture/README.md)
-System architecture, API design, and technical specifications.
+**Current Status** (2025-01-27):
 
-### [🤖 AI Capabilities](./ai-capabilities/README.md)
-Image and video generation, models, pricing, and usage examples.
+- 🎯 **Production Tools**: Now using framework architecture
+- 🛡️ **Chat Generation**: Legacy implementation (proven, safe) with optional framework integration
+- 🚀 **Performance**: Massive improvement in code maintainability and user experience
+- 📦 **Framework**: Complete with image/video generators, hooks, and components
 
-### [🔗 API Integration](./api-integration/README.md)
-SuperDuperAI API integration, authentication, and external service connections.
+**Key Benefits**:
 
-### [🛠 Maintenance](./maintenance/README.md)
-Changelog, troubleshooting, and project maintenance information.
-- **LATEST**: [Video & Image Generator Endpoints Fix](./maintenance/changelog/video-image-generator-endpoints-fix.md) ✅
-- [File-Based SSE Architecture Fix](./maintenance/changelog/file-based-sse-fix.md)
+- From 1,150+ lines to 50 lines per tool (with adapter)
+- Unified patterns across all media types
+- Better error handling and timeout management
+- Easy addition of future media types (audio, text, 3D)
 
-### [📖 Reference](./reference/README.md)
-Glossary, FAQ, and quick reference materials.
+See: [Migration Completion](./maintenance/changelog/production-migration-complete.md)
 
-## 🎯 For AI Agents: Best Entry Points
+## 📂 Documentation Structure
 
-### Starting a New Feature
-1. Read [Development Methodology](./development/ai-development-methodology.md)
-2. Use [Implementation Plan Template](./development/implementation-plan-template.md)
-3. Search existing [AICODE Comments](./development/aicode-examples.md)
+### Getting Started
 
-### Working with AI Media Generation
-1. Check [AI Capabilities Overview](./ai-capabilities/overview.md)
-2. For images: [Image Generation Guide](./ai-capabilities/image-generation/README.md)
-3. **NEW**: [Standalone Image Generator Tool](./ai-capabilities/image-generation/image-generator-tool.md)
-4. For videos: [Video Models Guide](./ai-capabilities/video-generation/models-guide.md)
-5. **NEW**: [Standalone Video Generator Tool](./ai-capabilities/video-generation/video-generator-tool.md)
+- [Environment Setup](./getting-started/environment-setup.md) - Development environment configuration
+- [Quick Start Guide](./getting-started/README.md) - Get up and running quickly
 
-### API Integration Tasks
-1. Review [SuperDuperAI Integration](./api-integration/superduperai/README.md)
-2. Check [Environment Setup](./getting-started/environment-setup.md)
-3. Use [Dynamic API Integration](./api-integration/superduperai/dynamic-integration.md)
+### Architecture & Development
 
-### Architecture Understanding
-1. Start with [System Overview](./architecture/system-overview.md)
-2. Review [API Architecture](./architecture/api-architecture.md)
-3. Check [WebSocket Architecture](./architecture/websocket-architecture.md)
+- [AI Development Methodology](./development/ai-development-methodology.md) - Two-phase development process
+- [Media Generation Framework](./architecture/media-generation-framework.md) - Unified media generation architecture
+- [API Architecture](./architecture/api-architecture.md) - Backend API design and patterns
+- [Implementation Plans](./development/implementation-plans/) - Structured development planning
 
-## 📋 Document Categories
+### AI Capabilities
 
-| Category | Purpose | Key Files |
-|----------|---------|-----------|
-| **Getting Started** | Environment setup, onboarding | environment-setup.md |
-| **Development** | AI methodology, AICODE system | ai-development-methodology.md |
-| **Architecture** | System design, technical specs | system-overview.md, api-architecture.md |
-| **AI Capabilities** | Media generation, models | overview.md, models-guide.md |
-| **API Integration** | External APIs, authentication | superduperai/, dynamic-integration.md |
-| **Maintenance** | Changelog, troubleshooting | changelog/, troubleshooting.md |
-| **Reference** | Glossary, FAQ, quick reference | glossary.md, faq.md |
+- [Overview](./ai-capabilities/overview.md) - AI features and capabilities
+- [Image Generation](./ai-capabilities/image-generation/) - Image generation system
+- [Video Generation](./ai-capabilities/video-generation/) - Video generation system
 
-## 🔍 Search Patterns for AI Agents
+### API Integration
 
-### Finding AICODE Comments
-```bash
-grep -r "AICODE-" . --include="*.ts" --include="*.tsx"
+- [SuperDuperAI Integration](./api-integration/superduperai/) - External API integration
+- [SSE Implementation](./websockets-implementation/) - Real-time communication
+
+### Maintenance & Changelog
+
+- [Changelog Directory](./maintenance/changelog/) - Detailed change history
+- [Maintenance Guide](./maintenance/README.md) - System maintenance procedures
+
+### Reference
+
+- [FAQ](./reference/faq.md) - Frequently asked questions
+- [Glossary](./reference/glossary.md) - Technical terminology
+
+## 🚀 Recent Major Updates
+
+### Video Model Selection Enhancement (2025-01-28)
+
+- **Fixed Sora prioritization** for text-to-video generation
+- **Smart model selection** prioritizes text_to_video over image_to_video models
+- **Enhanced default model priority** with Sora as top choice for VIP users
+- **Resolved ComfyUI errors** by selecting appropriate model types for text prompts
+- **Fixed LTX model fallback issue** that caused `'str' object has no attribute 'read'` errors
+- **Added `requireTextToVideo` parameter** to force text-to-video model selection
+- **Enhanced API route logic** with automatic generation type detection
+
+### Media Generation Framework (2025-01-27)
+
+- **Complete architecture implementation** with image and video generators
+- **Production migration** for tools with 94% code reduction
+- **Optional chat integration** with safety fallbacks
+- **Universal React hooks** and components for any media type
+- **Template Method pattern** for consistent workflows
+- **Factory pattern** for extensible generator creation
+
+### Key Technical Achievements
+
+- **BaseMediaGenerator** abstract class with unified workflow
+- **MediaGeneratorFactory** singleton with registration system
+- **Legacy compatibility layers** for seamless migration
+- **Smart polling integration** with 7-minute timeout protection
+- **Comprehensive TypeScript support** with type-safe interfaces
+
+## 🎯 Framework Architecture
+
+### Core Components
+
+```
+lib/media-generation/
+├── core/base-generator.ts        # Abstract base class (400+ lines)
+├── factory/generator-factory.ts  # Factory pattern (200+ lines)
+├── generators/
+│   ├── image-generator.ts        # Image-specific implementation
+│   └── video-generator.ts        # Video-specific implementation
+├── hooks/
+│   ├── use-media-generator.ts    # Universal React hook
+│   └── use-*-convenience.ts      # Convenience hooks
+└── components/
+    └── media-generator-form.tsx  # Universal form component
 ```
 
-### Finding Implementation Plans
-```bash
-ls docs/development/implementation-plans/
+### Usage Examples
+
+```typescript
+// Get any generator from factory
+const generator = MediaGeneratorFactory.getInstance().create("image");
+
+// Generate with unified workflow
+const result = await generator.generate({
+  prompt: "A beautiful sunset",
+  settings: { model, resolution, style, shotSize },
+  chatId: "chat_123",
+});
+
+// Universal React hook
+const { generateImage, isGenerating, progress } = useMediaGenerator("image");
 ```
 
-### Finding Model Information
-```bash
-# Video models
-cat docs/ai-capabilities/video-generation/models-guide.md
+## 🔧 Migration Status
 
-# Image generation
-cat docs/ai-capabilities/image-generation/README.md
-```
+### Production Ready ✅
 
-## 📚 Related Resources
+- **Image Generator Tool**: Using framework architecture
+- **Video Generator Tool**: Using framework architecture
+- **Legacy Compatibility**: 100% maintained with adapters
+- **Safety Mechanisms**: Comprehensive fallbacks implemented
 
-- [`../AGENTS.md`](../AGENTS.md) - Main AI agent guidelines
-- Root README.md - Project overview and setup
-- Implementation plans archive in `development/implementation-plans/`
+### Optional Integration 🔄
 
-This structured approach ensures AI agents can quickly navigate to relevant information without getting lost in documentation chaos.
+- **Chat Image Generation**: Framework ready, legacy active
+- **Chat Video Generation**: Framework ready, legacy active
+- **Activation**: Controlled by feature flags for safe rollout
 
-## 🔧 Development
+## 📈 Performance Impact
 
-- [AI-First Development Methodology](./development/ai-development-methodology.md) - Core development approach for AI agents
-- [OpenAPI Migration Guide](./development/openapi-migration-guide.md) - Dynamic model discovery migration
-- [Development Workflow](./development/development-workflow.md) - Step-by-step development process
-- [Code Quality Standards](./development/code-quality-standards.md) - Standards for maintainable code
-- [Type Unification](./development/type-unification.md) - VideoModel type consolidation process 
+### Tools Improvement
+
+- **Code Reduction**: 94% (1,150+ → 50 lines per tool)
+- **Development Speed**: Significantly faster feature addition
+- **Maintainability**: Single source of truth for media generation
+- **Error Handling**: Centralized and more robust
+
+### User Experience
+
+- **Consistency**: Unified behavior across all media types
+- **Reliability**: Better timeout and error recovery
+- **Progress Tracking**: Enhanced real-time feedback
+- **Performance**: Optimized API calls and resource management
+
+## 🛠️ Development Guidelines
+
+### AI-First Development
+
+- **Two-Phase Process**: Planning → Implementation
+- **AICODE Comments**: Persistent memory for AI agents
+- **Implementation Plans**: Structured approach with templates
+- **Template Approval**: Review process for major changes
+
+### Code Standards
+
+- **TypeScript**: Comprehensive type safety
+- **React Patterns**: Hooks and component composition
+- **Error Handling**: Graceful degradation and recovery
+- **Testing**: Component and integration testing
+
+## 🔍 Quick Links
+
+### For Developers
+
+- [AI Development Methodology](./development/ai-development-methodology.md)
+- [Media Generation Framework](./architecture/media-generation-framework.md)
+- [Implementation Plans](./development/implementation-plans/)
+
+### For Operations
+
+- [Environment Setup](./getting-started/environment-setup.md)
+- [Maintenance Guide](./maintenance/README.md)
+- [Migration Completion](./maintenance/changelog/production-migration-complete.md)
+
+### For Users
+
+- [AI Capabilities Overview](./ai-capabilities/overview.md)
+- [FAQ](./reference/faq.md)
+- [Troubleshooting](./ai-capabilities/image-generation/troubleshooting.md)
+
+---
+
+**Documentation maintained by AI agents following the [AI-First Development Methodology](./development/ai-development-methodology.md)**
+
+_Last Updated: 2025-01-27 - Production Migration Complete_

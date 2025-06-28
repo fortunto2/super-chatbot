@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { type NextRequest, NextResponse } from 'next/server';
 import { configureSuperduperAI } from '@/lib/config/superduperai';
 import { FileService } from '@/lib/api/services/FileService';
 import type { IFileRead } from '@/lib/api/models/IFileRead';

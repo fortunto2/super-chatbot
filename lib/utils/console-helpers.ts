@@ -683,7 +683,7 @@ if (typeof window !== 'undefined') {
            const content = JSON.parse(artifactInstance.artifact.content);
            if (content.imageUrl) {
              effectiveImageUrl = content.imageUrl;
-             console.log('💡 Using image URL from current artifact:', effectiveImageUrl.substring(0, 50) + '...');
+             console.log('💡 Using image URL from current artifact:', `${effectiveImageUrl.substring(0, 50)}...`);
            }
          } catch (error) {
            // Silent fail
@@ -755,7 +755,7 @@ if (typeof window !== 'undefined') {
            if (content.videoUrl) {
              effectiveVideoUrl = content.videoUrl;
              thumbnailUrl = thumbnailUrl || content.thumbnailUrl;
-             console.log('💡 Using video URL from current artifact:', effectiveVideoUrl.substring(0, 50) + '...');
+             console.log('💡 Using video URL from current artifact:', `${effectiveVideoUrl.substring(0, 50)}...`);
            }
          } catch (error) {
            // Silent fail

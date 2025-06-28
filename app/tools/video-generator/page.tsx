@@ -7,6 +7,7 @@ import { VideoGallery } from './components/video-gallery';
 import { VideoGenerationProgress } from './components/video-generation-progress';
 import { useVideoGenerator } from './hooks/use-video-generator';
 import { useVideoEffects } from '@/hooks/use-video-effects';
+import { ToolsNavigation } from '@/components/tools-navigation';
 
 export default function VideoGeneratorPage() {
   const [prompt, setPrompt] = useState('');
@@ -50,6 +51,9 @@ export default function VideoGeneratorPage() {
 
   return (
     <div className="space-y-6">
+      {/* Navigation */}
+      <ToolsNavigation />
+      
       {/* Header */}
       <div className="text-center space-y-2">
         <h1 className="text-3xl font-bold">AI Video Generator</h1>

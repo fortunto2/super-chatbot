@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { Button } from '@/components/ui/button';
 import { CopyIcon } from '@/components/icons';
 import { toast } from 'sonner';
 import type { UseChatHelpers } from '@ai-sdk/react';

@@ -1,5 +1,5 @@
-import { NextRequest } from 'next/server';
-import { getSuperduperAIConfig } from '@/lib/config/superduperai';
+import type { NextRequest } from 'next/server';
+import { getSuperduperAIConfig } from '../../../../lib/config/superduperai';
 
 export const runtime = 'nodejs';
 
@@ -27,7 +27,7 @@ export async function GET(
     
     // Add authorization if available
     if (config.token) {
-      headers['Authorization'] = `Bearer ${config.token}`;
+      headers.Authorization = `Bearer ${config.token}`;
     }
     
     // Connect to backend SSE
@@ -59,11 +59,20 @@ export async function GET(
       start(controller) {
         console.log('🔌 SSE Proxy: Stream started');
         
-        reader = response.body!.getReader();
+        reader = response.body?.getReader() || null;
+        if (!reader) {
+          controller.error(new Error('Failed to get reader from response body'));
+          return;
+        }
+        
         const decoder = new TextDecoder();
         
-        function pump(): Promise<void> {
-          return reader!.read().then(({ done, value }) => {
+        function pump(): Promise<void> | undefined {
+          if (!reader) {
+            return Promise.resolve();
+          }
+          
+          return reader.read().then(({ done, value }) => {
             if (done) {
               console.log('🔌 SSE Proxy: Stream completed');
               controller.close();
@@ -72,7 +81,7 @@ export async function GET(
             
             // Decode and forward the chunk
             const chunk = decoder.decode(value, { stream: true });
-            console.log('📡 SSE Proxy: Forwarding chunk:', chunk.substring(0, 100) + '...');
+            console.log('📡 SSE Proxy: Forwarding chunk:', `${chunk.substring(0, 100)}...`);
             
             controller.enqueue(new TextEncoder().encode(chunk));
             return pump();

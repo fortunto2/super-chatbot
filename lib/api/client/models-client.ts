@@ -26,7 +26,7 @@ export class ModelsClient {
   private cache: { data: ModelsResponse; timestamp: number } | null = null;
   private readonly CACHE_DURATION = 60 * 60 * 1000; // 1 hour
 
-  constructor(baseUrl: string = '') {
+  constructor(baseUrl = '') {
     this.baseUrl = baseUrl;
   }
 
@@ -34,7 +34,7 @@ export class ModelsClient {
    * Get all available models (image and video)
    * Returns cached data if available and not expired
    */
-  async getModels(forceRefresh: boolean = false): Promise<ModelsResponse> {
+  async getModels(forceRefresh = false): Promise<ModelsResponse> {
     // Check cache first
     if (!forceRefresh && this.cache && Date.now() - this.cache.timestamp < this.CACHE_DURATION) {
       console.log('📦 Using cached models data');
@@ -71,7 +71,7 @@ export class ModelsClient {
   /**
    * Get only image models
    */
-  async getImageModels(forceRefresh: boolean = false): Promise<IGenerationConfigRead[]> {
+  async getImageModels(forceRefresh = false): Promise<IGenerationConfigRead[]> {
     const response = await this.getModels(forceRefresh);
     return response.data.imageModels;
   }
@@ -79,7 +79,7 @@ export class ModelsClient {
   /**
    * Get only video models
    */
-  async getVideoModels(forceRefresh: boolean = false): Promise<IGenerationConfigRead[]> {
+  async getVideoModels(forceRefresh = false): Promise<IGenerationConfigRead[]> {
     const response = await this.getModels(forceRefresh);
     return response.data.videoModels;
   }
@@ -87,7 +87,7 @@ export class ModelsClient {
   /**
    * Find a specific model by name
    */
-  async findModel(name: string, forceRefresh: boolean = false): Promise<IGenerationConfigRead | undefined> {
+  async findModel(name: string, forceRefresh = false): Promise<IGenerationConfigRead | undefined> {
     const response = await this.getModels(forceRefresh);
     return response.data.allModels.find(model => model.name === name);
   }

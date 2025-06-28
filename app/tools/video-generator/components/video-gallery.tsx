@@ -69,7 +69,7 @@ export function VideoGallery({
         <Button
           variant="outline"
           size="sm"
-          className="absolute top-2 right-2 z-10 bg-gray-900/90 hover:bg-gray-800 text-white border-gray-600 h-8 w-8 p-0"
+          className="absolute top-2 right-2 z-10 bg-gray-900/90 hover:bg-gray-800 text-white border-gray-600 size-8 p-0"
           onClick={() => setSelectedVideo(null)}
           title="Close"
         >
