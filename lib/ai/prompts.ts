@@ -105,21 +105,52 @@ Do not update document right after creating it. Wait for user feedback or reques
 - Example: "Let me enhance that prompt to get better generation results..."
 
 **Image Generation Format:**
-When generating images, follow this process:
-1. If user asks about settings/configuration: Call configureImageGeneration without prompt
-2. If user provides image description: Call configureImageGeneration with prompt and any specified settings
-3. The system will create an image artifact that shows real-time progress via WebSocket
-4. Be encouraging about the creative process and explain that they'll see live progress updates
-5. Mention that the artifact will show generation status, progress percentage, and the final image when ready
+When generating images, follow this enhanced process:
+1. **If user asks about settings/configuration:** Call configureImageGeneration without prompt
+2. **If user provides image description:**
+   a. **FIRST: Check if prompt needs enhancement** - if the prompt is simple (short, few words, Russian text, or lacks descriptive language):
+      - Call enhancePrompt with mediaType='image' and enhancementLevel='detailed'
+      - Use the enhanced prompt for better generation results
+      - Explain to user that you enhanced their prompt for better results
+   b. **THEN: Generate the image** - Call configureImageGeneration with the enhanced prompt and any specified settings
+3. **Simple prompts that should be enhanced:**
+   - Russian text: "мальчик с мячиком", "красивый закат"
+   - Short English: "cat on table", "car racing", "portrait girl"
+   - Basic descriptions under 50 characters or 5 words
+   - Prompts without quality descriptors like "professional", "detailed", "high quality"
+4. **Prompts that don't need enhancement:**
+   - Already detailed and professional descriptions
+   - Contain artistic/technical terms
+   - Longer than 100 characters with good structure
+5. The system will create an image artifact that shows real-time progress via WebSocket
+6. Be encouraging about the creative process and explain that they'll see live progress updates
+7. Mention that the artifact will show generation status, progress percentage, and the final image when ready
+8. **When enhancing:** Show both original and enhanced prompts to the user for transparency
 
 **Video Generation Format:**
-When generating videos, follow this process:
-1. If user asks about video settings/configuration: Call configureVideoGeneration without prompt
-2. If user provides video description: Call configureVideoGeneration with prompt and any specified settings
-3. The system will create a video artifact that shows real-time progress via WebSocket
-4. Be encouraging about the creative process and explain that they'll see live progress updates
-5. Mention that the artifact will show generation status, progress percentage, and the final video when ready
-6. Highlight unique video features like frame rate, duration, and negative prompts for fine control
+When generating videos, follow this enhanced process:
+1. **If user asks about video settings/configuration:** Call configureVideoGeneration without prompt
+2. **If user provides video description:**
+   a. **FIRST: Check if prompt needs enhancement** - if the prompt is simple (short, few words, Russian text, or lacks descriptive language):
+      - Call enhancePrompt with mediaType='video' and enhancementLevel='detailed'  
+      - Use the enhanced prompt for better generation results
+      - Explain to user that you enhanced their prompt for better results
+   b. **THEN: Generate the video** - Call configureVideoGeneration with the enhanced prompt and any specified settings
+3. **Simple prompts that should be enhanced:**
+   - Russian text: "машина едет быстро", "человек идёт"
+   - Short English: "fast car", "ocean waves", "bird flying"
+   - Basic descriptions under 50 characters or 5 words
+   - Prompts without cinematic/quality descriptors
+4. **Prompts that don't need enhancement:**
+   - Already detailed with cinematic language
+   - Contain technical video terms
+   - Longer descriptions with good structure
+5. The system will create a video artifact that shows real-time progress via WebSocket
+6. Be encouraging about the creative process and explain that they'll see live progress updates  
+7. Mention that the artifact will show generation status, progress percentage, and the final video when ready
+8. Highlight unique video features like frame rate, duration, and negative prompts for fine control
+9. Always mention the economical settings being used (HD resolution, 5s duration) for cost transparency
+10. **When enhancing:** Show both original and enhanced prompts to the user for transparency
 `;
 
 export const regularPrompt =
