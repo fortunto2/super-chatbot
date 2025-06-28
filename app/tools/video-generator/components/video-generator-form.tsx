@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   Select, 
   SelectContent, 
@@ -13,11 +14,14 @@ import {
   SelectTrigger, 
   SelectValue 
 } from '@/components/ui/select';
-import { Loader2, Video } from 'lucide-react';
+import { Loader2, Video, Type, Image as ImageIcon, Shuffle } from 'lucide-react';
 import { toast } from 'sonner';
 import { z } from 'zod';
 import { getVideoGenerationConfig } from '@/lib/config/media-settings-factory';
 import type { MediaOption, MediaResolution, AdaptedModel } from '@/lib/types/media-settings';
+import { ImageUpload } from './image-upload';
+import { GenerationTypeEnum } from '@/lib/api/models/GenerationTypeEnum';
+import { getModelLabel } from '@/lib/config/superduperai';
 
 // AICODE-NOTE: Form validation schema for video generation parameters
 const videoGenerationSchema = z.object({
@@ -30,6 +34,12 @@ const videoGenerationSchema = z.object({
   frameRate: z.number().min(24).max(120).optional(),
   duration: z.number().min(1).max(30).optional(),
   seed: z.number().optional(),
+  generationType: z.enum(['text-to-video', 'image-to-video']),
+  sourceImage: z.object({
+    // AICODE-NOTE: Use any() instead of instanceof(File) for SSR compatibility
+    file: typeof window !== 'undefined' ? z.instanceof(File) : z.any(),
+    previewUrl: z.string()
+  }).optional(),
 });
 
 export type VideoGenerationFormData = z.infer<typeof videoGenerationSchema>;
@@ -49,14 +59,19 @@ export function VideoGeneratorForm({
   const [formData, setFormData] = useState<VideoGenerationFormData>({
     prompt: '',
     negativePrompt: '',
-    style: '',
-    resolution: '',
+    style: 'base',
+    resolution: '1280x720 (HD)',
     shotSize: '',
     model: '',
     frameRate: 30,
     duration: 5,
-    seed: undefined,
+    seed: Math.floor(Math.random() * 1000000000000),
+    generationType: 'text-to-video',
+    sourceImage: undefined,
   });
+
+  // State for image upload
+  const [selectedImage, setSelectedImage] = useState<{ file: File; previewUrl: string } | null>(null);
 
   // AICODE-NOTE: Configuration state loaded from SuperDuperAI API
   const [config, setConfig] = useState<{
@@ -65,6 +80,8 @@ export function VideoGeneratorForm({
     availableStyles: MediaOption[];
     availableShotSizes: MediaOption[];
     defaultSettings: any;
+    textToVideoModels: AdaptedModel[];
+    imageToVideoModels: AdaptedModel[];
   } | null>(null);
   
   const [isLoadingConfig, setIsLoadingConfig] = useState(true);
@@ -80,21 +97,40 @@ export function VideoGeneratorForm({
         console.log('🎬 Loading video generation configuration...');
         const videoConfig = await getVideoGenerationConfig();
         
+        // AICODE-NOTE: Use existing OpenAPI model filtering from superduperai.ts
+        const allVideoModels = videoConfig.availableModels;
+        const textToVideoModels = allVideoModels.filter(model => 
+          model.type === GenerationTypeEnum.TEXT_TO_VIDEO
+        );
+        const imageToVideoModels = allVideoModels.filter(model => 
+          model.type === GenerationTypeEnum.IMAGE_TO_VIDEO
+        );
+        
         console.log('🎬 ✅ Configuration loaded:', {
-          modelsCount: videoConfig.availableModels.length,
+          totalModels: videoConfig.availableModels.length,
+          textToVideoModels: textToVideoModels.length,
+          imageToVideoModels: imageToVideoModels.length,
           resolutionsCount: videoConfig.availableResolutions.length,
           stylesCount: videoConfig.availableStyles.length,
         });
         
-        setConfig(videoConfig);
+        setConfig({
+          ...videoConfig,
+          textToVideoModels,
+          imageToVideoModels,
+        });
         
         // Set default values from configuration
+        const defaultTextModel = textToVideoModels.find(m => m.name.includes('sora')) || textToVideoModels[0];
+        const defaultImageModel = imageToVideoModels.find(m => m.name.includes('veo2')) || imageToVideoModels[0];
+        
         setFormData(prev => ({
           ...prev,
-          style: videoConfig.defaultSettings.style?.id || '',
-          resolution: videoConfig.defaultSettings.resolution?.label || '',
-          shotSize: videoConfig.defaultSettings.shotSize?.id || '',
-          model: videoConfig.defaultSettings.model?.id || videoConfig.defaultSettings.model?.name || '',
+          style: 'base',
+          resolution: '1280x720 (HD)',
+          shotSize: videoConfig.defaultSettings.shotSize?.id || 'medium_shot',
+          model: defaultTextModel?.name || '',
+          generationType: 'text-to-video',
         }));
         
       } catch (error) {
@@ -116,8 +152,57 @@ export function VideoGeneratorForm({
     }));
   };
 
+  // Generate random seed number
+  const generateRandomSeed = () => {
+    const newSeed = Math.floor(Math.random() * 1000000000000);
+    setFormData(prev => ({
+      ...prev,
+      seed: newSeed,
+    }));
+  };
+
+  const handleGenerationTypeChange = (type: 'text-to-video' | 'image-to-video') => {
+    // Find preferred models: Sora for text-to-video, VEO2 for image-to-video
+    const defaultTextModel = config?.textToVideoModels.find(m => m.name.includes('sora')) || config?.textToVideoModels[0];
+    const defaultImageModel = config?.imageToVideoModels.find(m => m.name.includes('veo2')) || config?.imageToVideoModels[0];
+    
+    setFormData(prev => ({
+      ...prev,
+      generationType: type,
+      // Set appropriate model based on generation type
+      model: type === 'text-to-video' 
+        ? defaultTextModel?.name || ''
+        : defaultImageModel?.name || ''
+    }));
+  };
+
+  const handleImageSelect = (file: File, previewUrl: string) => {
+    setSelectedImage({ file, previewUrl });
+    setFormData(prev => ({
+      ...prev,
+      sourceImage: { file, previewUrl }
+    }));
+  };
+
+  const handleImageRemove = () => {
+    if (selectedImage?.previewUrl) {
+      URL.revokeObjectURL(selectedImage.previewUrl);
+    }
+    setSelectedImage(null);
+    setFormData(prev => ({
+      ...prev,
+      sourceImage: undefined
+    }));
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Additional validation for image-to-video mode
+    if (formData.generationType === 'image-to-video' && !formData.sourceImage) {
+      toast.error('Please select a source image for image-to-video generation');
+      return;
+    }
     
     // Validate form data
     try {
@@ -189,22 +274,131 @@ export function VideoGeneratorForm({
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Prompt Input */}
-          <div className="space-y-2">
-            <Label htmlFor="prompt">Prompt *</Label>
-            <Textarea
-              id="prompt"
-              placeholder="Describe the video you want to generate..."
-              value={formData.prompt}
-              onChange={(e) => handleInputChange('prompt', e.target.value)}
-              disabled={disabled || isGenerating}
-              rows={3}
-              className="resize-none"
-            />
-            <p className="text-xs text-muted-foreground">
-              Be detailed and specific for better results
-            </p>
-          </div>
+          {/* Generation Type Tabs */}
+          <Tabs 
+            value={formData.generationType} 
+            onValueChange={(value: string) => handleGenerationTypeChange(value as 'text-to-video' | 'image-to-video')}
+            className="w-full"
+          >
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="text-to-video" className="flex items-center gap-2">
+                <Type className="size-4" />
+                Text to Video
+              </TabsTrigger>
+              <TabsTrigger value="image-to-video" className="flex items-center gap-2">
+                <ImageIcon className="size-4" />
+                Image to Video
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="text-to-video" className="space-y-6 mt-6">
+              {/* Text-to-Video Mode */}
+              <div className="space-y-2">
+                <Label htmlFor="prompt">Video Description *</Label>
+                <Textarea
+                  id="prompt"
+                  placeholder="Describe the video you want to generate..."
+                  value={formData.prompt}
+                  onChange={(e) => handleInputChange('prompt', e.target.value)}
+                  disabled={disabled || isGenerating}
+                  rows={3}
+                  className="resize-none"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Be detailed and specific for better results
+                </p>
+              </div>
+
+              {/* Model Selection for Text-to-Video */}
+              <div className="space-y-2">
+                <Label htmlFor="model">AI Model</Label>
+                <Select
+                  value={formData.model}
+                  onValueChange={(value) => handleInputChange('model', value)}
+                  disabled={disabled || isGenerating}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a model" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {config.textToVideoModels.map((model) => (
+                      <SelectItem key={model.name} value={model.name}>
+                        <div className="flex items-center justify-between w-full">
+                          <span>{getModelLabel(model)}</span>
+                          {model.params?.price && (
+                            <span className="text-xs text-muted-foreground ml-2">
+                              ${model.params.price}/sec
+                            </span>
+                          )}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  {config.textToVideoModels.length} text-to-video models available
+                </p>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="image-to-video" className="space-y-6 mt-6">
+              {/* Image-to-Video Mode */}
+              <ImageUpload
+                onImageSelect={handleImageSelect}
+                onImageRemove={handleImageRemove}
+                selectedImage={selectedImage}
+                disabled={disabled || isGenerating}
+                className="mb-4"
+              />
+
+              <div className="space-y-2">
+                <Label htmlFor="prompt">Animation Description (Optional)</Label>
+                <Textarea
+                  id="prompt"
+                  placeholder="Describe how you want the image to be animated..."
+                  value={formData.prompt}
+                  onChange={(e) => handleInputChange('prompt', e.target.value)}
+                  disabled={disabled || isGenerating}
+                  rows={2}
+                  className="resize-none"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Describe the motion, camera movement, or animation style
+                </p>
+              </div>
+
+              {/* Model Selection for Image-to-Video */}
+              <div className="space-y-2">
+                <Label htmlFor="model">AI Model</Label>
+                <Select
+                  value={formData.model}
+                  onValueChange={(value) => handleInputChange('model', value)}
+                  disabled={disabled || isGenerating}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a model" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {config.imageToVideoModels.map((model) => (
+                      <SelectItem key={model.name} value={model.name}>
+                        <div className="flex items-center justify-between w-full">
+                          <span>{getModelLabel(model)}</span>
+                          {model.params?.price && (
+                            <span className="text-xs text-muted-foreground ml-2">
+                              ${model.params.price}/sec
+                            </span>
+                          )}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  {config.imageToVideoModels.length} image-to-video models available
+                </p>
+              </div>
+            </TabsContent>
+          </Tabs>
 
           {/* Negative Prompt Input */}
           <div className="space-y-2">
@@ -221,34 +415,6 @@ export function VideoGeneratorForm({
             <p className="text-xs text-muted-foreground">
               Specify what you don&apos;t want to see in the video
             </p>
-          </div>
-
-          {/* Model Selection */}
-          <div className="space-y-2">
-            <Label htmlFor="model">AI Model</Label>
-            <Select
-              value={formData.model}
-              onValueChange={(value) => handleInputChange('model', value)}
-              disabled={disabled || isGenerating}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select a model" />
-              </SelectTrigger>
-              <SelectContent>
-                {config.availableModels.map((model) => (
-                  <SelectItem key={model.name} value={model.name}>
-                    <div className="flex items-center justify-between w-full">
-                      <span>{model.label || model.name}</span>
-                      {model.price && model.price > 0 && (
-                        <span className="text-xs text-muted-foreground ml-2">
-                          ${model.price}/sec
-                        </span>
-                      )}
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -362,18 +528,31 @@ export function VideoGeneratorForm({
 
             {/* Seed Input */}
             <div className="space-y-2">
-              <Label htmlFor="seed">Seed (Optional)</Label>
-              <Input
-                id="seed"
-                type="number"
-                placeholder="Random"
-                value={formData.seed || ''}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  handleInputChange('seed', value ? Number.parseInt(value) : undefined);
-                }}
-                disabled={disabled || isGenerating}
-              />
+              <Label htmlFor="seed">Seed</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="seed"
+                  type="number"
+                  placeholder="Random"
+                  value={formData.seed || ''}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    handleInputChange('seed', value ? Number.parseInt(value) : undefined);
+                  }}
+                  disabled={disabled || isGenerating}
+                  className="flex-1"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={generateRandomSeed}
+                  disabled={disabled || isGenerating}
+                  title="Generate random seed"
+                >
+                  <Shuffle className="size-4" />
+                </Button>
+              </div>
               <p className="text-xs text-muted-foreground">
                 Use same seed for reproducible results
               </p>
