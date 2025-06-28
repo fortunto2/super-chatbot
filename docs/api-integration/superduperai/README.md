@@ -40,14 +40,18 @@ SUPERDUPERAI_WS_URL=wss://dev-editor.superduperai.co/ws
 - `GET /api/v1/auth/logout` - Logout user
 
 ### Image Generation
-- `POST /api/v1/generation/image` - Create image generation
-- `GET /api/v1/generation/image/{id}` - Get generation status
-- `POST /api/v1/generation/image/{id}/download` - Download result
+- `POST /api/v1/file/generate-image` - Create image generation
+- `GET /api/v1/file/{id}` - Get file status
+- `GET /api/v1/events/file.{id}` - SSE events for real-time updates
+
+📋 **See detailed guide:** [Image Generation API Guide](./image-generation-api-guide.md)
 
 ### Video Generation
-- `POST /api/v1/generation/video` - Create video generation
-- `GET /api/v1/generation/video/{id}` - Get generation status
-- `POST /api/v1/generation/video/{id}/download` - Download result
+- `POST /api/v1/file/generate-video` - Create video generation
+- `GET /api/v1/file/{id}` - Get file status
+- `GET /api/v1/events/file.{id}` - SSE events for real-time updates
+
+📋 **See detailed guide:** [Video Generation API Guide](./video-generation-api-guide.md)
 
 ### File Management
 - `POST /api/v1/file` - Upload file

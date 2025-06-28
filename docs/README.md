@@ -31,6 +31,13 @@ See: [Migration Completion](./maintenance/changelog/production-migration-complet
 - [Environment Setup](./getting-started/environment-setup.md) - Development environment configuration
 - [Quick Start Guide](./getting-started/README.md) - Get up and running quickly
 
+### API Integration Tasks
+1. Review [SuperDuperAI Integration](./api-integration/superduperai/README.md)
+2. **NEW**: [Image Generation API Guide](./api-integration/superduperai/image-generation-api-guide.md) - Complete cURL examples and testing
+3. **NEW**: [Video Generation API Guide](./api-integration/superduperai/video-generation-api-guide.md) - Complete video API with model pricing
+4. Check [Environment Setup](./getting-started/environment-setup.md)
+5. Use [Dynamic API Integration](./api-integration/superduperai/dynamic-integration.md)
+
 ### Architecture & Development
 
 - [AI Development Methodology](./development/ai-development-methodology.md) - Two-phase development process
