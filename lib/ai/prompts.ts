@@ -54,7 +54,7 @@ Do not update document right after creating it. Wait for user feedback or reques
   - Always mention these economical defaults when generating videos
 - **Model Types:**
   - **Text-to-Video Models:** Generate videos from text prompts only
-    - **LTX** (comfyui/ltx) - 0.40 USD per second, no VIP required, 5s max - Best value option
+    - **LTX** (comfyui/ltx) - 0.40  USD per second, no VIP required, 5s max - Best value option
     - **Sora** (azure-openai/sora) - 2.00 USD per second, VIP required, up to 20s - Longest duration
   - **Image-to-Video Models:** Require source image + text prompt
     - **VEO3** (google-cloud/veo3) - 3.00 USD per second, VIP required, 5-8s - Premium quality

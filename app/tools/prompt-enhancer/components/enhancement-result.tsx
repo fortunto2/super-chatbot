@@ -41,7 +41,7 @@ export function EnhancementResult({ result, isEnhancing, onClear, onCopy }: Enha
           <div className="flex items-center justify-center py-8">
             <div className="text-center space-y-2">
               <Sparkles className="size-8 text-purple-500 animate-pulse mx-auto" />
-              <p className="text-sm text-gray-500">Processing your prompt...</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Processing your prompt...</p>
             </div>
           </div>
         </CardContent>
@@ -61,8 +61,8 @@ export function EnhancementResult({ result, isEnhancing, onClear, onCopy }: Enha
         <CardContent>
           <div className="flex items-center justify-center py-8">
             <div className="text-center space-y-2">
-              <Sparkles className="size-8 text-gray-300 mx-auto" />
-              <p className="text-sm text-gray-500">Enter a prompt and click &quot;Enhance Prompt&quot; to get started.</p>
+              <Sparkles className="size-8 text-gray-300 dark:text-gray-600 mx-auto" />
+              <p className="text-sm text-gray-500 dark:text-gray-400">Enter a prompt and click &quot;Enhance Prompt&quot; to get started.</p>
             </div>
           </div>
         </CardContent>
@@ -77,8 +77,8 @@ export function EnhancementResult({ result, isEnhancing, onClear, onCopy }: Enha
           <CardTitle className="flex items-center gap-2">
             <Sparkles className="size-5 text-purple-600" />
             Enhanced Prompt
-            {result.fallback && <span className="px-2 py-1 bg-red-100 text-red-800 text-xs rounded">Failed</span>}
-            {!result.fallback && <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded">Success</span>}
+            {result.fallback && <span className="px-2 py-1 bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-400 text-xs rounded">Failed</span>}
+            {!result.fallback && <span className="px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400 text-xs rounded">Success</span>}
           </CardTitle>
           <Button variant="ghost" size="sm" onClick={onClear}>
             <X className="size-4" />
@@ -92,7 +92,7 @@ export function EnhancementResult({ result, isEnhancing, onClear, onCopy }: Enha
         {/* Original Prompt */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <h4 className="text-sm font-medium text-gray-700">Original Prompt</h4>
+            <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">Original Prompt</h4>
             <Button
               variant="ghost"
               size="sm"
@@ -106,7 +106,7 @@ export function EnhancementResult({ result, isEnhancing, onClear, onCopy }: Enha
               )}
             </Button>
           </div>
-          <div className="p-3 bg-gray-50 rounded-md text-sm">
+          <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-md text-sm">
             {result.originalPrompt}
           </div>
         </div>
@@ -116,7 +116,7 @@ export function EnhancementResult({ result, isEnhancing, onClear, onCopy }: Enha
         {/* Enhanced Prompt */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <h4 className="text-sm font-medium text-green-700">Enhanced Prompt</h4>
+            <h4 className="text-sm font-medium text-green-700 dark:text-green-400">Enhanced Prompt</h4>
             <Button
               variant="ghost"
               size="sm"
@@ -130,7 +130,7 @@ export function EnhancementResult({ result, isEnhancing, onClear, onCopy }: Enha
               )}
             </Button>
           </div>
-          <div className="p-3 bg-green-50 rounded-md text-sm border border-green-200">
+          <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-md text-sm border border-green-200 dark:border-green-800">
             {result.enhancedPrompt}
           </div>
         </div>
@@ -141,7 +141,7 @@ export function EnhancementResult({ result, isEnhancing, onClear, onCopy }: Enha
             <Separator />
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <h4 className="text-sm font-medium text-red-700">Negative Prompt</h4>
+                <h4 className="text-sm font-medium text-red-700 dark:text-red-400">Negative Prompt</h4>
                 <Button
                   variant="ghost"
                   size="sm"
@@ -155,10 +155,10 @@ export function EnhancementResult({ result, isEnhancing, onClear, onCopy }: Enha
                   )}
                 </Button>
               </div>
-              <div className="p-3 bg-red-50 rounded-md text-sm border border-red-200">
+              <div className="p-3 bg-red-50 dark:bg-red-900/20 rounded-md text-sm border border-red-200 dark:border-red-800">
                 {result.negativePrompt}
               </div>
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-gray-500 dark:text-gray-400">
                 Use this to tell the AI what to avoid in your generation.
               </p>
             </div>
@@ -171,16 +171,16 @@ export function EnhancementResult({ result, isEnhancing, onClear, onCopy }: Enha
         <div className="space-y-4">
           {/* Settings Used */}
           <div className="flex flex-wrap gap-2">
-            <span className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded border">{result.mediaType}</span>
-            <span className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded border">{result.enhancementLevel}</span>
-            {result.modelHint && <span className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded border">Model: {result.modelHint}</span>}
+            <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-xs rounded border">{result.mediaType}</span>
+            <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-xs rounded border">{result.enhancementLevel}</span>
+            {result.modelHint && <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-xs rounded border">Model: {result.modelHint}</span>}
           </div>
 
           {/* Improvements Made */}
           {result.improvements && result.improvements.length > 0 && (
             <div className="space-y-2">
-              <h4 className="text-sm font-medium text-gray-700">Improvements Applied</h4>
-              <ul className="text-xs text-gray-600 space-y-1">
+              <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">Improvements Applied</h4>
+              <ul className="text-xs text-gray-600 dark:text-gray-300 space-y-1">
                 {result.improvements.map((improvement, index) => (
                   <li key={index} className="flex items-start gap-2">
                     <span className="text-green-500 mt-0.5">•</span>
@@ -194,8 +194,8 @@ export function EnhancementResult({ result, isEnhancing, onClear, onCopy }: Enha
           {/* AI Reasoning */}
           {result.reasoning && (
             <div className="space-y-2">
-              <h4 className="text-sm font-medium text-gray-700">AI Reasoning</h4>
-              <p className="text-xs text-gray-600 bg-blue-50 p-2 rounded-md border border-blue-200">
+              <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">AI Reasoning</h4>
+              <p className="text-xs text-gray-600 dark:text-gray-300 bg-blue-50 dark:bg-blue-900/20 p-2 rounded-md border border-blue-200 dark:border-blue-800">
                 {result.reasoning}
               </p>
             </div>

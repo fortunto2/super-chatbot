@@ -84,13 +84,13 @@ export function PromptEnhancerForm({ onEnhance, isEnhancing }: PromptEnhancerFor
           
           {/* Example prompts */}
           <div className="flex flex-wrap gap-2">
-            <span className="text-xs text-gray-500">Examples:</span>
+            <span className="text-xs text-gray-500 dark:text-gray-400">Examples:</span>
             {examplePrompts[mediaType === 'text' || mediaType === 'general' ? 'image' : mediaType].map((example) => (
               <button
                 key={example}
                 type="button"
                 onClick={() => handleExamplePrompt(example)}
-                className="text-xs px-2 py-1 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
+                className="text-xs px-2 py-1 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-md transition-colors"
               >
                 {example}
               </button>
@@ -138,9 +138,9 @@ export function PromptEnhancerForm({ onEnhance, isEnhancing }: PromptEnhancerFor
             value={modelHint}
             onChange={(e) => setModelHint(e.target.value)}
           />
-                     <p className="text-xs text-gray-500">
-             Specify the AI model you&apos;ll use to optimize the prompt for that specific model.
-           </p>
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            Specify the AI model you&apos;ll use to optimize the prompt for that specific model.
+          </p>
         </div>
 
         {/* Target Audience (Optional) */}
@@ -164,7 +164,7 @@ export function PromptEnhancerForm({ onEnhance, isEnhancing }: PromptEnhancerFor
             className="rounded border-gray-300"
           />
           <Label htmlFor="negative-prompt">Generate negative prompt</Label>
-          <span className="text-xs text-gray-500">(Helps avoid unwanted elements)</span>
+          <span className="text-xs text-gray-500 dark:text-gray-400">(Helps avoid unwanted elements)</span>
         </div>
 
         {/* Submit Button */}
@@ -188,7 +188,7 @@ export function PromptEnhancerForm({ onEnhance, isEnhancing }: PromptEnhancerFor
         </Button>
 
         {/* Character count */}
-        <div className="text-xs text-gray-500 text-right">
+        <div className="text-xs text-gray-500 dark:text-gray-400 text-right">
           {originalPrompt.length} characters
         </div>
       </CardContent>
