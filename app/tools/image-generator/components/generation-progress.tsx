@@ -46,6 +46,7 @@ export interface GenerationStatus {
   projectId?: string;
   requestId?: string;
   fileId?: string;
+  url?: string;
 }
 
 interface GenerationProgressProps {
@@ -239,6 +240,17 @@ export function GenerationProgress({
                   </>
                 )}
               </Button>
+            </div>
+          )}
+
+          {/* Image Display */}
+          {generationStatus.status === 'completed' && generationStatus.url && (
+            <div className="mt-4">
+              <img 
+                src={generationStatus.url} 
+                alt={`Generated image: ${prompt || 'Generated image'}`}
+                className="w-full h-auto rounded-lg border max-h-96 object-contain" 
+              />
             </div>
           )}
         </div>

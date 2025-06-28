@@ -90,7 +90,7 @@ export const useImageEventHandler = (
               try {
                 const fileResponse = await FileService.fileGetById({ id: fileObject.file_id });
                 
-                if (fileResponse && fileResponse.url) {
+                if (fileResponse?.url) {
                   // Check if it's an image file using type field
                   const isImage = fileResponse.type === FileTypeEnum.IMAGE || 
                                   fileResponse.url.match(/\.(jpg|jpeg|png|webp|gif|bmp|svg)$/i);
@@ -164,7 +164,7 @@ export const useImageEventHandler = (
             try {
               const fileResponse = await FileService.fileGetById({ id: fileId });
               
-                             if (fileResponse && fileResponse.url) {
+                             if (fileResponse?.url) {
                  // Check if it's an image file using type field
                  const isImage = fileResponse.type === FileTypeEnum.IMAGE || 
                                  fileResponse.url.match(/\.(jpg|jpeg|png|webp|gif|bmp|svg)$/i);
@@ -380,7 +380,7 @@ export const useImageEventHandler = (
                 const { FileService } = await import('@/lib/api');
                 const fileResponse = await FileService.fileGetById({ id: fileId });
                 
-                if (fileResponse && fileResponse.url && fileResponse.type === FileTypeEnum.IMAGE) {
+                if (fileResponse?.url && fileResponse.type === FileTypeEnum.IMAGE) {
                   console.log('🔍 ✅ File ID resolved to image URL via polling:', fileResponse.url);
                   
                   const isValid = validateImageAssignment(

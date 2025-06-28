@@ -61,8 +61,16 @@ export const PreviewAttachment = ({
             />
           ) : contentType.startsWith('video') ? (
             <div
+              role="button"
+              tabIndex={0}
               className="rounded-md size-full bg-black cursor-pointer flex items-center justify-center relative"
               onClick={handleAttachmentClick}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  handleAttachmentClick();
+                }
+              }}
             >
               {/* Use thumbnail if available (from attachment.thumbnailUrl) */}
               {(attachment as any).thumbnailUrl ? (

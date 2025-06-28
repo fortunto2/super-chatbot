@@ -197,7 +197,7 @@ const ImageArtifactWrapper = memo(function ImageArtifactWrapper(props: any) {
             try {
               const fileResponse = await FileService.fileGetById({ id: fileObject.file_id });
               
-              if (fileResponse && fileResponse.url && fileResponse.type === FileTypeEnum.IMAGE) {
+              if (fileResponse?.url && fileResponse.type === FileTypeEnum.IMAGE) {
                 
                 // Update artifact content with completed image
                 setArtifact((prev: any) => {

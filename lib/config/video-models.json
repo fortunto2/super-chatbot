@@ -1,9 +1,9 @@
 {
     "model_metadata": {
         "comfyui/ltx": {
-            "category": "image_to_video",
+            "category": "text_to_video",
             "ui_label": "LTX Video",
-            "ui_description": "Budget-friendly image-to-video generation",
+            "ui_description": "Budget-friendly text-to-video generation",
             "recommended_settings": {
                 "quality": "hd",
                 "dynamic": 1,

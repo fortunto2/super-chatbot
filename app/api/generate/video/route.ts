@@ -1,11 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { type NextRequest, NextResponse } from 'next/server';
 import { getSuperduperAIConfig } from '@/lib/config/superduperai';
-import { FileService } from '@/lib/api/services/FileService';
-import { OpenAPI } from '@/lib/api/core/OpenAPI';
-import { GenerateVideoPayload } from '@/lib/api/models/GenerateVideoPayload';
-import { IVideoGenerationCreate } from '@/lib/api/models/IVideoGenerationCreate';
-import { IVideoGenerationReferenceCreate } from '@/lib/api/models/IVideoGenerationReferenceCreate';
-import { ReferenceTypeEnum } from '@/lib/api/models/ReferenceTypeEnum';
+import { getBestVideoModel } from '@/lib/ai/api/config-cache';
 
 export async function POST(request: NextRequest) {
   try {
@@ -25,52 +20,116 @@ export async function POST(request: NextRequest) {
       sourceImageId,
       sourceImageUrl
     } = body;
-    
-    // Configure OpenAPI client for server-side usage
+
+    // AICODE-FIX: Smart model selection - prioritize text_to_video models like Sora
+    let selectedModel = model;
+    if (!selectedModel || !selectedModel.name) {
+      console.log('🎯 No model specified, getting best model for text-to-video generation...');
+      
+      // Check if we have source image - this determines generation type
+      const hasSourceImage = sourceImageId || sourceImageUrl;
+      
+      if (hasSourceImage) {
+        console.log('🖼️ Source image detected, prioritizing image_to_video models');
+        // For image-to-video, we can use image_to_video models
+        selectedModel = await getBestVideoModel({ 
+          vipAllowed: true,
+          preferredDuration: duration 
+        });
+      } else {
+        console.log('📝 No source image, requiring text_to_video models');
+        // For text-only prompts, ONLY use text_to_video models
+        selectedModel = await getBestVideoModel({ 
+          vipAllowed: true,
+          preferredDuration: duration,
+          requireTextToVideo: true // Force text_to_video models only
+        });
+      }
+      
+      if (selectedModel) {
+        console.log('✅ Auto-selected model:', selectedModel.name, '(type:', selectedModel.type, ')');
+      } else {
+        console.warn('⚠️ No suitable model found, using fallback');
+        // Last resort fallback
+        selectedModel = { name: 'azure-openai/sora' };
+      }
+    }
+
+    // Use original working format with type: "media" and direct fetch
     const config = getSuperduperAIConfig();
-    OpenAPI.BASE = config.url;
-    OpenAPI.TOKEN = config.token;
-    
-    // Create video generation config using OpenAPI types
-    const videoConfig: IVideoGenerationCreate = {
-      prompt,
-      negative_prompt: negativePrompt || '',
-      seed: Math.floor(Math.random() * 1000000000000),
-      duration,
-      width: resolution?.width || 512,
-      height: resolution?.height || 512,
-      aspect_ratio: resolution?.aspectRatio || '1:1',
-      generation_config_name: model?.name || 'comfyui/ltx',
-      references: sourceImageUrl ? [{
-        type: ReferenceTypeEnum.SOURCE,
-        reference_id: sourceImageId || ''
-      } as IVideoGenerationReferenceCreate] : []
+    const url = `${config.url}/api/v1/file/generate-video`;
+    const headers = {
+      'Authorization': `Bearer ${config.token}`,
+      'Content-Type': 'application/json'
     };
 
-    // Create video generation payload using OpenAPI types
-    const videoPayload: GenerateVideoPayload = {
-      config: videoConfig
+    // AICODE-FIX: Use selected model name
+    const modelName = selectedModel?.name || 'azure-openai/sora';
+    console.log('🎬 Using model:', modelName);
+
+    // Use original working payload format with type: "media"
+    const payload = {
+      type: "media",           // ← CRITICAL: Always use this format, never "params"!
+      template_name: null,
+      style_name: "flux_watercolor", // Use working style
+      config: {
+        prompt,
+        negative_prompt: negativePrompt || '',
+        width: resolution?.width || 512,
+        height: resolution?.height || 512,
+        aspect_ratio: resolution?.aspectRatio || "16:9",
+        seed: Math.floor(Math.random() * 1000000000000),
+        generation_config_name: modelName, // Use selected model
+        duration,
+        frame_rate: 30,
+        batch_size: 1,
+        shot_size: "medium_shot", // Use working shot size
+        style_name: "flux_watercolor",
+        qualityType: "hd",
+        entity_ids: [],
+        references: sourceImageUrl ? [{
+          type: 'source',
+          reference_id: sourceImageId || '',
+          reference_url: sourceImageUrl
+        }] : []
+      }
     };
     
-    console.log('🎬 Calling FileService.fileGenerateVideo with payload:', videoPayload);
+    console.log('🎬 Final payload:', JSON.stringify(payload, null, 2));
     
-    // Use OpenAPI client to generate video
-    const result = await FileService.fileGenerateVideo({
-      requestBody: videoPayload
+    // Use original fetch approach that was working
+    const response = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(payload),
     });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`❌ API Error (${response.status}):`, errorText);
+      throw new Error(`API Error: ${response.status} ${response.statusText} - ${errorText}`);
+    }
+
+    const result = await response.json();
     
     console.log('✅ Video generation result:', result);
     
+    // Extract fileId from response (original logic)
+    const fileId = result.id ||
+                  result.data?.[0]?.value?.file_id || 
+                  result.data?.[0]?.id || 
+                  result.fileId;
+
     // Transform result to match expected format
-    const response = {
+    const responseData = {
       success: true,
-      fileId: result.id,
+      fileId: fileId,
       projectId: chatId,
       url: result.url,
       tasks: result.tasks || []
     };
     
-    return NextResponse.json(response);
+    return NextResponse.json(responseData);
   } catch (error) {
     console.error('💥 Video API error:', error);
     return NextResponse.json(

@@ -361,7 +361,7 @@ export function useImageGeneration(chatId?: string): UseImageGenerationReturn {
             const { FileService, FileTypeEnum } = await import('@/lib/api');
             const fileResponse = await FileService.fileGetById({ id: fileId });
             
-            if (fileResponse && fileResponse.url && fileResponse.type === FileTypeEnum.IMAGE) {
+            if (fileResponse?.url && fileResponse.type === FileTypeEnum.IMAGE) {
               console.log('⏰ ✅ File ID resolved to image URL via fallback:', fileResponse.url);
               setState(prev => ({
                 ...prev,
@@ -483,7 +483,7 @@ export function useImageGeneration(chatId?: string): UseImageGenerationReturn {
         const { FileService, FileTypeEnum } = await import('@/lib/api');
         const fileResponse = await FileService.fileGetById({ id: fileId });
         
-        if (fileResponse && fileResponse.url && fileResponse.type === FileTypeEnum.IMAGE) {
+        if (fileResponse?.url && fileResponse.type === FileTypeEnum.IMAGE) {
           console.log('🔍 ✅ File ID resolved to image URL manually:', fileResponse.url);
           handleStateUpdate({
             status: 'completed',

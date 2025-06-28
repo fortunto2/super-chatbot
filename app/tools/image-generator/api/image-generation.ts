@@ -1,0 +1,70 @@
+export interface ImageGenerationFormData {
+  prompt: string;
+  model?: string;
+  resolution?: string;
+  style?: string;
+  shotSize?: string;
+  seed?: number;
+}
+
+export interface ImageGenerationApiResult {
+  success: boolean;
+  projectId?: string;
+  requestId?: string;
+  error?: string;
+}
+
+export async function generateImageApi(formData: ImageGenerationFormData): Promise<ImageGenerationApiResult> {
+  try {
+    const response = await fetch('/api/generate/image', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        prompt: formData.prompt,
+        model: { name: formData.model || 'comfyui/flux' },
+        resolution: {
+          width: Number.parseInt(formData.resolution?.split('x')[0] || '1024'),
+          height: Number.parseInt(formData.resolution?.split('x')[1] || '1024')
+        },
+        style: { id: 'flux_watercolor' },
+        shotSize: { id: formData.shotSize || 'medium_shot' },
+        seed: formData.seed,
+        chatId: 'image-generator-tool',
+        steps: 30,
+        batchSize: 1
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      return {
+        success: false,
+        error: errorData.error || `HTTP ${response.status}: ${response.statusText}`
+      };
+    }
+
+    const result = await response.json();
+    
+    if (!result.success) {
+      return {
+        success: false,
+        error: result.error || 'Generation failed'
+      };
+    }
+
+    return {
+      success: true,
+      projectId: result.fileId, // Use fileId as projectId for tracking
+      requestId: result.fileId // Use fileId as requestId
+    };
+
+  } catch (error) {
+    console.error('Image generation API error:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error occurred'
+    };
+  }
+} 

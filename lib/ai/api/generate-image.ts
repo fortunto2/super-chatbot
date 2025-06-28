@@ -1,12 +1,9 @@
 import type { MediaOption, MediaResolution } from "@/lib/types/media-settings";
 import type { ImageModel } from '@/lib/config/superduperai';
 import { 
-  getSuperduperAIConfig, 
-  createAuthHeaders, 
-  createAPIURL,
-  API_ENDPOINTS, 
+  configureSuperduperAI
 } from '@/lib/config/superduperai';
-// import { ensureProjectForChatId } from '@/lib/utils/simple-project';
+import { FileService } from '@/lib/api/services/FileService';
 
 export interface ImageGenerationResult {
   success: boolean;
@@ -25,14 +22,12 @@ function generateRequestId(): string {
 
 // Validate style before sending to API
 function validateStyleForAPI(style: MediaOption): string {
-
-  
   // AICODE-NOTE: Use flux_watercolor as it exists in DB (based on working payload example)
   console.log(`🔧 Using flux_watercolor style (confirmed working)`);
   return 'flux_watercolor';
 }
 
-// Create image generation payload based on working examples
+// Create image generation payload based on working examples from logs
 function createImagePayload(
   prompt: string,
   model: ImageModel,
@@ -44,37 +39,48 @@ function createImagePayload(
   batchSize?: number
 ) {
   const actualSeed = seed || Math.floor(Math.random() * 1000000000000);
-  const styleId = validateStyleForAPI(style);
+  
+  // Use correct style validation 
+  const styleId = style.id === 'flux_watercolor' ? 'flux_watercolor' : null;
   
   console.log(`🎯 Creating image payload:`, {
     model: model.name,
     resolution: `${resolution.width}x${resolution.height}`,
     style: styleId,
-    shotSize: shotSize.label,
+    shotSize: shotSize.id,
     seed: actualSeed
   });
 
-  // AICODE-NOTE: Fixed payload structure based on working example
-  // Key changes: aspectRatio, qualityType outside config, proper string formats
+  // AICODE-NOTE: Use the EXACT API contract from OpenAPI types
   const payload = {
-    type: "media",
-    template_name: null,
-    style_name: styleId, // Move style_name outside config
+    project_id: projectId,
     config: {
       prompt: prompt,
-      shot_size: shotSize.id, // FIXED: Use id instead of label for snake_case format
-      style_name: styleId, // Keep for backward compatibility
-      seed: String(actualSeed), // Convert to string
-      aspect_ratio: resolution.aspectRatio || "16:9", // FIXED: Use correct aspect_ratio parameter name
-      batch_size: batchSize || 1, // Use user-specified batch size (1-3)
-      entity_ids: [],
+      negative_prompt: '',
+      width: resolution.width, // Numbers as expected by API
+      height: resolution.height, // Numbers as expected by API
+      steps: 30,
+      shot_size: shotSize.id as any, // Cast to avoid enum issues
+      seed: actualSeed, // Number as expected by API
       generation_config_name: model.name,
-      height: String(resolution.height), // Convert to string
-      qualityType: resolution.qualityType || "full_hd", // Add qualityType
+      batch_size: batchSize || 1,
+      style_name: styleId,
       references: [],
-      width: String(resolution.width), // Convert to string
+      entity_ids: []
     }
   };
+
+  console.log(`🔍 Диагностика payload:`, {
+    shot_size: shotSize.id,
+    shot_size_label: shotSize.label, 
+    generation_config_name: model.name,
+    model_label: model.label,
+    style_name: styleId,
+    style_original: style.id,
+    width: resolution.width,
+    height: resolution.height,
+    seed: actualSeed
+  });
 
   return payload;
 }
@@ -90,8 +96,8 @@ export async function generateImage(
   batchSize?: number
 ): Promise<ImageGenerationResult> {
   try {
-    const config = getSuperduperAIConfig();
     const requestId = generateRequestId();
+    const randomizedSeed = seed || Math.floor(Math.random() * 1000000000000);
     
     console.log(`🚀 Starting image generation:`, {
       prompt: `${prompt.substring(0, 100)}...`,
@@ -103,46 +109,22 @@ export async function generateImage(
       chatId
     });
 
-    // AICODE-NOTE: Skip project creation - let backend create new project automatically
-    console.log(`🏗️ Generating image for chat: ${chatId} (new project will be auto-created)`);
+    // Configure OpenAPI client
+    configureSuperduperAI();
 
-    // Add randomness to prevent 409 conflicts
-    const randomizedSeed = seed || Math.floor(Math.random() * 1000000000000);
+    // Create payload using FileService - matching working implementation
     const payload = createImagePayload(prompt, model, resolution, style, shotSize, null, randomizedSeed, batchSize);
     
-    console.log(`📦 Image generation payload:`, JSON.stringify(payload, null, 2));
+    console.log(`🖼️ Calling FileService.fileGenerateImage with payload:`, payload);
 
-    // Use correct API endpoint  
-    const url = createAPIURL(API_ENDPOINTS.GENERATE_IMAGE, config);
-    const headers = createAuthHeaders();
-
-    console.log(`📡 Making request to: ${url}`);
-    console.log(`🔑 Headers:`, headers);
-
-    const response = await fetch(url, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(payload)
+    // Use FileService from OpenAPI client (same as working implementation)
+    const result = await FileService.fileGenerateImage({
+      requestBody: payload
     });
 
-    console.log(`📡 API Response Status: ${response.status}`);
-    console.log(`📡 API Response Headers:`, Object.fromEntries(response.headers.entries()));
+    console.log(`✅ FileService response:`, result);
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`❌ API Error Response:`, errorText);
-      
-      return {
-        success: false,
-        error: `API Error: ${response.status} - ${errorText}`,
-        requestId
-      };
-    }
-
-    const result = await response.json();
-    console.log(`✅ API Success Response:`, result);
-
-    // The API returns an array of files (new file-based endpoint)
+    // The API returns an array of files
     if (!Array.isArray(result) || result.length === 0) {
       console.error(`❌ Invalid response format:`, result);
       return {
@@ -156,11 +138,11 @@ export async function generateImage(
     const fileId = fileData.id;
     const imageGenerationId = fileData.image_generation_id;
     
-    if (!fileId || !imageGenerationId) {
-      console.error(`❌ Missing file ID or image generation ID:`, fileData);
+    if (!fileId) {
+      console.error(`❌ Missing file ID:`, fileData);
       return {
         success: false,
-        error: 'Missing file ID or image generation ID in response',
+        error: 'Missing file ID in response',
         requestId
       };
     }
@@ -175,7 +157,7 @@ export async function generateImage(
     return {
       success: true,
       projectId: fileId, // Use file ID for tracking
-      requestId: imageGenerationId, // Use image generation ID as request ID
+      requestId: imageGenerationId || requestId,
       message: 'Image generation started successfully',
       files: result // Return files array
     };
@@ -189,5 +171,4 @@ export async function generateImage(
       requestId: generateRequestId()
     };
   }
-}
-  
+} 

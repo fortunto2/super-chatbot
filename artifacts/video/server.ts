@@ -1,10 +1,10 @@
 import { createDocumentHandler } from '@/lib/artifacts/server';
-import { generateVideoHybrid } from '@/lib/ai/api/generate-video-hybrid';
+import { generateVideoHybrid } from '@/lib/ai/api/generate-video';
 import { getStyles } from '@/lib/ai/api/get-styles';
 import type { MediaOption } from '@/lib/types/media-settings';
 import type { VideoModel } from '@/lib/config/superduperai';
 import { getAvailableVideoModels } from '@/lib/config/superduperai';
-import { VIDEO_RESOLUTIONS, SHOT_SIZES, VIDEO_FRAME_RATES, DEFAULT_VIDEO_RESOLUTION, DEFAULT_VIDEO_DURATION, getModelCompatibleResolutions, getDefaultResolutionForModel } from '@/lib/config/video-constants';
+import { SHOT_SIZES, VIDEO_FRAME_RATES, DEFAULT_VIDEO_RESOLUTION, DEFAULT_VIDEO_DURATION, getModelCompatibleResolutions, } from '@/lib/config/video-constants';
 import { GenerationTypeEnum } from '@/lib/api/models/GenerationTypeEnum';
 import { GenerationSourceEnum } from '@/lib/api/models/GenerationSourceEnum';
 
@@ -21,7 +21,7 @@ export const videoDocumentHandler = createDocumentHandler<'video'>({
 
     try {
       // Check if title starts with "Video:" (readable format) or is JSON
-      let params;
+      let params: any;
       if (title.startsWith('Video:')) {
         // Extract JSON from the end of readable title
         const jsonMatch = title.match(/\{.*\}$/);
@@ -60,7 +60,7 @@ export const videoDocumentHandler = createDocumentHandler<'video'>({
         availableModels = [{
           name: 'comfyui/ltx',
           label: 'LTX Video',
-          type: GenerationTypeEnum.IMAGE_TO_VIDEO,
+          type: GenerationTypeEnum.TEXT_TO_VIDEO,
           source: GenerationSourceEnum.LOCAL,
           params: {
             price: 0.4,
@@ -195,7 +195,7 @@ export const videoDocumentHandler = createDocumentHandler<'video'>({
         availableModels = [{
           name: 'comfyui/ltx',
           label: 'LTX Video',
-          type: GenerationTypeEnum.IMAGE_TO_VIDEO,
+          type: GenerationTypeEnum.TEXT_TO_VIDEO,
           source: GenerationSourceEnum.LOCAL,
           params: {
             price: 0.4,

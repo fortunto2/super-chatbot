@@ -128,7 +128,12 @@ export const getModelsForAgent = async (): Promise<string> => {
  */
 export const getVideoModelsForAgent = async (): Promise<string> => {
   const configs = await getCachedGenerationConfigs();
-  const videoConfigs = configs.filter(c => c.type === 'image_to_video');
+  
+  // Include ALL video model types
+  const videoConfigs = configs.filter(c => 
+    c.type === 'image_to_video' || 
+    c.type === 'text_to_video'
+  );
   
   if (videoConfigs.length === 0) {
     return "No video generation models available.";
@@ -139,6 +144,7 @@ export const getVideoModelsForAgent = async (): Promise<string> => {
   for (const config of videoConfigs) {
     result += `## ${config.label || config.name}\n`;
     result += `- **Name**: \`${config.name}\` (use this in API calls)\n`;
+    result += `- **Type**: ${config.type}\n`;
     result += `- **Price per second**: $${config.params.price_per_second || config.price}\n`;
     
     if (config.params.available_durations) {
@@ -157,16 +163,29 @@ export const getVideoModelsForAgent = async (): Promise<string> => {
 
 /**
  * Find the best video model for a request
+ * AICODE-FIX: Enhanced to prioritize text_to_video models like Sora
  */
 export const getBestVideoModel = async (
   preferences?: {
     maxPrice?: number;
     preferredDuration?: number;
     vipAllowed?: boolean;
+    requireTextToVideo?: boolean; // New parameter to force text_to_video only
   }
 ): Promise<GenerationConfig | null> => {
   const configs = await getCachedGenerationConfigs();
-  const videoConfigs = configs.filter(c => c.type === 'image_to_video');
+  
+  // AICODE-FIX: If requireTextToVideo is true, only consider text_to_video models
+  let videoConfigs = configs.filter(c => 
+    c.type === 'image_to_video' || 
+    c.type === 'text_to_video'
+  );
+  
+  // If specifically requesting text-to-video only, filter out image_to_video
+  if (preferences?.requireTextToVideo) {
+    videoConfigs = videoConfigs.filter(c => c.type === 'text_to_video');
+    console.log('🎯 Filtering for text_to_video models only:', videoConfigs.map(c => c.name));
+  }
   
   let filtered = videoConfigs;
   
@@ -192,12 +211,41 @@ export const getBestVideoModel = async (
     );
   }
   
-  // Sort by price (cheapest first)
-  filtered.sort((a, b) => 
-    (a.params.price_per_second || a.price) - (b.params.price_per_second || b.price)
-  );
+  // AICODE-FIX: Enhanced sorting - strongly prioritize Sora for text_to_video
+  filtered.sort((a, b) => {
+    // First: Sora gets highest priority for text_to_video
+    if (a.type === 'text_to_video' && a.name === 'azure-openai/sora') return -1;
+    if (b.type === 'text_to_video' && b.name === 'azure-openai/sora') return 1;
+    
+    // Second: prioritize text_to_video over image_to_video
+    if (a.type === 'text_to_video' && b.type === 'image_to_video') return -1;
+    if (a.type === 'image_to_video' && b.type === 'text_to_video') return 1;
+    
+    // Third: within same type, prioritize specific models (Sora > VEO > others)
+    const modelPriority = {
+      'azure-openai/sora': 1,
+      'google-cloud/veo2-text2video': 2,
+      'google-cloud/veo3-text2video': 3,
+      'comfyui/ltx': 9 // Lower priority for LTX
+    };
+    
+    const aPriority = modelPriority[a.name as keyof typeof modelPriority] || 999;
+    const bPriority = modelPriority[b.name as keyof typeof modelPriority] || 999;
+    
+    if (aPriority !== bPriority) return aPriority - bPriority;
+    
+    // Finally: sort by price (cheapest first)
+    return (a.params.price_per_second || a.price) - (b.params.price_per_second || b.price);
+  });
   
-  return filtered[0] || null;
+  const selectedModel = filtered[0] || null;
+  if (selectedModel) {
+    console.log('🎯 getBestVideoModel selected:', selectedModel.name, '(type:', selectedModel.type, `, price: $${selectedModel.params.price_per_second || selectedModel.price}/sec)`);
+  } else {
+    console.warn('⚠️ getBestVideoModel: No suitable model found with preferences:', preferences);
+  }
+  
+  return selectedModel;
 };
 
 /**

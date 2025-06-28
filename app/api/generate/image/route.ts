@@ -1,12 +1,12 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { type NextRequest, NextResponse } from 'next/server';
 import { getSuperduperAIConfig } from '@/lib/config/superduperai';
 import { FileService } from '@/lib/api/services/FileService';
 import { OpenAPI } from '@/lib/api/core/OpenAPI';
-import { GenerateImagePayload } from '@/lib/api/models/GenerateImagePayload';
-import { IImageGenerationCreate } from '@/lib/api/models/IImageGenerationCreate';
-import { IImageGenerationReferenceCreate } from '@/lib/api/models/IImageGenerationReferenceCreate';
+import type { GenerateImagePayload } from '@/lib/api/models/GenerateImagePayload';
+import type { IImageGenerationCreate } from '@/lib/api/models/IImageGenerationCreate';
+import type { IImageGenerationReferenceCreate } from '@/lib/api/models/IImageGenerationReferenceCreate';
 import { ReferenceTypeEnum } from '@/lib/api/models/ReferenceTypeEnum';
-import { ShotSizeEnum } from '@/lib/api/models/ShotSizeEnum';
+import type { ShotSizeEnum } from '@/lib/api/models/ShotSizeEnum';
 
 export async function POST(request: NextRequest) {
   try {

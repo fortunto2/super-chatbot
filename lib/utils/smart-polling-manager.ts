@@ -298,15 +298,15 @@ class SmartPollingManager {
   private extractRetryAfter(error: any): number | null {
     // Try to extract Retry-After header from various error formats
     if (error?.headers?.['retry-after']) {
-      return parseInt(error.headers['retry-after'], 10);
+      return Number.parseInt(error.headers['retry-after'], 10);
     }
     if (error?.response?.headers?.['retry-after']) {
-      return parseInt(error.response.headers['retry-after'], 10);
+      return Number.parseInt(error.response.headers['retry-after'], 10);
     }
     if (error?.message?.includes('retry-after')) {
       const match = error.message.match(/retry-after[:\s]+(\d+)/i);
       if (match) {
-        return parseInt(match[1], 10);
+        return Number.parseInt(match[1], 10);
       }
     }
     return null;
@@ -324,7 +324,6 @@ export async function pollFileCompletion(
   const pollId = `file-${fileId}`;
   
   const checker: PollingChecker<any> = async () => {
-    try {
       // Use Next.js API proxy for consistent auth handling
       const response = await fetch(`/api/file/${fileId}`);
       
@@ -373,11 +372,6 @@ export async function pollFileCompletion(
         completed: false,
         shouldContinue: true
       };
-      
-    } catch (error) {
-      // Re-throw to be handled by polling manager
-      throw error;
-    }
   };
   
   return smartPollingManager.startPolling(pollId, checker, options);
@@ -391,7 +385,6 @@ export async function pollProjectCompletion(
   const pollId = `project-${projectId}`;
   
   const checker: PollingChecker<any> = async () => {
-    try {
       const response = await fetch(`/api/project/${projectId}`);
       
       if (!response.ok) {
@@ -451,10 +444,6 @@ export async function pollProjectCompletion(
         error: 'Project generation may have stalled',
         shouldContinue: true
       };
-      
-    } catch (error) {
-      throw error;
-    }
   };
   
   return smartPollingManager.startPolling(pollId, checker, options);

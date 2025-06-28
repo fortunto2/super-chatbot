@@ -242,7 +242,7 @@ export function ImageEditor({
       // Check global artifact SSE connections
       if (typeof window !== 'undefined') {
         const globalWindow = window as any;
-        if (globalWindow.artifactSSEStatus && globalWindow.artifactSSEStatus[initialState.projectId]) {
+        if (globalWindow.artifactSSEStatus?.[initialState.projectId]) {
           return globalWindow.artifactSSEStatus[initialState.projectId];
         }
       }
@@ -386,7 +386,7 @@ export function ImageEditor({
         const { FileService, FileTypeEnum } = await import('@/lib/api');
         const fileResponse = await FileService.fileGetById({ id: fileId });
         
-        if (fileResponse && fileResponse.url && fileResponse.type === FileTypeEnum.IMAGE) {
+        if (fileResponse?.url && fileResponse.type === FileTypeEnum.IMAGE) {
           console.log('🔍 ✅ File ID resolved to image URL manually:', fileResponse.url);
           
           // Update artifact content if in artifact mode

@@ -93,12 +93,45 @@ export const getGenerationConfigs = async (
  * Get video generation configs specifically
  */
 export const getVideoGenerationConfigs = async (): Promise<GenerationConfigResponse> => {
-  return getGenerationConfigs({
-    type: 'image_to_video',
-    order_by: 'name',
-    order: 'ascendent',
-    limit: 50,
-  });
+  // Get both text_to_video AND image_to_video models
+  const [textToVideo, imageToVideo] = await Promise.all([
+    getGenerationConfigs({
+      type: 'text_to_video',
+      order_by: 'name',
+      order: 'ascendent',
+      limit: 50,
+    }),
+    getGenerationConfigs({
+      type: 'image_to_video',
+      order_by: 'name',
+      order: 'ascendent',
+      limit: 50,
+    })
+  ]);
+  
+  // Combine results if both successful
+  if (textToVideo.success && imageToVideo.success) {
+    const combinedData = [
+      ...(textToVideo.data || []),
+      ...(imageToVideo.data || [])
+    ];
+    
+    return {
+      success: true,
+      data: combinedData,
+      total: combinedData.length
+    };
+  }
+  
+  // If one failed, return the successful one
+  if (textToVideo.success) return textToVideo;
+  if (imageToVideo.success) return imageToVideo;
+  
+  // Both failed
+  return {
+    success: false,
+    error: 'Failed to fetch both text_to_video and image_to_video configs'
+  };
 };
 
 /**

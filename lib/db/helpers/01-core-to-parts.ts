@@ -11,7 +11,6 @@ import {
 import { drizzle } from 'drizzle-orm/postgres-js';
 import { inArray } from 'drizzle-orm';
 import { appendResponseMessages, type UIMessage } from 'ai';
-import { convertDeprecatedMessagesToUIMessages } from '@/lib/types/message-conversion';
 
 if (!process.env.POSTGRES_URL) {
   throw new Error('POSTGRES_URL environment variable is not set');

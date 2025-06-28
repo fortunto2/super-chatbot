@@ -2,13 +2,15 @@ import { tool } from 'ai';
 import { z } from 'zod';
 import type { 
   MediaOption, 
-  VideoGenerationConfig
+  VideoGenerationConfig,
+  AdaptedModel
 } from '@/lib/types/media-settings';
 import type { VideoModel } from '@/lib/config/superduperai';
 import { getStyles } from '../api/get-styles';
 import { findStyle } from './configure-image-generation';
 import { createVideoMediaSettings } from '@/lib/config/media-settings-factory';
 import { VIDEO_RESOLUTIONS, SHOT_SIZES, VIDEO_FRAME_RATES, DEFAULT_VIDEO_RESOLUTION, DEFAULT_VIDEO_DURATION, getModelCompatibleResolutions, getDefaultResolutionForModel } from '@/lib/config/video-constants';
+import { GenerationTypeEnum, GenerationSourceEnum } from '@/lib/api';
 
 // AICODE-NOTE: Now using unified VideoModel type from superduperai.ts
 function convertToVideoModel(sdModel: VideoModel): VideoModel {
@@ -17,6 +19,40 @@ function convertToVideoModel(sdModel: VideoModel): VideoModel {
 
 interface CreateVideoDocumentParams {
   createDocument: any;
+}
+
+// Helper function to convert string source to enum
+function convertSourceToEnum(source: string): GenerationSourceEnum {
+  switch (source) {
+    case 'local':
+      return GenerationSourceEnum.LOCAL;
+    case 'fal_ai':
+      return GenerationSourceEnum.FAL_AI;
+    case 'google_cloud':
+      return GenerationSourceEnum.GOOGLE_CLOUD;
+    case 'azure_openai_sora':
+      return GenerationSourceEnum.AZURE_OPENAI_SORA;
+    case 'azure_openai_image':
+      return GenerationSourceEnum.AZURE_OPENAI_IMAGE;
+    default:
+      return GenerationSourceEnum.LOCAL;
+  }
+}
+
+// Helper function to convert string type to enum
+function convertTypeToEnum(type: string): GenerationTypeEnum {
+  switch (type) {
+    case 'text_to_video':
+      return GenerationTypeEnum.TEXT_TO_VIDEO;
+    case 'image_to_video':
+      return GenerationTypeEnum.IMAGE_TO_VIDEO;
+    case 'text_to_image':
+      return GenerationTypeEnum.TEXT_TO_IMAGE;
+    case 'image_to_image':
+      return GenerationTypeEnum.IMAGE_TO_IMAGE;
+    default:
+      return GenerationTypeEnum.TEXT_TO_VIDEO;
+  }
 }
 
 export const configureVideoGeneration = (params?: CreateVideoDocumentParams) => tool({
@@ -49,11 +85,26 @@ export const configureVideoGeneration = (params?: CreateVideoDocumentParams) => 
     
     console.log('🎬 ✅ Loaded video models:', availableModels.map(m => m.id));
     
-    const defaultModel = availableModels[0] || {
-      id: 'comfyui/ltx',
-      label: 'LTX Video',
-      description: 'LTX Video - High quality video generation'
-    };
+    // AICODE-NOTE: Use smart model selection that prioritizes text_to_video models like Sora!
+    const { getBestVideoModel } = await import('@/lib/ai/api/config-cache');
+    const bestModel = await getBestVideoModel({ 
+      vipAllowed: true,
+      requireTextToVideo: true // Prioritize text_to_video for tools
+    }); // Allow VIP models for better defaults
+    
+    const defaultModel: AdaptedModel = bestModel ? {
+      ...bestModel,
+      id: bestModel.name,
+      label: bestModel.label || bestModel.name,
+      description: `${bestModel.label || bestModel.name} - ${bestModel.type}`,
+      value: bestModel.name,
+      workflowPath: bestModel.params?.workflow_path || '',
+      price: bestModel.params?.price_per_second || bestModel.price || 0,
+      type: convertTypeToEnum(bestModel.type as string),
+      source: convertSourceToEnum(bestModel.source as string)
+    } : (availableModels.find(m => m.name === 'azure-openai/sora') || availableModels[0]) as AdaptedModel;
+    
+    console.log('🎯 Smart default model selected:', defaultModel.label, '(type:', defaultModel.type, ')');
 
     let styles: MediaOption[] = [];
 
@@ -253,8 +304,8 @@ export const configureVideoGeneration = (params?: CreateVideoDocumentParams) => 
       if (params?.createDocument) {
         console.log('🔧 ✅ CALLING CREATE DOCUMENT WITH KIND: video');
         try {
-          // Call createDocument with readable title and embedded JSON params
-          const readableTitle = `Video: "${prompt}" (${selectedModel.label}, ${selectedResolution.label}, ${duration || DEFAULT_VIDEO_DURATION}s) ${JSON.stringify(videoParams)}`;
+          // Call createDocument with title that contains params for server parsing but shows only prompt to user
+          const readableTitle = `Video: "${prompt}" ${JSON.stringify(videoParams)}`;
           const result = await params.createDocument.execute({
             title: readableTitle,
             kind: 'video'
@@ -275,7 +326,7 @@ export const configureVideoGeneration = (params?: CreateVideoDocumentParams) => 
 
       console.log('🔧 ❌ CREATE DOCUMENT NOT AVAILABLE, RETURNING FALLBACK');
       // Fallback to simple message
-      const readableTitle = `Video: "${prompt}" (${selectedModel.label}, ${selectedResolution.label}, ${duration || DEFAULT_VIDEO_DURATION}s) ${JSON.stringify(videoParams)}`;
+      const readableTitle = `Video: "${prompt}" ${JSON.stringify(videoParams)}`;
       return {
         message: `I'll create a video with description: "${prompt}". However, artifact cannot be created - createDocument unavailable.`,
         parameters: {

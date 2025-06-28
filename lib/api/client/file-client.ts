@@ -8,7 +8,7 @@ import type { IFileRead } from '@/lib/api/models/IFileRead';
 export class FileClient {
   private baseUrl: string;
 
-  constructor(baseUrl: string = '') {
+  constructor(baseUrl = '') {
     this.baseUrl = baseUrl;
   }
 
