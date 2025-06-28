@@ -194,6 +194,49 @@ export function VideoGeneratorForm({
     loadConfig();
   }, []);
 
+  // AICODE-NOTE: Ensure correct default model is selected when generation type or config changes
+  useEffect(() => {
+    if (!config) return;
+
+    const defaultTextModel = config.textToVideoModels.find(m => 
+      m.name.includes('sora') || m.name.includes('azure-openai/sora')
+    ) || config.textToVideoModels[0];
+    
+    const defaultImageModel = config.imageToVideoModels.find(m => 
+      m.name.includes('veo2') || 
+      m.name.includes('veo-2') || 
+      m.name.includes('google-cloud/veo2') ||
+      m.label?.toLowerCase().includes('veo2') ||
+      m.label?.toLowerCase().includes('veo 2')
+    ) || config.imageToVideoModels[0];
+
+    console.log('🎯 Setting default model for', formData.generationType, {
+      textModel: defaultTextModel?.name,
+      imageModel: defaultImageModel?.name,
+      currentModel: formData.model
+    });
+
+    // Only update if no model is currently selected or if it's incompatible with current mode
+    const currentModelInTextMode = config.textToVideoModels.find(m => m.name === formData.model);
+    const currentModelInImageMode = config.imageToVideoModels.find(m => m.name === formData.model);
+    
+    const shouldUpdateModel = !formData.model || 
+      (formData.generationType === 'text-to-video' && !currentModelInTextMode) ||
+      (formData.generationType === 'image-to-video' && !currentModelInImageMode);
+
+    if (shouldUpdateModel) {
+      const targetModel = formData.generationType === 'text-to-video' 
+        ? defaultTextModel?.name || ''
+        : defaultImageModel?.name || '';
+        
+      console.log('🔄 Updating model to:', targetModel);
+      setFormData(prev => ({
+        ...prev,
+        model: targetModel
+      }));
+    }
+  }, [config, formData.generationType]);
+
   const handleInputChange = (field: keyof VideoGenerationFormData, value: string | number | undefined) => {
     setFormData(prev => ({
       ...prev,
@@ -237,36 +280,18 @@ export function VideoGeneratorForm({
   };
 
   const handleGenerationTypeChange = (type: 'text-to-video' | 'image-to-video') => {
-    // Find preferred models: Sora for text-to-video, VEO2 for image-to-video
-    const defaultTextModel = config?.textToVideoModels.find(m => 
-      m.name.includes('sora') || m.name.includes('azure-openai/sora')
-    ) || config?.textToVideoModels[0];
-    
-    // Try multiple VEO2 variations: veo2, veo-2, google-cloud/veo2
-    const defaultImageModel = config?.imageToVideoModels.find(m => 
-      m.name.includes('veo2') || 
-      m.name.includes('veo-2') || 
-      m.name.includes('google-cloud/veo2') ||
-      m.label?.toLowerCase().includes('veo2') ||
-      m.label?.toLowerCase().includes('veo 2')
-    ) || config?.imageToVideoModels[0];
-    
     // Debug logging
     if (type === 'image-to-video') {
       console.log('🎬 Image-to-video models available:', config?.imageToVideoModels.map(m => ({
         name: m.name,
         label: m.label
       })));
-      console.log('🎯 Selected default image model:', defaultImageModel);
     }
     
     setFormData(prev => ({
       ...prev,
       generationType: type,
-      // Set appropriate model based on generation type
-      model: type === 'text-to-video' 
-        ? defaultTextModel?.name || ''
-        : defaultImageModel?.name || ''
+      // Model will be set automatically by useEffect based on new generationType
     }));
   };
 

@@ -95,6 +95,37 @@ export async function POST(request: NextRequest) {
     console.log('📝 Generation type:', generationType);
     console.log('🎯 Selected model:', model);
     
+    // Parse resolution parameter to extract width, height, and aspect ratio
+    const parseResolution = (resolutionString: string) => {
+      // Default values
+      let width = 1280;
+      let height = 720;
+      let aspectRatio = "16:9";
+      
+      if (resolutionString) {
+        // Parse formats like "1920x1080 (Full HD)" or "1024x1024 (Square)"
+        const match = resolutionString.match(/(\d+)x(\d+)/);
+        if (match) {
+          width = parseInt(match[1], 10);
+          height = parseInt(match[2], 10);
+          
+          // Calculate aspect ratio
+          const gcd = (a: number, b: number): number => b === 0 ? a : gcd(b, a % b);
+          const divisor = gcd(width, height);
+          aspectRatio = `${width / divisor}:${height / divisor}`;
+        }
+      }
+      
+      return { width, height, aspectRatio };
+    };
+    
+    const { width, height, aspectRatio } = parseResolution(resolution);
+    
+    console.log('📐 Parsed resolution:', { 
+      input: resolution, 
+      output: { width, height, aspectRatio }
+    });
+
     // Build proper request body for OpenAPI FileService.fileGenerateVideo
     const requestBody = {
       type: "media" as const,
@@ -103,9 +134,9 @@ export async function POST(request: NextRequest) {
       config: {
         prompt,
         negative_prompt: negativePrompt || '',
-        width: 512,
-        height: 512,
-        aspect_ratio: "16:9",
+        width,
+        height,
+        aspect_ratio: aspectRatio,
         seed: seed || Math.floor(Math.random() * 1000000000000),
         generation_config_name: model || 'azure-openai/sora',
         duration: duration || 5,
@@ -113,7 +144,7 @@ export async function POST(request: NextRequest) {
         batch_size: 1,
         shot_size: shotSize || "medium_shot",
         style_name: style || "flux_watercolor",
-        qualityType: "hd",
+        qualityType: width >= 1920 ? "full_hd" : "hd",
         entity_ids: [],
         references
       }

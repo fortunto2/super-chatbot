@@ -3,7 +3,7 @@
 import { useState, useCallback, useRef } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Upload, X, Image as ImageIcon, AlertCircle } from 'lucide-react';
+import { Upload, X, Image as ImageIcon, AlertCircle, Crop } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface ImageUploadProps {
@@ -12,17 +12,105 @@ interface ImageUploadProps {
   selectedImage?: { file: File; previewUrl: string } | null;
   disabled?: boolean;
   className?: string;
+  targetResolution?: string; // e.g., "1280x720 (HD)"
 }
+
+// AICODE-NOTE: Image processing utilities for resolution matching
+const parseResolution = (resolutionString?: string) => {
+  // Default to HD 16:9
+  let width = 1280;
+  let height = 720;
+  
+  if (resolutionString) {
+    const match = resolutionString.match(/(\d+)x(\d+)/);
+    if (match) {
+      width = parseInt(match[1], 10);
+      height = parseInt(match[2], 10);
+    }
+  }
+  
+  return { width, height, aspectRatio: width / height };
+};
+
+const processImageForResolution = async (
+  file: File, 
+  targetWidth: number, 
+  targetHeight: number
+): Promise<{ processedFile: File; previewUrl: string }> => {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      try {
+        // Create canvas for processing
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        if (!ctx) {
+          throw new Error('Failed to get canvas context');
+        }
+        
+        // Set target dimensions
+        canvas.width = targetWidth;
+        canvas.height = targetHeight;
+        
+        // Calculate scaling and cropping
+        const sourceAspect = img.width / img.height;
+        const targetAspect = targetWidth / targetHeight;
+        
+        let sx = 0, sy = 0, sw = img.width, sh = img.height;
+        
+        if (sourceAspect > targetAspect) {
+          // Source is wider - crop horizontal
+          sw = img.height * targetAspect;
+          sx = (img.width - sw) / 2;
+        } else {
+          // Source is taller - crop vertical  
+          sh = img.width / targetAspect;
+          sy = (img.height - sh) / 2;
+        }
+        
+        // Draw cropped and scaled image
+        ctx.drawImage(img, sx, sy, sw, sh, 0, 0, targetWidth, targetHeight);
+        
+        // Convert to blob and file
+        canvas.toBlob((blob) => {
+          if (!blob) {
+            reject(new Error('Failed to create processed image'));
+            return;
+          }
+          
+          // Create new file with processed image
+          const processedFile = new File([blob], file.name, {
+            type: 'image/jpeg',
+            lastModified: Date.now()
+          });
+          
+          const previewUrl = URL.createObjectURL(blob);
+          
+          resolve({ processedFile, previewUrl });
+        }, 'image/jpeg', 0.92);
+        
+      } catch (error) {
+        reject(error);
+      }
+    };
+    
+    img.onerror = () => reject(new Error('Failed to load image'));
+    img.src = URL.createObjectURL(file);
+  });
+};
 
 export function ImageUpload({
   onImageSelect,
   onImageRemove,
   selectedImage,
   disabled = false,
-  className = ''
+  className = '',
+  targetResolution
 }: ImageUploadProps) {
   const [isDragOver, setIsDragOver] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const validateImageFile = (file: File): boolean => {
@@ -50,21 +138,51 @@ export function ImageUpload({
 
     try {
       setIsUploading(true);
+      setIsProcessing(true);
       
-      // Create preview URL
-      const previewUrl = URL.createObjectURL(file);
+      // Parse target resolution
+      const { width: targetWidth, height: targetHeight } = parseResolution(targetResolution);
       
-      // Call the parent callback
-      onImageSelect(file, previewUrl);
+      console.log('🖼️ Processing image for resolution:', { 
+        target: targetResolution, 
+        dimensions: { targetWidth, targetHeight },
+        originalFile: { name: file.name, size: file.size }
+      });
       
-      toast.success('Image selected successfully');
+      // Process image to match target resolution
+      const { processedFile, previewUrl } = await processImageForResolution(
+        file, 
+        targetWidth, 
+        targetHeight
+      );
+      
+      console.log('✅ Image processed:', {
+        original: { width: 'unknown', height: 'unknown', size: file.size },
+        processed: { width: targetWidth, height: targetHeight, size: processedFile.size }
+      });
+      
+      // Call the parent callback with processed image
+      onImageSelect(processedFile, previewUrl);
+      
+      toast.success(`Image processed for ${targetWidth}x${targetHeight} resolution`);
+      
     } catch (error) {
-      console.error('Error processing image:', error);
-      toast.error('Failed to process image');
+      console.error('❌ Error processing image:', error);
+      toast.error('Failed to process image for video resolution');
+      
+      // Fallback: use original image
+      try {
+        const previewUrl = URL.createObjectURL(file);
+        onImageSelect(file, previewUrl);
+        toast.warning('Using original image (no processing applied)');
+      } catch (fallbackError) {
+        toast.error('Failed to process image');
+      }
     } finally {
       setIsUploading(false);
+      setIsProcessing(false);
     }
-  }, [onImageSelect]);
+  }, [onImageSelect, targetResolution]);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -121,6 +239,9 @@ export function ImageUpload({
     }
   };
 
+  // Parse target resolution for display
+  const { width: targetWidth, height: targetHeight } = parseResolution(targetResolution);
+
   return (
     <div className={className}>
       <input
@@ -156,7 +277,13 @@ export function ImageUpload({
             </div>
             <div className="mt-2 text-sm text-muted-foreground">
               <p className="font-medium">{selectedImage.file.name}</p>
-              <p>{(selectedImage.file.size / 1024 / 1024).toFixed(2)} MB</p>
+              <div className="flex items-center justify-between">
+                <span>{(selectedImage.file.size / 1024 / 1024).toFixed(2)} MB</span>
+                <span className="flex items-center gap-1 text-green-600">
+                  <Crop className="size-3" />
+                  {targetWidth}x{targetHeight}
+                </span>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -199,21 +326,24 @@ export function ImageUpload({
                     : 'Drag and drop an image file here, or click to browse'
                   }
                 </p>
+                {targetResolution && (
+                  <div className="flex items-center justify-center gap-1 text-xs text-blue-600 bg-blue-50 rounded-md px-2 py-1">
+                    <Crop className="size-3" />
+                    Will be processed for {targetWidth}x{targetHeight}
+                  </div>
+                )}
               </div>
+              
+              {isProcessing && (
+                <div className="text-xs text-blue-600 flex items-center gap-1">
+                  <div className="size-3 border border-blue-600 border-t-transparent rounded-full animate-spin" />
+                  Processing image for video resolution...
+                </div>
+              )}
 
-              <Button 
-                variant="outline" 
-                disabled={disabled || isUploading}
-                className="mt-2"
-              >
-                <Upload className="size-4 mr-2" />
-                {isUploading ? 'Processing...' : 'Choose Image'}
-              </Button>
-
-              <div className="text-xs text-muted-foreground mt-4 space-y-1">
-                <p>• Supported formats: JPEG, PNG, WebP</p>
-                <p>• Maximum file size: 10MB</p>
-                <p>• Recommended: High resolution images work best</p>
+              <div className="text-xs text-muted-foreground space-y-1">
+                <p>Supported formats: JPEG, PNG, WebP</p>
+                <p>Maximum size: 10MB</p>
               </div>
             </div>
           </CardContent>
