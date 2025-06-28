@@ -50,6 +50,7 @@ See: [Migration Completion](./maintenance/changelog/production-migration-complet
 - [Overview](./ai-capabilities/overview.md) - AI features and capabilities
 - [Image Generation](./ai-capabilities/image-generation/) - Image generation system
 - [Video Generation](./ai-capabilities/video-generation/) - Video generation system
+- [Prompt Enhancement](./ai-capabilities/prompt-enhancement/) - AI-powered prompt improvement system
 
 ### API Integration
 
