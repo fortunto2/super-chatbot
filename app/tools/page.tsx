@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { ArrowLeft, ImageIcon, VideoIcon, Sparkles, Zap, Play } from 'lucide-react';
+import { ArrowLeft, ImageIcon, VideoIcon, Sparkles, Zap, Play, Wand2, Languages } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -33,13 +33,13 @@ export default function ToolsPage() {
               AI Tools
             </h1>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Powerful AI-powered tools for generating high-quality images and videos. 
+              Powerful AI-powered tools for generating high-quality images, videos, and enhancing your prompts. 
               Choose the tool that fits your creative needs.
             </p>
           </div>
 
           {/* Tools grid */}
-          <div className="grid md:grid-cols-2 gap-6 mt-12">
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mt-12">
             {/* Image Generator Card */}
             <Link href="/tools/image-generator">
               <Card className="hover:shadow-lg transition-all duration-200 hover:scale-[1.02] cursor-pointer group">
@@ -104,6 +104,41 @@ export default function ToolsPage() {
                     <Button className="w-full group-hover:bg-purple-600" size="lg">
                       <VideoIcon className="size-4 mr-2" />
                       Generate Videos
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+
+            {/* Prompt Enhancer Card */}
+            <Link href="/tools/prompt-enhancer">
+              <Card className="hover:shadow-lg transition-all duration-200 hover:scale-[1.02] cursor-pointer group">
+                <CardHeader className="text-center">
+                  <div className="flex items-center justify-center mb-4">
+                    <div className="p-4 rounded-full bg-pink-100 group-hover:bg-pink-200 transition-colors">
+                      <Wand2 className="size-8 text-pink-600" />
+                    </div>
+                  </div>
+                  <CardTitle className="text-2xl">AI Prompt Enhancer</CardTitle>
+                  <CardDescription className="text-base">
+                    Transform simple prompts into detailed, professional descriptions for better AI generation results
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-center space-x-6 text-sm text-muted-foreground">
+                      <div className="flex items-center space-x-2">
+                        <Languages className="size-4" />
+                        <span>Auto Translation</span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Sparkles className="size-4" />
+                        <span>Smart Enhancement</span>
+                      </div>
+                    </div>
+                    <Button className="w-full group-hover:bg-pink-600" size="lg">
+                      <Wand2 className="size-4 mr-2" />
+                      Enhance Prompts
                     </Button>
                   </div>
                 </CardContent>

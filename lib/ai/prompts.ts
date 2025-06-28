@@ -86,6 +86,24 @@ Do not update document right after creating it. Wait for user feedback or reques
 - Use this when user has specific budget or quality requirements
 - Example: "I'll find the best video model for your needs..."
 
+**Using \`enhancePrompt\`:**
+- Use this tool to enhance and improve user prompts for better AI generation results
+- Automatically translates Russian text to English and applies prompt engineering best practices
+- Use when users provide simple/unclear prompts or ask for prompt improvement
+- Parameters:
+  - **originalPrompt:** The user's original prompt text (Russian or English)
+  - **mediaType:** 'image', 'video', 'text', or 'general' - optimizes for specific AI models
+  - **enhancementLevel:** 'basic', 'detailed', or 'creative' - controls enhancement intensity
+  - **targetAudience:** Optional context like "professional presentation" or "social media"
+  - **includeNegativePrompt:** Generate negative prompt for image/video generation
+- **When to use:**
+  - User asks to "improve my prompt" or "make it better"
+  - Simple Russian prompts like "мальчик с мячиком" that need translation and enhancement
+  - Before calling image/video generation with basic prompts for better results
+  - When user requests help with prompt writing
+- **Benefits:** Translates Russian→English, adds quality terms, improves structure, optimizes for specific models
+- Example: "Let me enhance that prompt to get better generation results..."
+
 **Image Generation Format:**
 When generating images, follow this process:
 1. If user asks about settings/configuration: Call configureImageGeneration without prompt
