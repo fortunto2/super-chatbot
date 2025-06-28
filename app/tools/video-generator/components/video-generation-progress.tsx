@@ -235,12 +235,12 @@ export function VideoGenerationProgress({
                 >
                   {isCheckingStatus ? (
                     <>
-                      <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                      <Loader2 className="mr-1 size-3 animate-spin" />
                       Checking...
                     </>
                   ) : (
                     <>
-                      <RefreshCw className="mr-1 h-3 w-3" />
+                      <RefreshCw className="mr-1 size-3" />
                       Check Status
                     </>
                   )}
@@ -258,12 +258,12 @@ export function VideoGenerationProgress({
                 >
                   {isStopping ? (
                     <>
-                      <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                      <Loader2 className="mr-1 size-3 animate-spin" />
                       Stopping...
                     </>
                   ) : (
                     <>
-                      <Square className="mr-1 h-3 w-3" />
+                      <Square className="mr-1 size-3" />
                       Stop
                     </>
                   )}

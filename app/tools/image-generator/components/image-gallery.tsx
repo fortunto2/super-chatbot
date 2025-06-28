@@ -13,6 +13,7 @@ import {
   X
 } from 'lucide-react';
 import type { GeneratedImage } from '../hooks/use-image-generator';
+import NextImage from 'next/image';
 
 interface ImageGalleryProps {
   images: GeneratedImage[];
@@ -66,9 +67,11 @@ export function ImageGallery({
           <X className="size-4" />
         </Button>
         
-        <img
+        <NextImage
           src={image.url}
           alt={image.prompt}
+          width={800}
+          height={600}
           className="size-full object-contain rounded-lg"
           onError={() => handleImageError(image.id)}
         />
@@ -100,10 +103,11 @@ export function ImageGallery({
               </div>
             </div>
           ) : (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
+            <NextImage
               src={image.url}
               alt={image.prompt}
+              width={300}
+              height={300}
               className="size-full object-cover transition-transform group-hover:scale-105 cursor-pointer"
               onClick={() => setSelectedImage(image)}
               onError={() => handleImageError(image.id)}

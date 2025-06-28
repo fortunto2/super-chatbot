@@ -145,7 +145,7 @@ export function EnhancementResult({ result, isEnhancing, onClear, onCopy }: Enha
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => handleCopy(result.negativePrompt!, 'negative')}
+                  onClick={() => handleCopy(result.negativePrompt || '', 'negative')}
                   className="h-6 px-2"
                 >
                   {copiedText === 'negative' ? (
@@ -182,7 +182,7 @@ export function EnhancementResult({ result, isEnhancing, onClear, onCopy }: Enha
               <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">Improvements Applied</h4>
               <ul className="text-xs text-gray-600 dark:text-gray-300 space-y-1">
                 {result.improvements.map((improvement, index) => (
-                  <li key={index} className="flex items-start gap-2">
+                  <li key={`improvement-${index}-${improvement.slice(0, 20)}`} className="flex items-start gap-2">
                     <span className="text-green-500 mt-0.5">•</span>
                     {improvement}
                   </li>
@@ -225,7 +225,7 @@ export function EnhancementResult({ result, isEnhancing, onClear, onCopy }: Enha
           {result.negativePrompt && (
             <Button
               variant="outline"
-              onClick={() => handleCopy(result.negativePrompt!, 'negative')}
+              onClick={() => handleCopy(result.negativePrompt || '', 'negative')}
               className="w-full"
             >
               {copiedText === 'negative' ? (

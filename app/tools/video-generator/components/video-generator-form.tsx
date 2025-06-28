@@ -622,7 +622,7 @@ export function VideoGeneratorForm({
                           {DURATION_OPTIONS.find(option => option.value === formData.duration?.toString())?.label || `${formData.duration} seconds`}
                         </span>
                       )}
-                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      <ChevronsUpDown className="ml-2 size-4 shrink-0 opacity-50" />
                     </button>
                   </PopoverTrigger>
                   <PopoverContent className="w-[320px] p-0">
@@ -665,7 +665,7 @@ export function VideoGeneratorForm({
                             >
                               <Check
                                 className={cn(
-                                  "mr-2 h-4 w-4",
+                                  "mr-2 size-4",
                                   formData.duration === Number.parseInt(option.value) ? "opacity-100" : "opacity-0"
                                 )}
                               />

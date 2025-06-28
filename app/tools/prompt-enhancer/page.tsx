@@ -103,16 +103,16 @@ export default function PromptEnhancerPage() {
           <div>
             <h4 className="font-medium text-gray-800 mb-2">For Images:</h4>
             <ul className="space-y-1">
-              <li>• Use "detailed" level for professional photography terms</li>
-              <li>• Try "creative" level for artistic and composition guidance</li>
-              <li>• Specify model hints like "FLUX" or "Imagen" for optimization</li>
+              <li>• Use &quot;detailed&quot; level for professional photography terms</li>
+              <li>• Try &quot;creative&quot; level for artistic and composition guidance</li>
+              <li>• Specify model hints like &quot;FLUX&quot; or &quot;Imagen&quot; for optimization</li>
             </ul>
           </div>
           <div>
             <h4 className="font-medium text-gray-800 mb-2">For Videos:</h4>
             <ul className="space-y-1">
-              <li>• Use "Sora" or "VEO2" model hints for best results</li>
-              <li>• "detailed" level adds cinematography terms</li>
+              <li>• Use &quot;Sora&quot; or &quot;VEO2&quot; model hints for best results</li>
+              <li>• &quot;detailed&quot; level adds cinematography terms</li>
               <li>• Include negative prompts to avoid unwanted elements</li>
             </ul>
           </div>

@@ -83,14 +83,14 @@ async function testVideoCompatibility() {
     
     console.log('🎬 ✅ Video parameters are compatible');
     console.log('🎬 ✅ Text-to-Video mode:', {
-      prompt: textToVideoParams.prompt.substring(0, 30) + '...',
+      prompt: `${textToVideoParams.prompt.substring(0, 30)}...`,
       model: textToVideoParams.model.name,
       duration: textToVideoParams.duration,
       generationType: textToVideoParams.generationType
     });
     
     console.log('🎬 ✅ Image-to-Video mode:', {
-      prompt: imageToVideoParams.prompt.substring(0, 30) + '...',
+      prompt: `${imageToVideoParams.prompt.substring(0, 30)}...`,
       model: imageToVideoParams.model.name,
       duration: imageToVideoParams.duration,
       generationType: imageToVideoParams.generationType,

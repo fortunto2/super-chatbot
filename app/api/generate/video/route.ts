@@ -1,7 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import { configureSuperduperAI } from '@/lib/config/superduperai';
 import { FileService } from '@/lib/api/services/FileService';
-import { GenerationTypeEnum } from '@/lib/api/models/GenerationTypeEnum';
 
 export async function POST(request: NextRequest) {
   try {
@@ -62,7 +61,7 @@ export async function POST(request: NextRequest) {
     configureSuperduperAI();
 
     // Handle image upload if present for image-to-video mode
-    let references: any[] = [];
+    const references: any[] = [];
     
     if (generationType === 'image-to-video' && sourceImageFile) {
       console.log('🖼️ Processing image-to-video generation with file upload...');
@@ -106,8 +105,8 @@ export async function POST(request: NextRequest) {
         // Parse formats like "1920x1080 (Full HD)" or "1024x1024 (Square)"
         const match = resolutionString.match(/(\d+)x(\d+)/);
         if (match) {
-          width = parseInt(match[1], 10);
-          height = parseInt(match[2], 10);
+          width = Number.parseInt(match[1], 10);
+          height = Number.parseInt(match[2], 10);
           
           // Calculate aspect ratio
           const gcd = (a: number, b: number): number => b === 0 ? a : gcd(b, a % b);

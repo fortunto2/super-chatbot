@@ -3,8 +3,9 @@
 import { useState, useCallback, useRef } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Upload, X, Image as ImageIcon, AlertCircle, Crop } from 'lucide-react';
+import { X, Image as ImageIcon, AlertCircle, Crop } from 'lucide-react';
 import { toast } from 'sonner';
+import NextImage from 'next/image';
 
 interface ImageUploadProps {
   onImageSelect: (file: File, previewUrl: string) => void;
@@ -24,8 +25,8 @@ const parseResolution = (resolutionString?: string) => {
   if (resolutionString) {
     const match = resolutionString.match(/(\d+)x(\d+)/);
     if (match) {
-      width = parseInt(match[1], 10);
-      height = parseInt(match[2], 10);
+      width = Number.parseInt(match[1], 10);
+      height = Number.parseInt(match[2], 10);
     }
   }
   
@@ -57,7 +58,10 @@ const processImageForResolution = async (
         const sourceAspect = img.width / img.height;
         const targetAspect = targetWidth / targetHeight;
         
-        let sx = 0, sy = 0, sw = img.width, sh = img.height;
+        let sx = 0;
+        let sy = 0;
+        let sw = img.width;
+        let sh = img.height;
         
         if (sourceAspect > targetAspect) {
           // Source is wider - crop horizontal
@@ -257,9 +261,11 @@ export function ImageUpload({
         <Card className="relative">
           <CardContent className="p-4">
             <div className="relative group">
-              <img
+              <NextImage
                 src={selectedImage.previewUrl}
                 alt="Selected image for video generation"
+                width={400}
+                height={160}
                 className="w-full h-40 object-cover rounded-lg"
               />
               <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
@@ -354,7 +360,7 @@ export function ImageUpload({
       {!selectedImage && (
         <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
           <div className="flex items-start gap-2">
-            <AlertCircle className="size-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                            <AlertCircle className="size-4 text-blue-600 mt-0.5 shrink-0" />
             <div className="text-sm text-blue-800">
               <p className="font-medium mb-1">Image-to-Video Tips:</p>
               <ul className="space-y-1 text-xs">

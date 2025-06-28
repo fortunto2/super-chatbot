@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Wand2, Sparkles } from 'lucide-react';
-import { EnhancementParams } from '../hooks/use-prompt-enhancer';
+import type { EnhancementParams } from '../hooks/use-prompt-enhancer';
 
 interface PromptEnhancerFormProps {
   onEnhance: (params: EnhancementParams) => void;
