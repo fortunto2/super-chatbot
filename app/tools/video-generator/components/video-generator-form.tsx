@@ -154,8 +154,24 @@ export function VideoGeneratorForm({
         });
         
         // Set default values from configuration
-        const defaultTextModel = textToVideoModels.find(m => m.name.includes('sora')) || textToVideoModels[0];
-        const defaultImageModel = imageToVideoModels.find(m => m.name.includes('veo2')) || imageToVideoModels[0];
+        const defaultTextModel = textToVideoModels.find(m => 
+          m.name.includes('sora') || m.name.includes('azure-openai/sora')
+        ) || textToVideoModels[0];
+        
+        const defaultImageModel = imageToVideoModels.find(m => 
+          m.name.includes('veo2') || 
+          m.name.includes('veo-2') || 
+          m.name.includes('google-cloud/veo2') ||
+          m.label?.toLowerCase().includes('veo2') ||
+          m.label?.toLowerCase().includes('veo 2')
+        ) || imageToVideoModels[0];
+        
+        // Debug logging for model selection
+        console.log('🎯 Default models selected:', {
+          textModel: defaultTextModel?.name,
+          imageModel: defaultImageModel?.name,
+          imageModelsAvailable: imageToVideoModels.map(m => ({ name: m.name, label: m.label }))
+        });
         
         setFormData(prev => ({
           ...prev,
@@ -222,8 +238,27 @@ export function VideoGeneratorForm({
 
   const handleGenerationTypeChange = (type: 'text-to-video' | 'image-to-video') => {
     // Find preferred models: Sora for text-to-video, VEO2 for image-to-video
-    const defaultTextModel = config?.textToVideoModels.find(m => m.name.includes('sora')) || config?.textToVideoModels[0];
-    const defaultImageModel = config?.imageToVideoModels.find(m => m.name.includes('veo2')) || config?.imageToVideoModels[0];
+    const defaultTextModel = config?.textToVideoModels.find(m => 
+      m.name.includes('sora') || m.name.includes('azure-openai/sora')
+    ) || config?.textToVideoModels[0];
+    
+    // Try multiple VEO2 variations: veo2, veo-2, google-cloud/veo2
+    const defaultImageModel = config?.imageToVideoModels.find(m => 
+      m.name.includes('veo2') || 
+      m.name.includes('veo-2') || 
+      m.name.includes('google-cloud/veo2') ||
+      m.label?.toLowerCase().includes('veo2') ||
+      m.label?.toLowerCase().includes('veo 2')
+    ) || config?.imageToVideoModels[0];
+    
+    // Debug logging
+    if (type === 'image-to-video') {
+      console.log('🎬 Image-to-video models available:', config?.imageToVideoModels.map(m => ({
+        name: m.name,
+        label: m.label
+      })));
+      console.log('🎯 Selected default image model:', defaultImageModel);
+    }
     
     setFormData(prev => ({
       ...prev,
@@ -547,11 +582,12 @@ export function VideoGeneratorForm({
                 <Label htmlFor="duration">Duration</Label>
                 <Popover open={durationOpen} onOpenChange={setDurationOpen}>
                   <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
+                    <button
+                      type="button"
+                      className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1"
                       role="combobox"
                       aria-expanded={durationOpen}
-                      className="w-full justify-between"
+                      aria-haspopup="dialog"
                       disabled={disabled || isGenerating}
                     >
                       {!formData.duration || formData.duration === 0 ? (
@@ -562,7 +598,7 @@ export function VideoGeneratorForm({
                         </span>
                       )}
                       <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                    </Button>
+                    </button>
                   </PopoverTrigger>
                   <PopoverContent className="w-[320px] p-0">
                     <Command>

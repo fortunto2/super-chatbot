@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Loader2, Video, CheckCircle, XCircle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Loader2, Video, CheckCircle, XCircle, RefreshCw, Square } from 'lucide-react';
 
 // AICODE-NOTE: Simple Progress component since it's not available in UI library
 function Progress({ value, className }: { value: number; className?: string }) {
@@ -50,14 +51,20 @@ export interface GenerationStatus {
 interface VideoGenerationProgressProps {
   generationStatus: GenerationStatus;
   prompt?: string;
+  onCheckStatus?: () => Promise<void>;
+  onStopGeneration?: () => Promise<void>;
 }
 
 export function VideoGenerationProgress({ 
   generationStatus, 
-  prompt
+  prompt,
+  onCheckStatus,
+  onStopGeneration
 }: VideoGenerationProgressProps) {
   const [displayProgress, setDisplayProgress] = useState(0);
   const [elapsedTime, setElapsedTime] = useState(0);
+  const [isCheckingStatus, setIsCheckingStatus] = useState(false);
+  const [isStopping, setIsStopping] = useState(false);
 
   // AICODE-NOTE: Animate progress bar smoothly
   useEffect(() => {
@@ -146,6 +153,32 @@ export function VideoGenerationProgress({
     }
   };
 
+  const handleCheckStatus = async () => {
+    if (!onCheckStatus || isCheckingStatus) return;
+    
+    setIsCheckingStatus(true);
+    try {
+      await onCheckStatus();
+    } catch (error) {
+      console.error('❌ Check status failed:', error);
+    } finally {
+      setIsCheckingStatus(false);
+    }
+  };
+
+  const handleStopGeneration = async () => {
+    if (!onStopGeneration || isStopping) return;
+    
+    setIsStopping(true);
+    try {
+      await onStopGeneration();
+    } catch (error) {
+      console.error('❌ Stop generation failed:', error);
+    } finally {
+      setIsStopping(false);
+    }
+  };
+
   return (
     <Card className="w-full">
       <CardContent className="pt-6">
@@ -187,6 +220,57 @@ export function VideoGenerationProgress({
           <p className="text-sm text-muted-foreground">
             {getStatusMessage()}
           </p>
+
+          {/* Action Buttons - only show during processing/pending */}
+          {(generationStatus.status === 'processing' || generationStatus.status === 'pending') && (
+            <div className="flex justify-center gap-2">
+              {/* Check Status Button */}
+              {onCheckStatus && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleCheckStatus}
+                  disabled={isCheckingStatus || isStopping}
+                  className="text-xs"
+                >
+                  {isCheckingStatus ? (
+                    <>
+                      <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                      Checking...
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="mr-1 h-3 w-3" />
+                      Check Status
+                    </>
+                  )}
+                </Button>
+              )}
+              
+              {/* Stop Generation Button */}
+              {onStopGeneration && (
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={handleStopGeneration}
+                  disabled={isStopping || isCheckingStatus}
+                  className="text-xs"
+                >
+                  {isStopping ? (
+                    <>
+                      <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                      Stopping...
+                    </>
+                  ) : (
+                    <>
+                      <Square className="mr-1 h-3 w-3" />
+                      Stop
+                    </>
+                  )}
+                </Button>
+              )}
+            </div>
+          )}
 
           {/* Time and Metadata */}
           <div className="flex justify-between text-xs text-muted-foreground">

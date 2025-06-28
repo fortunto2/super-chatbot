@@ -27,11 +27,13 @@ export default function VideoGeneratorPage() {
     isConnected,
     connectionStatus,
     generateVideo,
+    stopGeneration,
     clearCurrentGeneration,
     deleteVideo,
     clearAllVideos,
     downloadVideo,
     copyVideoUrl,
+    forceCheckResults,
   } = useVideoGenerator();
 
   // AICODE-NOTE: Video effects hook for auto-saving and side effects management
@@ -80,6 +82,8 @@ export default function VideoGeneratorPage() {
             <VideoGenerationProgress
               generationStatus={generationStatus}
               prompt={prompt}
+              onCheckStatus={forceCheckResults}
+              onStopGeneration={stopGeneration}
             />
           )}
           
