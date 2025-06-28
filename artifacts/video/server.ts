@@ -91,6 +91,10 @@ export const videoDocumentHandler = createDocumentHandler<'video'>({
       }
 
       
+      // AICODE-NOTE: Determine generation type based on source image presence (for dual-mode compatibility)
+      const generationType = (sourceImageId || sourceImageUrl) ? 'image-to-video' : 'text-to-video';
+      console.log(`🎬 Detected generation type: ${generationType} (hasSourceImage: ${!!(sourceImageId || sourceImageUrl)})`);
+      
       // Start video generation with hybrid SSE approach
       const result = await generateVideoHybrid(
         prompt,
@@ -102,7 +106,8 @@ export const videoDocumentHandler = createDocumentHandler<'video'>({
         frameRate,
         negativePrompt,
         sourceImageId,
-        sourceImageUrl
+        sourceImageUrl,
+        generationType
       );
 
     
@@ -209,6 +214,10 @@ export const videoDocumentHandler = createDocumentHandler<'video'>({
         }];
       }
 
+      // AICODE-NOTE: Determine generation type based on source image presence (for dual-mode compatibility)
+      const generationType = (sourceImageId || sourceImageUrl) ? 'image-to-video' : 'text-to-video';
+      console.log(`🎬 Update - Detected generation type: ${generationType} (hasSourceImage: ${!!(sourceImageId || sourceImageUrl)})`);
+      
       // Start new video generation with hybrid SSE approach
       const result = await generateVideoHybrid(
         prompt,
@@ -220,7 +229,8 @@ export const videoDocumentHandler = createDocumentHandler<'video'>({
         frameRate,
         negativePrompt,
         sourceImageId,
-        sourceImageUrl
+        sourceImageUrl,
+        generationType
       );
 
       if (!result.success) {

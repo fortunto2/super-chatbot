@@ -158,7 +158,8 @@ export const generateVideoHybrid = async (
   frameRate = 30,
   negativePrompt = "",
   sourceImageId?: string,
-  sourceImageUrl?: string
+  sourceImageUrl?: string,
+  generationType: 'text-to-video' | 'image-to-video' = 'text-to-video'
 ): Promise<VideoGenerationResult> => {
 
   console.log(`🎬 Starting hybrid video generation:`, {
@@ -170,7 +171,8 @@ export const generateVideoHybrid = async (
     duration,
     frameRate,
     sourceImageId,
-    sourceImageUrl
+    sourceImageUrl,
+    generationType
   });
 
   try {
