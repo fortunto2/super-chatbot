@@ -14,14 +14,43 @@ import {
   SelectTrigger, 
   SelectValue 
 } from '@/components/ui/select';
-import { Loader2, Video, Type, Image as ImageIcon, Shuffle } from 'lucide-react';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command';
+import { Loader2, Video, Type, Image as ImageIcon, Shuffle, Check, ChevronsUpDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { z } from 'zod';
+import { cn } from '@/lib/utils';
 import { getVideoGenerationConfig } from '@/lib/config/media-settings-factory';
 import type { MediaOption, MediaResolution, AdaptedModel } from '@/lib/types/media-settings';
 import { ImageUpload } from './image-upload';
 import { GenerationTypeEnum } from '@/lib/api/models/GenerationTypeEnum';
 import { getModelLabel } from '@/lib/config/superduperai';
+
+// AICODE-NOTE: Duration options for different video use cases
+const DURATION_OPTIONS = [
+  { value: '3', label: '3 seconds', description: 'Quick clips' },
+  { value: '5', label: '5 seconds', description: 'Standard short' },
+  { value: '8', label: '8 seconds', description: 'Social media' },
+  { value: '10', label: '10 seconds', description: 'Stories format' },
+  { value: '15', label: '15 seconds', description: 'Reels/TikTok' },
+  { value: '20', label: '20 seconds', description: 'Product demos' },
+  { value: '30', label: '30 seconds', description: 'Advertising' },
+  { value: '45', label: '45 seconds', description: 'Presentations' },
+  { value: '60', label: '60 seconds', description: 'Full minute' },
+  { value: '90', label: '90 seconds', description: 'Extended content' },
+  { value: '120', label: '2 minutes', description: 'Long-form' },
+];
 
 // AICODE-NOTE: Form validation schema for video generation parameters
 const videoGenerationSchema = z.object({
@@ -32,7 +61,7 @@ const videoGenerationSchema = z.object({
   shotSize: z.string().optional(),
   model: z.string().optional(),
   frameRate: z.number().min(24).max(120).optional(),
-  duration: z.number().min(1).max(30).optional(),
+  duration: z.number().min(1).max(300).optional(), // Increased max to 5 minutes
   seed: z.number().optional(),
   generationType: z.enum(['text-to-video', 'image-to-video']),
   sourceImage: z.object({
@@ -72,6 +101,10 @@ export function VideoGeneratorForm({
 
   // State for image upload
   const [selectedImage, setSelectedImage] = useState<{ file: File; previewUrl: string } | null>(null);
+
+  // AICODE-NOTE: Duration combobox state
+  const [durationOpen, setDurationOpen] = useState(false);
+  const [customDuration, setCustomDuration] = useState('');
 
   // AICODE-NOTE: Configuration state loaded from SuperDuperAI API
   const [config, setConfig] = useState<{
@@ -150,6 +183,32 @@ export function VideoGeneratorForm({
       ...prev,
       [field]: value,
     }));
+  };
+
+  // AICODE-NOTE: Duration combobox handler
+  const handleDurationSelect = (selectedValue: string) => {
+    const numValue = Number.parseInt(selectedValue);
+    setFormData(prev => ({
+      ...prev,
+      duration: numValue,
+    }));
+    setDurationOpen(false);
+    setCustomDuration(''); // Clear custom input when preset is selected
+  };
+
+  // AICODE-NOTE: Custom duration input handler
+  const handleCustomDurationSubmit = () => {
+    const numValue = Number.parseInt(customDuration);
+    if (numValue && numValue >= 1 && numValue <= 300) {
+      setFormData(prev => ({
+        ...prev,
+        duration: numValue,
+      }));
+      setDurationOpen(false);
+      setCustomDuration('');
+    } else {
+      toast.error('Duration must be between 1 and 300 seconds');
+    }
   };
 
   // Generate random seed number
@@ -483,26 +542,87 @@ export function VideoGeneratorForm({
               </Select>
             </div>
 
-            {/* Duration Input */}
-            <div className="space-y-2">
-              <Label htmlFor="duration">Duration (seconds)</Label>
-              <Input
-                id="duration"
-                type="number"
-                min="1"
-                max="30"
-                placeholder="5"
-                value={formData.duration || ''}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  handleInputChange('duration', value ? Number.parseInt(value) : undefined);
-                }}
-                disabled={disabled || isGenerating}
-              />
-              <p className="text-xs text-muted-foreground">
-                Video length in seconds (1-30)
-              </p>
-            </div>
+                          {/* Duration Input */}
+              <div className="space-y-2">
+                <Label htmlFor="duration">Duration</Label>
+                <Popover open={durationOpen} onOpenChange={setDurationOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={durationOpen}
+                      className="w-full justify-between"
+                      disabled={disabled || isGenerating}
+                    >
+                      {!formData.duration || formData.duration === 0 ? (
+                        <span className="text-muted-foreground">Select duration...</span>
+                      ) : (
+                        <span>
+                          {DURATION_OPTIONS.find(option => option.value === formData.duration?.toString())?.label || `${formData.duration} seconds`}
+                        </span>
+                      )}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[320px] p-0">
+                    <Command>
+                      <CommandInput placeholder="Search duration or type custom..." />
+                      <CommandList>
+                        <CommandEmpty>
+                          <div className="p-2">
+                            <div className="text-sm text-muted-foreground mb-2">
+                              No preset found. Enter custom duration:
+                            </div>
+                            <div className="flex gap-2">
+                              <Input
+                                type="number"
+                                min="1"
+                                max="300"
+                                placeholder="e.g. 25"
+                                value={customDuration}
+                                onChange={(e) => setCustomDuration(e.target.value)}
+                                className="h-8"
+                              />
+                              <Button
+                                size="sm"
+                                onClick={handleCustomDurationSubmit}
+                                disabled={!customDuration}
+                              >
+                                Set
+                              </Button>
+                            </div>
+                          </div>
+                        </CommandEmpty>
+                        <CommandGroup heading="Preset durations">
+                          {DURATION_OPTIONS.map((option) => (
+                            <CommandItem
+                              key={option.value}
+                              value={option.value}
+                              onSelect={(currentValue) => {
+                                handleDurationSelect(currentValue);
+                              }}
+                            >
+                              <Check
+                                className={cn(
+                                  "mr-2 h-4 w-4",
+                                  formData.duration === Number.parseInt(option.value) ? "opacity-100" : "opacity-0"
+                                )}
+                              />
+                              <div className="flex flex-col">
+                                <span className="font-medium">{option.label}</span>
+                                <span className="text-xs text-muted-foreground">{option.description}</span>
+                              </div>
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+                <p className="text-xs text-muted-foreground">
+                  Select from presets or type custom duration (1-300 seconds)
+                </p>
+              </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
