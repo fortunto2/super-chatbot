@@ -69,6 +69,15 @@ See: [Migration Completion](./maintenance/changelog/production-migration-complet
 
 ## 🚀 Recent Major Updates
 
+### Enhanced Textarea with Unlimited Prompts (2025-01-28)
+
+- **Removed all prompt length limitations** (was 2000 characters, now unlimited)
+- **Real-time character/token counting** with approximate token estimation
+- **Fullscreen editing mode** for complex prompt engineering
+- **Universal implementation** across all forms (video, image, chat, media settings)
+- **Professional workflow support** for AI-first development methodology
+- **Responsive design** with accessibility features and keyboard navigation
+
 ### Video Model Selection Enhancement (2025-01-28)
 
 - **Fixed Sora prioritization** for text-to-video generation
