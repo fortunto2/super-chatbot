@@ -173,9 +173,21 @@ export function VideoGeneratorForm({
           imageModelsAvailable: imageToVideoModels.map(m => ({ name: m.name, label: m.label }))
         });
         
+        // Set default style from available styles
+        const defaultStyle = videoConfig.availableStyles.find(s => 
+          s.id === 'flux_watercolor' || 
+          s.id === 'watercolor' || 
+          s.id === 'realistic'
+        ) || videoConfig.availableStyles[0];
+
+        console.log('🎨 Default style selected:', {
+          selectedStyle: defaultStyle?.id,
+          availableStyles: videoConfig.availableStyles.map(s => s.id)
+        });
+
         setFormData(prev => ({
           ...prev,
-          style: 'base',
+          style: defaultStyle?.id || 'flux_watercolor',
           resolution: '1280x720 (HD)',
           shotSize: videoConfig.defaultSettings.shotSize?.id || 'medium_shot',
           model: defaultTextModel?.name || '',
@@ -744,7 +756,12 @@ export function VideoGeneratorForm({
           <Button
             type="submit"
             className="w-full"
-            disabled={disabled || isGenerating || !formData.prompt.trim()}
+            disabled={
+              disabled || 
+              isGenerating || 
+              (formData.generationType === 'text-to-video' && !formData.prompt.trim()) ||
+              (formData.generationType === 'image-to-video' && !formData.sourceImage)
+            }
             size="lg"
           >
             {isGenerating ? (

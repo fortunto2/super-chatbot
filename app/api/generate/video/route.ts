@@ -1,44 +1,13 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import { configureSuperduperAI } from '@/lib/config/superduperai';
-import { FileService } from '@/lib/api/services/FileService';
+import { generateVideoWithStrategy, type VideoGenerationParams, type ImageToVideoParams } from '@/lib/ai/api/video-generation-strategies';
 
 export async function POST(request: NextRequest) {
   try {
-    // Handle FormData for image uploads or JSON for text-only
-    let body: any;
-    let sourceImageFile: File | null = null;
-    
-    const contentType = request.headers.get('content-type');
-    
-    if (contentType?.includes('multipart/form-data')) {
-      console.log('🎬 Video API: Processing multipart form data (image-to-video)');
-      const formData = await request.formData();
-      
-      // Extract form fields
-      body = {
-        prompt: formData.get('prompt') as string,
-        model: formData.get('model') as string,
-        resolution: formData.get('resolution') as string,
-        chatId: formData.get('chatId') as string,
-        negativePrompt: formData.get('negativePrompt') as string,
-        duration: Number(formData.get('duration')) || 5,
-        generationType: formData.get('generationType') as string,
-        frameRate: Number(formData.get('frameRate')) || 30,
-        style: formData.get('style') as string,
-        shotSize: formData.get('shotSize') as string,
-        seed: Number(formData.get('seed')) || undefined,
-      };
-      
-      // Extract image file  
-      sourceImageFile = formData.get('sourceImage') as File | null;
-      
-      console.log('📦 Form data parameters:', body);
-      console.log('🖼️ Source image file:', sourceImageFile ? `${sourceImageFile.name} (${sourceImageFile.size} bytes)` : 'None');
-    } else {
-      console.log('🎬 Video API: Processing JSON data (text-to-video)');
-      body = await request.json();
-      console.log('📦 Request parameters:', JSON.stringify(body, null, 2));
-    }
+    // All requests now come as JSON (with Base64 data URL for image-to-video)
+    console.log('🎬 Video API: Processing JSON request');
+    const body = await request.json();
+    console.log('📦 Request parameters:', JSON.stringify(body, null, 2));
     
     // Extract parameters from request body
     const {
@@ -57,58 +26,21 @@ export async function POST(request: NextRequest) {
       sourceImageUrl
     } = body;
 
-        // AICODE-NOTE: Configure OpenAPI client server-side only (per AGENTS.md architecture)
+        // Configure SuperDuperAI for server-side operations
     configureSuperduperAI();
 
-    // Handle image upload if present for image-to-video mode
-    const references: any[] = [];
-    
-    if (generationType === 'image-to-video' && sourceImageFile) {
-      console.log('🖼️ Processing image-to-video generation with file upload...');
-      
-      try {
-        // AICODE-NOTE: Upload image using OpenAPI FileService  
-        const uploadResult = await FileService.fileUpload({
-          formData: {
-            payload: sourceImageFile
-          }
-        });
-        
-        console.log('✅ Image uploaded successfully:', uploadResult);
-        
-        // Add reference for image-to-video generation
-        references.push({
-          type: 'source',
-          reference_id: uploadResult.id,
-          reference_url: uploadResult.url
-        });
-        
-      } catch (uploadError) {
-        console.error('❌ Failed to upload source image:', uploadError);
-        throw new Error('Failed to upload source image');
-      }
-    }
-
-    // AICODE-NOTE: Use OpenAPI FileService for video generation (typed proxy architecture)
-    console.log('🎬 Generating video with OpenAPI client...');
-    console.log('📝 Generation type:', generationType);
-    console.log('🎯 Selected model:', model);
-    
     // Parse resolution parameter to extract width, height, and aspect ratio
     const parseResolution = (resolutionString: string) => {
-      // Default values
       let width = 1280;
       let height = 720;
       let aspectRatio = "16:9";
       
       if (resolutionString) {
-        // Parse formats like "1920x1080 (Full HD)" or "1024x1024 (Square)"
         const match = resolutionString.match(/(\d+)x(\d+)/);
         if (match) {
           width = Number.parseInt(match[1], 10);
           height = Number.parseInt(match[2], 10);
           
-          // Calculate aspect ratio
           const gcd = (a: number, b: number): number => b === 0 ? a : gcd(b, a % b);
           const divisor = gcd(width, height);
           aspectRatio = `${width / divisor}:${height / divisor}`;
@@ -120,61 +52,98 @@ export async function POST(request: NextRequest) {
     
     const { width, height, aspectRatio } = parseResolution(resolution);
     
-    console.log('📐 Parsed resolution:', { 
-      input: resolution, 
-      output: { width, height, aspectRatio }
-    });
+    console.log('📐 Parsed resolution:', { input: resolution, output: { width, height, aspectRatio } });
 
-    // Build proper request body for OpenAPI FileService.fileGenerateVideo
-    const requestBody = {
-      type: "media" as const,
-      template_name: null,
-      style_name: style || "flux_watercolor",
-      config: {
-        prompt,
-        negative_prompt: negativePrompt || '',
-        width,
-        height,
-        aspect_ratio: aspectRatio,
-        seed: seed || Math.floor(Math.random() * 1000000000000),
-        generation_config_name: model || 'azure-openai/sora',
-        duration: duration || 5,
-        frame_rate: frameRate || 30,
-        batch_size: 1,
-        shot_size: shotSize || "medium_shot",
-        style_name: style || "flux_watercolor",
-        qualityType: width >= 1920 ? "full_hd" : "hd",
-        entity_ids: [],
-        references
-      }
+    // Create objects for strategy pattern (simplified for compatibility)
+    const modelObject = { 
+      name: model || 'azure-openai/sora', 
+      label: model || 'Sora',
+      type: 'TEXT_TO_VIDEO' as any, // Simplified type
+      source: 'superduperai' as any,
+      params: {} as any
+    };
+    const styleObject = { id: style || "flux_watercolor", label: style || "Watercolor" };
+    const resolutionObject = { width, height, aspectRatio, label: resolution || "HD" };
+    const shotSizeObject = { id: shotSize || "medium_shot", label: shotSize || "Medium Shot" };
+
+    // Build parameters for strategy pattern
+    const baseParams: VideoGenerationParams = {
+      prompt: prompt || "",
+      model: modelObject,
+      style: styleObject,
+      resolution: resolutionObject,
+      shotSize: shotSizeObject,
+      duration: duration || 5,
+      frameRate: frameRate || 30,
+      negativePrompt: negativePrompt || "",
+      seed: seed || Math.floor(Math.random() * 1000000000000),
     };
 
-    console.log('🎬 Final OpenAPI request body:', JSON.stringify(requestBody, null, 2));
+    // Add image-specific parameters if needed
+    const strategyParams: VideoGenerationParams | ImageToVideoParams = 
+      generationType === 'image-to-video' 
+        ? {
+            ...baseParams,
+            sourceImageId: sourceImageId,
+            sourceImageUrl: sourceImageUrl, // Contains Base64 data URL from client
+          } as ImageToVideoParams
+        : baseParams;
+
+    console.log(`🎬 Using strategy pattern for ${generationType} generation`);
     
-    // AICODE-NOTE: Use OpenAPI client instead of manual fetch (per AGENTS.md)
-    const result = await FileService.fileGenerateVideo({
-      requestBody
-    });
+    // Use strategy pattern for generation
+    const result = await generateVideoWithStrategy(generationType, strategyParams);
+    
+    if (!result.success) {
+      throw new Error(result.error || 'Video generation failed');
+    }
     
     console.log('✅ Video generation result:', result);
     
-    // AICODE-NOTE: OpenAPI client returns standardized response format
+    // Return standardized response
     const responseData = {
       success: true,
-      fileId: result.id,
-      projectId: chatId,
+      fileId: result.fileId,
+      projectId: result.projectId || chatId,
       url: result.url,
-      tasks: result.tasks || []
+      message: result.message
     };
     
     return NextResponse.json(responseData);
   } catch (error) {
     console.error('💥 Video API error:', error);
+    
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    
+    // Specific handling for backend magic library error
+    if (errorMessage.includes('magic') || errorMessage.includes('AttributeError')) {
+      return NextResponse.json(
+        { 
+          success: false,
+          error: 'Backend file processing error', 
+          details: 'The SuperDuperAI service is experiencing issues with file type detection. Please try using a different image format (PNG, JPG, WEBP) or try again later.'
+        },
+        { status: 500 }
+      );
+    }
+    
+    // Handle image upload failures specifically
+    if (errorMessage.includes('upload') || errorMessage.includes('image')) {
+      return NextResponse.json(
+        { 
+          success: false,
+          error: 'Image processing failed', 
+          details: 'Failed to process the source image. Please try using a different image or check the file format (PNG, JPG, WEBP supported).'
+        },
+        { status: 500 }
+      );
+    }
+    
     return NextResponse.json(
       { 
         success: false,
         error: 'Failed to generate video', 
-        details: error instanceof Error ? error.message : 'Unknown error' 
+        details: errorMessage
       },
       { status: 500 }
     );
