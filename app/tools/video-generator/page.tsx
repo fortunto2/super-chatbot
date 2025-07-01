@@ -70,6 +70,7 @@ export default function VideoGeneratorPage() {
         <div className="space-y-4">
           <VideoGeneratorForm
             onGenerate={(formData) => {
+              console.log("formData", formData);
               setPrompt(formData.prompt);
               setHasInitialized(true);
               generateVideo(formData);

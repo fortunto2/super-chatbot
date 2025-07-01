@@ -64,11 +64,9 @@ const videoGenerationSchema = z.object({
   duration: z.number().min(1).max(300).optional(), // Increased max to 5 minutes
   seed: z.number().optional(),
   generationType: z.enum(['text-to-video', 'image-to-video']),
-  sourceImage: z.object({
-    // AICODE-NOTE: Use any() instead of instanceof(File) for SSR compatibility
-    file: typeof window !== 'undefined' ? z.instanceof(File) : z.any(),
-    previewUrl: z.string()
-  }).optional(),
+  file: typeof window !== 'undefined' 
+  ? z.instanceof(File).optional() 
+  : z.any().optional(),
 });
 
 export type VideoGenerationFormData = z.infer<typeof videoGenerationSchema>;
@@ -96,7 +94,7 @@ export function VideoGeneratorForm({
     duration: 5,
     seed: Math.floor(Math.random() * 1000000000000),
     generationType: 'text-to-video',
-    sourceImage: undefined,
+    file: undefined,
   });
 
   // State for image upload
@@ -311,7 +309,7 @@ export function VideoGeneratorForm({
     setSelectedImage({ file, previewUrl });
     setFormData(prev => ({
       ...prev,
-      sourceImage: { file, previewUrl }
+      file
     }));
   };
 
@@ -322,7 +320,7 @@ export function VideoGeneratorForm({
     setSelectedImage(null);
     setFormData(prev => ({
       ...prev,
-      sourceImage: undefined
+      file: undefined
     }));
   };
 
@@ -330,7 +328,7 @@ export function VideoGeneratorForm({
     e.preventDefault();
     
     // Additional validation for image-to-video mode
-    if (formData.generationType === 'image-to-video' && !formData.sourceImage) {
+    if (formData.generationType === 'image-to-video' && !formData.file) {
       toast.error('Please select a source image for image-to-video generation');
       return;
     }
@@ -760,7 +758,7 @@ export function VideoGeneratorForm({
               disabled || 
               isGenerating || 
               (formData.generationType === 'text-to-video' && !formData.prompt.trim()) ||
-              (formData.generationType === 'image-to-video' && !formData.sourceImage)
+              (formData.generationType === 'image-to-video' && !formData.file)
             }
             size="lg"
           >
@@ -778,11 +776,11 @@ export function VideoGeneratorForm({
           </Button>
 
           {/* Estimated cost */}
-          {formData.duration && config.defaultSettings.model.price && (
+          {formData.duration && config.defaultSettings.model.price ? (
             <div className="text-center text-sm text-muted-foreground">
               Estimated cost: ${(formData.duration * config.defaultSettings.model.price).toFixed(2)}
             </div>
-          )}
+          ) : <></>}
         </form>
       </CardContent>
     </Card>

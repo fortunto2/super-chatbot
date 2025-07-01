@@ -4,28 +4,37 @@ import { generateVideoWithStrategy, type VideoGenerationParams, type ImageToVide
 
 export async function POST(request: NextRequest) {
   try {
+    let body: any;
     // All requests now come as JSON (with Base64 data URL for image-to-video)
     console.log('🎬 Video API: Processing JSON request');
-    const body = await request.json();
-    console.log('📦 Request parameters:', JSON.stringify(body, null, 2));
-    
-    // Extract parameters from request body
-    const {
-      prompt,
-      model,
-      resolution,
-      chatId,
-      negativePrompt,
-      duration = 5,
-      generationType = 'text-to-video',
-      frameRate = 30,
-      style,
-      shotSize,
-      seed,
-      sourceImageId,
-      sourceImageUrl
-    } = body;
+    const contentType = request.headers.get('content-type') || '';
 
+    // Проверяем form-data или обычный JSON
+    const isFormData = contentType.includes('multipart/form-data');
+
+    if (isFormData) {
+      const formData = await request.formData();
+      // Извлекаем значения
+      body = {
+        prompt: formData.get('prompt')?.toString() ?? '',
+        model: formData.get('model')?.toString() ?? '',
+        resolution: formData.get('resolution')?.toString() ?? '',
+        chatId: formData.get('chatId')?.toString() ?? '',
+        negativePrompt: formData.get('negativePrompt')?.toString() ?? '',
+        duration: Number(formData.get('duration') ?? 5),
+        generationType: formData.get('generationType')?.toString() ?? 'text-to-video',
+        frameRate: Number(formData.get('frameRate') ?? 30),
+        style: formData.get('style')?.toString() ?? '',
+        shotSize: formData.get('shotSize')?.toString() ?? '',
+        seed: formData.get('seed')?.toString() ?? '',
+        file: formData.get('file') as File | null
+      }
+    } else {
+      body = await request.json();
+    }
+    const {prompt, model, resolution, chatId, negativePrompt, duration, generationType, frameRate, style, shotSize, seed, file} = body
+    
+    console.log('📦 Request parameters:', JSON.stringify(body, null, 2));
         // Configure SuperDuperAI for server-side operations
     configureSuperduperAI();
 
@@ -52,8 +61,6 @@ export async function POST(request: NextRequest) {
     
     const { width, height, aspectRatio } = parseResolution(resolution);
     
-    console.log('📐 Parsed resolution:', { input: resolution, output: { width, height, aspectRatio } });
-
     // Create objects for strategy pattern (simplified for compatibility)
     const modelObject = { 
       name: model || 'azure-openai/sora', 
@@ -76,21 +83,19 @@ export async function POST(request: NextRequest) {
       duration: duration || 5,
       frameRate: frameRate || 30,
       negativePrompt: negativePrompt || "",
-      seed: seed || Math.floor(Math.random() * 1000000000000),
+      seed: Number(seed) || Math.floor(Math.random() * 1000000000000),
     };
 
     // Add image-specific parameters if needed
-    const strategyParams: VideoGenerationParams | ImageToVideoParams = 
-      generationType === 'image-to-video' 
-        ? {
-            ...baseParams,
-            sourceImageId: sourceImageId,
-            sourceImageUrl: sourceImageUrl, // Contains Base64 data URL from client
-          } as ImageToVideoParams
-        : baseParams;
-
+    let strategyParams: VideoGenerationParams | ImageToVideoParams = baseParams;
+    if (generationType === 'image-to-video') {
+      strategyParams = {
+        ...baseParams,
+        file
+      } as ImageToVideoParams;
+    }
     console.log(`🎬 Using strategy pattern for ${generationType} generation`);
-    
+    console.log("strategyParams", strategyParams);
     // Use strategy pattern for generation
     const result = await generateVideoWithStrategy(generationType, strategyParams);
     

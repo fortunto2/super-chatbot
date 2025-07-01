@@ -112,7 +112,7 @@ export function useVideoGenerator(): UseVideoGeneratorReturn {
         }
       }
       
-      if (event.type === 'render_result') {
+      if (event.type === 'file' && !!event.object?.url) {
         console.log('🎬 ✅ Video generation completed:', event);
         
         if (event.object?.url || event.url) {
@@ -359,78 +359,36 @@ export function useVideoGenerator(): UseVideoGeneratorReturn {
       // Call API with appropriate content type based on generation type
       let response: Response;
       
-      if (formData.generationType === 'image-to-video' && formData.sourceImage) {
-        console.log('🎬 Processing image-to-video generation...');
-        
-        let sourceImageId: string | undefined;
-        let sourceImageUrl: string | undefined;
-        
-        // Try to upload file first to get file_id (preferred method)
+      if (formData.generationType === 'image-to-video' && formData.file) {
         try {
-          console.log('🎬 Attempting file upload to get file_id...');
-          
-          const uploadFormData = new FormData();
-          uploadFormData.append('payload', formData.sourceImage.file);
-          
-          // Upload through our backend API proxy (handles auth and config)
-          const uploadResponse = await fetch('/api/file/upload', {
+          const formDataToSend = new FormData();
+        
+          formDataToSend.append('prompt', formData.prompt);
+          formDataToSend.append('model', formData.model || '');
+          formDataToSend.append('resolution', formData.resolution || '');
+          formDataToSend.append('style', formData.style || '');
+          formDataToSend.append('shotSize', formData.shotSize || '');
+          formDataToSend.append('duration', String(formData.duration || 5));
+          formDataToSend.append('frameRate', String(formData.frameRate || 30));
+          formDataToSend.append('negativePrompt', formData.negativePrompt || '');
+          formDataToSend.append('generationType', formData.generationType);
+          formDataToSend.append('chatId', 'video-generator-tool');
+          formDataToSend.append('seed', String(formData.seed ?? ''));
+          if (formData.file) {
+            formDataToSend.append('file', formData.file);
+          }
+        
+          console.log('🎬 Sending image-to-video request with FormData (multipart/form-data)');
+        
+          response = await fetch('/api/generate/video', {
             method: 'POST',
-            body: uploadFormData
+            body: formDataToSend, 
           });
-          
-          if (uploadResponse.ok) {
-            const uploadResult = await uploadResponse.json();
-            sourceImageId = uploadResult.id;
-            console.log('✅ File upload successful, file_id:', sourceImageId);
-          } else {
-            console.warn('⚠️ File upload failed, falling back to Base64...');
-            throw new Error('Upload failed');
-          }
-        } catch (uploadError) {
-          console.warn('⚠️ File upload error, using Base64 fallback:', uploadError);
-          
-          // Fallback to Base64 data URL
-          try {
-            console.log('🎬 Converting image to Base64 data URL (fallback)...');
-            const base64DataUrl = await fileToBase64DataUrl(formData.sourceImage.file);
-            sourceImageUrl = base64DataUrl;
-            console.log('✅ Base64 conversion successful');
-          } catch (base64Error) {
-            console.error('❌ Both upload and Base64 conversion failed:', base64Error);
-            throw new Error('Failed to process source image. Please try with a different image format.');
-          }
+        
+        } catch (err) {
+          console.error('❌ Client-side request failed:', err);
+          throw new Error('Failed to send form data.');
         }
-        
-        // Send request with either file_id or Base64 data URL
-        const requestData = {
-          prompt: formData.prompt,
-          model: formData.model || '',
-          resolution: formData.resolution || '',
-          style: formData.style || '',
-          shotSize: formData.shotSize || '',
-          duration: formData.duration || 5,
-          frameRate: formData.frameRate || 30,
-          negativePrompt: formData.negativePrompt || '',
-          generationType: formData.generationType,
-          chatId: 'video-generator-tool',
-          seed: formData.seed,
-          sourceImageId, // Preferred: file_id from upload
-          sourceImageUrl // Fallback: Base64 data URL
-        };
-        
-        console.log('🎬 Sending image-to-video request with:', {
-          method: sourceImageId ? 'file_id' : 'base64_url',
-          sourceImageId: sourceImageId || 'none',
-          hasBase64: !!sourceImageUrl
-        });
-        
-        response = await fetch('/api/generate/video', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(requestData),
-        });
       } else {
         // Use JSON for text-to-video
         console.log('🎬 Sending text-to-video request with JSON');
@@ -501,16 +459,8 @@ export function useVideoGenerator(): UseVideoGeneratorReturn {
       console.log('🎬 ✅ Video generation started:', { fileId, requestId });
 
       // Start polling fallback after 15 seconds if SSE doesn't deliver results
-      const pollingTimeoutId = setTimeout(async () => {
-        console.log('🔄 Polling fallback triggered for video:', fileId);
-        console.log('🔍 Current state check:', { 
-          currentFileId, 
-          targetFileId: fileId, 
-          status: generationStatus.status,
-          isGenerating 
-        });
-        
-        if (isGenerating) { // Use isGenerating instead of comparing fileIds
+      setTimeout(async () => {
+        if (currentFileId === fileId && generationStatus.status === 'processing') {
           console.log('🔄 Starting automatic polling fallback for video:', fileId);
           
           try {
@@ -601,47 +551,9 @@ export function useVideoGenerator(): UseVideoGeneratorReturn {
           } catch (pollingError) {
             console.error('❌ Polling fallback failed:', pollingError);
             // Don't show error to user - SSE might still work
-                     }
-         } else {
-           console.log('🔄 Polling skipped - generation not active');
-         }
-       }, 15000); // Start polling after 15 seconds
-
-      // Store timeout ID for cleanup
-      (window as any).videoPollingTimeout = pollingTimeoutId;
-
-      // Also add immediate check after 5 seconds for quick results
-      setTimeout(async () => {
-        if (isGenerating) {
-          console.log('🔄 Quick check for video completion:', fileId);
-          try {
-            const { pollFileCompletion } = await import('@/lib/utils/smart-polling-manager');
-            const quickResult = await pollFileCompletion(fileId, {
-              maxDuration: 5000, // Quick 5-second check
-              initialInterval: 2000,
-              onProgress: (attempt) => {
-                console.log(`🔄 Quick check attempt ${attempt}`);
-              }
-            });
-
-            if (quickResult.success && quickResult.data?.url) {
-              console.log('✅ Video ready quickly!', quickResult.data.url);
-              // Same completion logic as above
-              setGenerationStatus(prev => ({
-                ...prev,
-                status: 'completed',
-                progress: 100,
-                message: 'Video generation completed!'
-              }));
-              
-              // Create and save video - reuse the completion logic
-              forceCheckResults();
-            }
-          } catch (error) {
-            console.log('🔄 Quick check failed, will wait for main polling');
           }
         }
-      }, 5000); // Quick check after 5 seconds
+      }, 15000); // Start polling after 15 seconds
 
     } catch (error) {
       console.error('🎬 ❌ Video generation error:', error);

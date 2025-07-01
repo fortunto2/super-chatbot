@@ -1,6 +1,8 @@
 import type { MediaOption, MediaResolution } from "@/lib/types/media-settings";
 import type { VideoModel } from '@/lib/config/superduperai';
 import { getSuperduperAIConfig } from '@/lib/config/superduperai';
+import { ReferenceTypeEnum } from "@/lib/api";
+import { uploadFile } from "./upload-file";
 
 // Base interfaces for video generation
 export interface VideoGenerationParams {
@@ -16,9 +18,7 @@ export interface VideoGenerationParams {
 }
 
 export interface ImageToVideoParams extends VideoGenerationParams {
-  sourceImageId?: string;
-  sourceImageUrl?: string;
-  sourceImageFile?: File;
+  file: File
 }
 
 export interface VideoGenerationResult {
@@ -38,7 +38,7 @@ export interface VideoGenerationStrategy {
   readonly type: string;
   readonly requiresSourceImage: boolean;
   readonly requiresPrompt: boolean;
-  generatePayload(params: VideoGenerationParams | ImageToVideoParams): any;
+  generatePayload(params: VideoGenerationParams | ImageToVideoParams): Promise<any>;
   validate(params: VideoGenerationParams | ImageToVideoParams): { valid: boolean; error?: string };
 }
 
@@ -61,8 +61,7 @@ export class TextToVideoStrategy implements VideoGenerationStrategy {
       config: {
         prompt: params.prompt,
         generation_config_name: params.model.name,
-        params: {
-          duration: params.duration,
+        duration: params.duration,
           aspect_ratio: params.resolution.aspectRatio || "16:9",
           seed: params.seed || Math.floor(Math.random() * 1000000000000),
           negative_prompt: params.negativePrompt || '',
@@ -71,7 +70,6 @@ export class TextToVideoStrategy implements VideoGenerationStrategy {
           frame_rate: params.frameRate,
           shot_size: params.shotSize.id,
           style_name: params.style.id,
-        }
       }
     };
   }
@@ -84,7 +82,7 @@ export class ImageToVideoStrategy implements VideoGenerationStrategy {
   readonly requiresPrompt = false; // Animation description is optional
 
   validate(params: ImageToVideoParams): { valid: boolean; error?: string } {
-    if (!params.sourceImageId && !params.sourceImageUrl && !params.sourceImageFile) {
+    if (!params.file) {
       return { valid: false, error: 'Source image is required for image-to-video generation' };
     }
     return { valid: true };
@@ -99,181 +97,56 @@ export class ImageToVideoStrategy implements VideoGenerationStrategy {
     method: 'existing' | 'upload' | 'base64' | 'direct';
     error?: string;
   }> {
-    // Method 1: Use existing image ID/URL if available
-    if (params.sourceImageId || params.sourceImageUrl) {
-      console.log('🖼️ Using existing image reference');
+
+    if (!params.file) {
       return {
-        imageId: params.sourceImageId,
-        imageUrl: params.sourceImageUrl,
+        error: 'Image upload methods failed',
         method: 'existing'
       };
     }
-
-    // Method 2: Try direct file upload (current approach)
-    if (params.sourceImageFile) {
-      try {
-        console.log('🖼️ Attempting direct file upload...');
-        const { FileService } = await import('@/lib/api/services/FileService');
-        
-        const uploadResult = await FileService.fileUpload({
-          formData: {
-            payload: params.sourceImageFile
-          }
-        });
-        
-        console.log('✅ Direct upload successful:', uploadResult.id);
-        return {
-          imageId: uploadResult.id || undefined,
-          imageUrl: uploadResult.url || undefined,
-          method: 'upload'
-        };
-      } catch (uploadError) {
-        console.warn('⚠️ Direct upload failed, trying fallback methods...', uploadError);
-      }
-
-      // Method 3: Try Base64 approach as fallback
-      try {
-        console.log('🖼️ Attempting Base64 conversion fallback...');
-        const base64Data = await this.fileToBase64(params.sourceImageFile);
-        const dataUrl = `data:${params.sourceImageFile.type};base64,${base64Data}`;
-        
-        console.log('✅ Base64 conversion successful');
-        return {
-          imageUrl: dataUrl,
-          method: 'base64'
-        };
-      } catch (base64Error) {
-        console.warn('⚠️ Base64 conversion failed:', base64Error);
-      }
-
-      // Method 4: Try creating object URL as last resort (browser-only)
-      try {
-        console.log('🖼️ Attempting object URL creation...');
-        
-        // Check if we're in browser environment
-        if (typeof window === 'undefined' || typeof URL === 'undefined' || !URL.createObjectURL) {
-          throw new Error('URL.createObjectURL not available in server environment');
-        }
-        
-        const objectUrl = URL.createObjectURL(params.sourceImageFile);
-        console.log('✅ Object URL created (local only)');
-        
-        return {
-          imageUrl: objectUrl,
-          method: 'direct'
-        };
-      } catch (objectError) {
-        console.error('❌ Object URL creation failed:', objectError);
-      }
-    }
-
-    return {
-      error: 'All image upload methods failed',
-      method: 'existing'
-    };
-  }
-
-  /**
-   * Convert File to Base64 string (browser-only)
-   */
-  private fileToBase64(file: File): Promise<string> {
-    return new Promise((resolve, reject) => {
-      // Check if we're in browser environment
-      if (typeof window === 'undefined' || typeof FileReader === 'undefined') {
-        reject(new Error('FileReader not available in server environment'));
-        return;
-      }
-      
-      const reader = new FileReader();
-      reader.onload = () => {
-        const result = reader.result as string;
-        const base64 = result.split(',')[1]; // Remove data:image/...;base64, prefix
-        resolve(base64);
-      };
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
-  }
-
-  generatePayload(params: ImageToVideoParams): any {
-    // Extract resolution details for aspect ratio
-    const { aspectRatio } = this.parseResolution(params.resolution);
-    
-    // Build proper SuperDuperAI image-to-video format based on user example
-    const payload: any = {
-      params: {
-        config: {
-          seed: params.seed || Math.floor(Math.random() * 1000000000000),
-          steps: 50,
-          width: null,  // Should be null for image-to-video
-          height: null, // Should be null for image-to-video
-          prompt: params.prompt?.trim() || "animate",
-          duration: params.duration || 5,
-          batch_size: 1,
-          aspect_ratio: aspectRatio,
-          negative_prompt: params.negativePrompt || ""
-        },
-        file_ids: [],
-        references: [],
-        generation_config: {
-          name: params.model.name,
-          type: "image_to_video",
-          label: params.model.label || params.model.name,
-          params: {
-            vip_required: true,
-            price_per_second: 2,
-            arguments_template: "{\"prompt\": {{config.prompt|tojson}}, \"image_url\": \"{{reference.source}}\", \"aspect_ratio\": \"{{config.aspect_ratio}}\", \"duration\": {{config.duration|int}}, \"fps\": 24, \"enhance_prompt\": true, \"samples\": {{config.batch_size|default(1)}}, \"seed\": {{config.seed|int}}, \"negative_prompt\": {{config.negative_prompt|tojson}}}",
-            available_durations: [5, 6, 7, 8]
-          },
-          source: params.model.source || "google_cloud"
-        }
-      }
-    };
-
-    // Handle image source: prefer file_ids over references
-    if (params.sourceImageId) {
-      // Use file_ids for uploaded files
-      payload.params.file_ids = [params.sourceImageId];
-      payload.params.references = []; // Empty when using file_ids
-    } else if (params.sourceImageUrl) {
-      // Use references for Base64 data URLs or external URLs
-      payload.params.file_ids = [];
-      payload.params.references = [{
-        type: "source",
-        reference_url: params.sourceImageUrl
-      }];
-    }
-
-    return payload;
-  }
-
-  private parseResolution(resolution: any): { width: number, height: number, aspectRatio: string } {
-    if (resolution && typeof resolution === 'object') {
+    try{
+      const uploadResult = await uploadFile(params.file);
+      console.log("uploadResult", uploadResult);
       return {
-        width: resolution.width || 1280,
-        height: resolution.height || 720, 
-        aspectRatio: resolution.aspectRatio || "16:9"
+        imageId: uploadResult?.id,
+        imageUrl: uploadResult?.url || undefined,
+        method: 'upload'
+      };
+    } catch (error) {
+      console.error("Error uploading file", error);
+      return {
+        error: 'Image upload methods failed',
+        method: 'existing'
       };
     }
-    
-    // Fallback parsing from string
-    let width = 1280;
-    let height = 720;
-    let aspectRatio = "16:9";
-    
-    if (typeof resolution === 'string') {
-      const match = resolution.match(/(\d+)x(\d+)/);
-      if (match) {
-        width = Number.parseInt(match[1], 10);
-        height = Number.parseInt(match[2], 10);
-        
-        const gcd = (a: number, b: number): number => b === 0 ? a : gcd(b, a % b);
-        const divisor = gcd(width, height);
-        aspectRatio = `${width / divisor}:${height / divisor}`;
-      }
-    }
-    
-    return { width, height, aspectRatio };
+  }
+  
+  async generatePayload(params: ImageToVideoParams): Promise<any> {
+    const { imageId, imageUrl} = await this.handleImageUpload(params);
+    console.log("imageId", imageId);
+    const payload: any = {
+      config: {
+        prompt: params.prompt || "animate this image naturally", // Default for image-to-video
+        generation_config_name: params.model.name,
+        duration: params.duration,
+        aspect_ratio: params.resolution.aspectRatio || "16:9",
+        seed: params.seed || Math.floor(Math.random() * 1000000000000),
+        negative_prompt: params.negativePrompt || '',
+        width: params.resolution.width,
+        height: params.resolution.height,
+        frame_rate: params.frameRate,
+        shot_size: params.shotSize.id,
+        style_name: params.style.id,
+        references: [
+          {
+            type: ReferenceTypeEnum.SOURCE,
+            reference_id: imageId
+          }
+        ],
+      },
+     
+    };
+    return payload;
   }
 }
 
@@ -357,15 +230,10 @@ export async function generateVideoWithStrategy(
 
   try {
     let finalParams = params;
-
-    // Handle image upload for image-to-video - SKIP FILE UPLOAD due to backend issues
+    console.log("finalParams", finalParams);
     if (strategy.type === 'image-to-video' && strategy instanceof ImageToVideoStrategy) {
-      console.log('🎬 Processing image-to-video - bypassing file upload due to backend issues...');
-      
       const imageParams = params as ImageToVideoParams;
-      
-      // Always use existing image data if available, otherwise skip upload
-      if (imageParams.sourceImageId || imageParams.sourceImageUrl) {
+      if (imageParams.file) {
         finalParams = params;
         console.log('✅ Using existing image reference');
       } else {
@@ -376,14 +244,9 @@ export async function generateVideoWithStrategy(
     }
 
     const config = getSuperduperAIConfig();
-    const payload = strategy.generatePayload(finalParams);
-    
-    console.log(`🎬 Generating ${strategy.type} video with strategy pattern:`, {
-      type: strategy.type,
-      requiresSourceImage: strategy.requiresSourceImage,
-      requiresPrompt: strategy.requiresPrompt
-    });
 
+    const payload = await strategy.generatePayload(finalParams);
+    
     // Use correct SuperDuperAI endpoint for video generation  
     const endpoint = '/api/v1/file/generate-video';
     const url = `${config.url}${endpoint}`;
