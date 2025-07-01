@@ -71,28 +71,14 @@ See: [Migration Completion](./maintenance/changelog/production-migration-complet
 
 ## 🚀 Recent Major Updates
 
-### Video Generation Complete Fix (2025-01-30) ⭐
+### Enhanced Textarea with Unlimited Prompts (2025-01-28)
 
-- **Fixed 404 errors** - corrected wrong endpoint `/api/v1/projects/generate` → `/api/v1/file/generate-video`
-- **Fixed payload structure** - now uses proper SuperDuperAI API format from documentation
-- **CRITICAL: Fixed FileReader server error** - moved Base64 conversion from server to client side
-- **Backend magic library bypass** - Base64 data URL approach eliminates `AttributeError: module 'magic' has no attribute 'Magic'`
-- **Unified JSON requests** - eliminated FormData processing, all requests now use consistent JSON format
-- **Strategy Pattern preserved** - extensible architecture for new generation types maintained
-- **Enhanced error handling** - user-friendly messages for API and backend issues
-- **Animation Description fix** - correctly optional for image-to-video models
-- **Success rate improvement** - from 0% failure rate to expected 95%+ for image-to-video generation
-- **Proper API compliance** - follows SuperDuperAI specification with correct JSON structure
-
-### Unified Tools Navigation System (2025-01-28)
-
-- **Single source of truth** for all AI tools configuration
-- **Centralized navigation** eliminates manual updates across 4+ files
-- **Type-safe icon system** with consistent styling patterns
-- **Automatic propagation** to sidebar, navigation, and tools page
-- **Easy tool addition** - add once, appears everywhere
-- **Enhanced developer experience** with helper functions and TypeScript safety
-- **Zero boilerplate** when adding new tools to the system
+- **Removed all prompt length limitations** (was 2000 characters, now unlimited)
+- **Real-time character/token counting** with approximate token estimation
+- **Fullscreen editing mode** for complex prompt engineering
+- **Universal implementation** across all forms (video, image, chat, media settings)
+- **Professional workflow support** for AI-first development methodology
+- **Responsive design** with accessibility features and keyboard navigation
 
 ### Video Model Selection Enhancement (2025-01-28)
 

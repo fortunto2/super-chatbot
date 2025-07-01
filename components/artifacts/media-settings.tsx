@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { EnhancedTextarea } from '@/components/ui/enhanced-textarea';
 import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
@@ -139,13 +140,14 @@ export function MediaSettings({
       {/* Prompt Input Section */}
       <div className="mb-4 space-y-1">
         <label htmlFor="prompt-input" className="text-xs font-medium">Prompt *</label>
-        <Textarea
+        <EnhancedTextarea
           id="prompt-input"
           placeholder={`Describe the ${mediaTypeLabel.toLowerCase()} you want to generate...`}
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
-          className="min-h-[60px] resize-none text-sm"
+          className="min-h-[60px] text-sm"
           rows={2}
+          fullscreenTitle={`${mediaTypeLabel} Generation Prompt`}
         />
         <p className="text-xs text-muted-foreground">
           Be specific about what you want to see

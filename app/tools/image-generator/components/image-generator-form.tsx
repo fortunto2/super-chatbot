@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { EnhancedTextarea } from '@/components/ui/enhanced-textarea';
 import { Textarea } from '@/components/ui/textarea';
 import { 
   Select, 
@@ -21,7 +22,7 @@ import type { MediaOption, MediaResolution, AdaptedModel } from '@/lib/types/med
 
 // AICODE-NOTE: Form validation schema for image generation parameters
 const imageGenerationSchema = z.object({
-  prompt: z.string().min(1, 'Prompt is required').max(2000, 'Prompt too long'),
+  prompt: z.string().min(1, 'Prompt is required'),
   style: z.string().optional(),
   resolution: z.string().optional(),
   shotSize: z.string().optional(),
@@ -183,14 +184,14 @@ export function ImageGeneratorForm({
           {/* Prompt Input */}
           <div className="space-y-2">
             <Label htmlFor="prompt">Prompt *</Label>
-            <Textarea
+            <EnhancedTextarea
               id="prompt"
               placeholder="Describe the image you want to generate..."
               value={formData.prompt}
               onChange={(e) => handleInputChange('prompt', e.target.value)}
               disabled={disabled || isGenerating}
               rows={3}
-              className="resize-none"
+              fullscreenTitle="Image Description"
             />
             <p className="text-xs text-muted-foreground">
               Be detailed and specific for better results

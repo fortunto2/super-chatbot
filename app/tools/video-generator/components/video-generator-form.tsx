@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { EnhancedTextarea } from '@/components/ui/enhanced-textarea';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
@@ -54,7 +55,7 @@ const DURATION_OPTIONS = [
 
 // AICODE-NOTE: Form validation schema for video generation parameters
 const videoGenerationSchema = z.object({
-  prompt: z.string().min(1, 'Prompt is required').max(2000, 'Prompt too long'),
+  prompt: z.string().min(1, 'Prompt is required'),
   negativePrompt: z.string().optional(),
   style: z.string().optional(),
   resolution: z.string().optional(),
@@ -424,14 +425,14 @@ export function VideoGeneratorForm({
               {/* Text-to-Video Mode */}
               <div className="space-y-2">
                 <Label htmlFor="prompt">Video Description *</Label>
-                <Textarea
+                <EnhancedTextarea
                   id="prompt"
                   placeholder="Describe the video you want to generate..."
                   value={formData.prompt}
                   onChange={(e) => handleInputChange('prompt', e.target.value)}
                   disabled={disabled || isGenerating}
                   rows={3}
-                  className="resize-none"
+                  fullscreenTitle="Video Description"
                 />
                 <p className="text-xs text-muted-foreground">
                   Be detailed and specific for better results
@@ -482,14 +483,14 @@ export function VideoGeneratorForm({
 
               <div className="space-y-2">
                 <Label htmlFor="prompt">Animation Description (Optional)</Label>
-                <Textarea
+                <EnhancedTextarea
                   id="prompt"
                   placeholder="Describe how you want the image to be animated..."
                   value={formData.prompt}
                   onChange={(e) => handleInputChange('prompt', e.target.value)}
                   disabled={disabled || isGenerating}
                   rows={2}
-                  className="resize-none"
+                  fullscreenTitle="Animation Description"
                 />
                 <p className="text-xs text-muted-foreground">
                   Describe the motion, camera movement, or animation style
@@ -532,14 +533,14 @@ export function VideoGeneratorForm({
           {/* Negative Prompt Input */}
           <div className="space-y-2">
             <Label htmlFor="negativePrompt">Negative Prompt (Optional)</Label>
-            <Textarea
+            <EnhancedTextarea
               id="negativePrompt"
               placeholder="What to avoid in the video..."
-              value={formData.negativePrompt}
+              value={formData.negativePrompt || ''}
               onChange={(e) => handleInputChange('negativePrompt', e.target.value)}
               disabled={disabled || isGenerating}
               rows={2}
-              className="resize-none"
+              fullscreenTitle="Negative Prompt"
             />
             <p className="text-xs text-muted-foreground">
               Specify what you don&apos;t want to see in the video
