@@ -13,7 +13,6 @@ export async function POST(request: NextRequest) {
     const {
       chatId,
       generationType = 'text-to-image',
-      file
     } = body;
     
     // Configure OpenAPI client for server-side usage
@@ -23,13 +22,8 @@ export async function POST(request: NextRequest) {
     
     // Create image generation config using OpenAPI types
 
-    let strategyParams: ImageGenerationParams | ImageToImageParams = {...body}
-    if (generationType === 'image-to-image') {
-      strategyParams = {
-        ...body,
-        file
-      } as ImageToImageParams;
-    }
+    const strategyParams: ImageGenerationParams | ImageToImageParams = {...body}
+   
     // Use OpenAPI client to generate image
     const result = await generateImageWithStrategy(generationType, strategyParams);
     

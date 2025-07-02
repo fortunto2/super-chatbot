@@ -33,20 +33,15 @@ export async function POST(request: NextRequest) {
     } else {
       body = await request.json();
     }
-    const {chatId, generationType, file} = body
+    const {chatId, generationType = 'text-to-video'} = body
     
     console.log('📦 Request parameters:', JSON.stringify(body, null, 2));
         // Configure SuperDuperAI for server-side operations
     configureSuperduperAI();
 
     // Add image-specific parameters if needed
-    let strategyParams: VideoGenerationParams | ImageToVideoParams = {...body};
-    if (generationType === 'image-to-video') {
-      strategyParams = {
-        ...body,
-        file
-      } as ImageToVideoParams;
-    }
+    const strategyParams: VideoGenerationParams | ImageToVideoParams = {...body};
+  
     console.log(`🎬 Using strategy pattern for ${generationType} generation`);
     console.log("strategyParams", strategyParams);
     // Use strategy pattern for generation
