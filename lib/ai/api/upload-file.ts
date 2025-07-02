@@ -1,4 +1,4 @@
-import { FileTypeEnum } from '@/lib/api';
+import type { FileTypeEnum } from '@/lib/api';
 
 export const uploadFile = async (file: File, type?: FileTypeEnum) => {
     try {

@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import { configureSuperduperAI } from '@/lib/config/superduperai';
-import { generateVideoWithStrategy, type VideoGenerationParams, type ImageToVideoParams } from '@/lib/ai/api/video-generation-strategies';
+import { generateVideoWithStrategy, type VideoGenerationParams, type ImageToVideoParams } from '@/lib/ai/api/video-generation';
+import { parseResolution } from '@/lib/utils/media-generation';
 
 export async function POST(request: NextRequest) {
   try {
@@ -39,26 +40,7 @@ export async function POST(request: NextRequest) {
     configureSuperduperAI();
 
     // Parse resolution parameter to extract width, height, and aspect ratio
-    const parseResolution = (resolutionString: string) => {
-      let width = 1280;
-      let height = 720;
-      let aspectRatio = "16:9";
-      
-      if (resolutionString) {
-        const match = resolutionString.match(/(\d+)x(\d+)/);
-        if (match) {
-          width = Number.parseInt(match[1], 10);
-          height = Number.parseInt(match[2], 10);
-          
-          const gcd = (a: number, b: number): number => b === 0 ? a : gcd(b, a % b);
-          const divisor = gcd(width, height);
-          aspectRatio = `${width / divisor}:${height / divisor}`;
-        }
-      }
-      
-      return { width, height, aspectRatio };
-    };
-    
+   
     const { width, height, aspectRatio } = parseResolution(resolution);
     
     // Create objects for strategy pattern (simplified for compatibility)
@@ -69,6 +51,7 @@ export async function POST(request: NextRequest) {
       source: 'superduperai' as any,
       params: {} as any
     };
+    
     const styleObject = { id: style || "flux_watercolor", label: style || "Watercolor" };
     const resolutionObject = { width, height, aspectRatio, label: resolution || "HD" };
     const shotSizeObject = { id: shotSize || "medium_shot", label: shotSize || "Medium Shot" };

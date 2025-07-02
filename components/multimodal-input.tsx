@@ -20,7 +20,6 @@ import { ArrowUpIcon, PaperclipIcon, StopIcon } from './icons';
 import { PreviewAttachment } from './preview-attachment';
 import { Button } from './ui/button';
 import { EnhancedTextarea } from './ui/enhanced-textarea';
-import { Textarea } from './ui/textarea';
 import { SuggestedActions } from './suggested-actions';
 import { ChatImageHistory } from './chat-image-history';
 import equal from 'fast-deep-equal';
