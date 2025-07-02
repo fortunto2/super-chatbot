@@ -1,17 +1,17 @@
-import type { VideoModel } from "@/lib/config/superduperai";
-import type { MediaOption, MediaResolution } from "@/lib/types/media-settings";
+import { GenerationTypeEnum } from "@/lib/api";
 
 // Base interfaces for video generation
 export interface VideoGenerationParams {
     prompt: string;
-    model: VideoModel;
-    style: MediaOption;
-    resolution: MediaResolution;
-    shotSize: MediaOption;
+    model: string;
+    style: string;
+    resolution: string;
+    shotSize: string;
     duration: number;
     frameRate: number;
     negativePrompt?: string;
     seed?: number;
+    generationType?: GenerationTypeEnum
   }
   
   export interface ImageToVideoParams extends VideoGenerationParams {

@@ -56,8 +56,8 @@ export const getGenerationConfigs = async (
     
     console.log('🔧 Fetching generation configs from:', endpoint);
     
-    const response = await apiGet<GenerationConfig[]>(endpoint);
-
+    const response = await apiGet(endpoint);
+    console.log("response", response);
     if (!response.success) {
       console.error('Generation config API error:', response.error);
       
@@ -67,7 +67,8 @@ export const getGenerationConfigs = async (
       };
     }
 
-    const result = response.data || [];
+    const result = response.data?.items || response.data || []
+    console.log("result", result);
     
     console.log('🔧 ✅ Fetched generation configs:', {
       total: result.length,

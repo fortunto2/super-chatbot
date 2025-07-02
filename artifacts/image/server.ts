@@ -1,5 +1,5 @@
 import { createDocumentHandler } from '@/lib/artifacts/server';
-import { generateImage } from '@/lib/ai/api/generate-image';
+import { generateImageWithStrategy } from '@/lib/ai/api/image-generation';
 import { getStyles } from '@/lib/ai/api/get-styles';
 import type { MediaOption, MediaResolution } from '@/lib/types/media-settings';
 import type { ImageModel } from '@/lib/config/superduperai';
@@ -35,32 +35,27 @@ const SHOT_SIZES: MediaOption[] = [
 export const imageDocumentHandler = createDocumentHandler<'image'>({
   kind: 'image',
   onCreateDocument: async ({ id: chatId, title, dataStream }) => {
-    
     let draftContent = '';
-
     try {
       // Parse the title to extract image generation parameters
       const params = JSON.parse(title);
-     
-      
       const {
         prompt,
         style = { id: 'flux_steampunk', label: 'Steampunk' },
         resolution = { width: 1024, height: 1024, label: '1024x1024', aspectRatio: '1:1', qualityType: 'hd' },
         model = { id: 'flux-dev', label: 'Flux Dev' },
-        shotSize = { id: 'long_shot', label: 'Long Shot' }
+        shotSize = { id: 'long_shot', label: 'Long Shot' },
+        negativePrompt = '',
+        seed,
+        batchSize
       } = params;
 
-     
-
-      // AICODE-NOTE: Load dynamic models from SuperDuperAI API
+      // Load dynamic models from SuperDuperAI API
       let availableModels: ImageModel[] = [];
       try {
         availableModels = await getAvailableImageModels();
-    
       } catch (error) {
         console.error('🎨 ❌ Failed to load dynamic models:', error);
-        // Will use fallback models from getAvailableImageModels()
         availableModels = await getAvailableImageModels();
       }
 
@@ -80,104 +75,58 @@ export const imageDocumentHandler = createDocumentHandler<'image'>({
         console.error('🎨 ❌ ERROR GETTING STYLES:', err);
       }
 
-      
-      // Start image generation
-      const result = await generateImage(prompt, model, resolution, style, shotSize, chatId, params.seed, params.batchSize);
+      // Start image generation using new architecture (only text-to-image)
+      const result = await generateImageWithStrategy('text-to-image', {
+        prompt,
+        model,
+        style,
+        resolution,
+        shotSize,
+        negativePrompt,
+        seed,
+        batchSize
+      });
 
-    
       if (!result.success) {
-       
         draftContent = JSON.stringify({
           status: 'failed',
           error: result.error,
           prompt: prompt
         });
-        
         return draftContent;
       }
 
-      // Create content with project info and available options for WebSocket tracking
+      // Формируем content с project info и доступными опциями для UI
       draftContent = JSON.stringify({
         status: 'pending',
         projectId: result.projectId || chatId,
         requestId: result.requestId,
+        fileId: result.fileId,
         prompt: prompt,
         settings: {
           style,
           resolution,
           model,
           shotSize,
-          // Include available options for the UI
           availableResolutions: RESOLUTIONS,
           availableStyles,
           availableShotSizes: SHOT_SIZES,
           availableModels: availableModels,
         },
         timestamp: Date.now(),
-        message: 'Image generation started, connecting to WebSocket...'
+        message: result.message || 'Image generation started, connecting to WebSocket...'
       });
-
-      // FALLBACK: Set up immediate polling check for artifacts
-      // Since artifacts don't use hooks, we need server-side polling
-      const fileId = result.projectId;
-      if (fileId) {
-        // Start async polling without blocking the response
-        setTimeout(async () => {
-          
-          try {
-            // Import ProjectService to check project status
-            const { ProjectService } = await import('@/lib/api/services/ProjectService');
-            const project = await ProjectService.projectGetById({ id: fileId });
-            
-            console.log('🎨 ⏰ Artifact polling result:', {
-              id: project.id,
-              dataCount: project.data?.length || 0,
-            });
-            
-            // Look for completed image data
-            const imageData = project.data?.find((data: any) => {
-              if (data.value && typeof data.value === 'object') {
-                const value = data.value as Record<string, any>;
-                const hasUrl = !!value.url;
-                const isImage = value.url?.match(/\.(jpg|jpeg|png|webp|gif|bmp|svg)$/i);
-                return hasUrl && isImage;
-              }
-              return false;
-            });
-            
-            if (imageData?.value && typeof imageData.value === 'object') {
-              const imageUrl = (imageData.value as Record<string, any>).url as string;
-              console.log('🎨 ⏰ ✅ Image found via artifact polling:', imageUrl);
-              
-              // For artifacts, we can't easily update the document from server-side
-              // The client SSE will handle this, or manual refresh will show the result
-            }
-            
-          } catch (error) {
-            console.error('🎨 ⏰ ❌ Artifact polling error:', error);
-          }
-        }, 30000); // 30 second delay
-      }
-
-     
-
     } catch (error: any) {
       console.error('🎨 ❌ IMAGE GENERATION ERROR:', error);
-      console.error('🎨 ❌ ERROR MESSAGE:', error?.message);
-      console.error('🎨 ❌ ERROR STACK:', error?.stack);
-
       draftContent = JSON.stringify({
         status: 'failed',
         error: error?.message || 'Failed to parse image parameters'
       });
     }
-
     return draftContent;
   },
-  
   onUpdateDocument: async ({ document, description, dataStream }) => {
     let draftContent = document.content;
-
     try {
       // Check if document already has completed content - don't recreate if so
       if (draftContent) {
@@ -192,10 +141,8 @@ export const imageDocumentHandler = createDocumentHandler<'image'>({
           console.log('🎨 ℹ️ Could not parse existing content, proceeding with update');
         }
       }
-
       // Extract chatId from document.id (which should be the chat ID)
       const chatId = document.id;
-      
       // Parse the description to extract new image generation parameters
       const params = JSON.parse(description);
       const {
@@ -203,35 +150,35 @@ export const imageDocumentHandler = createDocumentHandler<'image'>({
         style = { id: 'flux_steampunk', label: 'Steampunk' },
         resolution = { width: 1024, height: 1024, label: '1024x1024', aspectRatio: '1:1', qualityType: 'hd' },
         model = { id: 'flux-dev', label: 'Flux Dev' },
-        shotSize = { id: 'long_shot', label: 'Long Shot' }
+        shotSize = { id: 'long_shot', label: 'Long Shot' },
+        negativePrompt = '',
+        seed,
+        batchSize
       } = params;
-
-      // AICODE-NOTE: Load dynamic models for update as well
-      let availableModels: ImageModel[] = [];
-      try {
-        availableModels = await getAvailableImageModels();
-      } catch (error) {
-        console.error('🎨 ❌ Failed to load dynamic models for update:', error);
-        availableModels = await getAvailableImageModels();
-      }
-
-      // Start new image generation
-      const result = await generateImage(prompt, model, resolution, style, shotSize, chatId, params.seed, params.batchSize);
-
+      // Start image generation using new architecture (only text-to-image)
+      const result = await generateImageWithStrategy('text-to-image', {
+        prompt,
+        model,
+        style,
+        resolution,
+        shotSize,
+        negativePrompt,
+        seed,
+        batchSize
+      });
       if (!result.success) {
-        // Return error content as string
-        return JSON.stringify({
+        draftContent = JSON.stringify({
           status: 'failed',
-          error: result.error || 'Unknown error occurred',
+          error: result.error,
           prompt: prompt
         });
+        return draftContent;
       }
-
-      // Update content with new project info
       draftContent = JSON.stringify({
         status: 'pending',
         projectId: result.projectId || chatId,
         requestId: result.requestId,
+        fileId: result.fileId,
         prompt: prompt,
         settings: {
           style,
@@ -241,22 +188,18 @@ export const imageDocumentHandler = createDocumentHandler<'image'>({
           availableResolutions: RESOLUTIONS,
           availableStyles: [],
           availableShotSizes: SHOT_SIZES,
-          availableModels: availableModels,
+          availableModels: [],
         },
         timestamp: Date.now(),
-        message: 'Updated image generation started, connecting to WebSocket...'
+        message: result.message || 'Image generation started, connecting to WebSocket...'
       });
-
     } catch (error: any) {
-      console.error('Image update error:', error);
-
-      // Return error content as string
+      console.error('🎨 ❌ IMAGE GENERATION ERROR:', error);
       draftContent = JSON.stringify({
         status: 'failed',
         error: error?.message || 'Failed to update image parameters'
       });
     }
-
     return draftContent;
   },
 });

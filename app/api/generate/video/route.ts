@@ -33,47 +33,17 @@ export async function POST(request: NextRequest) {
     } else {
       body = await request.json();
     }
-    const {prompt, model, resolution, chatId, negativePrompt, duration, generationType, frameRate, style, shotSize, seed, file} = body
+    const {chatId, generationType, file} = body
     
     console.log('📦 Request parameters:', JSON.stringify(body, null, 2));
         // Configure SuperDuperAI for server-side operations
     configureSuperduperAI();
 
-    // Parse resolution parameter to extract width, height, and aspect ratio
-   
-    const { width, height, aspectRatio } = parseResolution(resolution);
-    
-    // Create objects for strategy pattern (simplified for compatibility)
-    const modelObject = { 
-      name: model || 'azure-openai/sora', 
-      label: model || 'Sora',
-      type: 'TEXT_TO_VIDEO' as any, // Simplified type
-      source: 'superduperai' as any,
-      params: {} as any
-    };
-    
-    const styleObject = { id: style || "flux_watercolor", label: style || "Watercolor" };
-    const resolutionObject = { width, height, aspectRatio, label: resolution || "HD" };
-    const shotSizeObject = { id: shotSize || "medium_shot", label: shotSize || "Medium Shot" };
-
-    // Build parameters for strategy pattern
-    const baseParams: VideoGenerationParams = {
-      prompt: prompt || "",
-      model: modelObject,
-      style: styleObject,
-      resolution: resolutionObject,
-      shotSize: shotSizeObject,
-      duration: duration || 5,
-      frameRate: frameRate || 30,
-      negativePrompt: negativePrompt || "",
-      seed: Number(seed) || Math.floor(Math.random() * 1000000000000),
-    };
-
     // Add image-specific parameters if needed
-    let strategyParams: VideoGenerationParams | ImageToVideoParams = baseParams;
+    let strategyParams: VideoGenerationParams | ImageToVideoParams = {...body};
     if (generationType === 'image-to-video') {
       strategyParams = {
-        ...baseParams,
+        ...body,
         file
       } as ImageToVideoParams;
     }

@@ -44,11 +44,13 @@ const saveVideoToChat = async (
     const videoMessage = {
       id: generateUUID(),
       role: 'assistant' as const,
-      content: `Generated video: "${prompt}"`,
+      // content: `Generated video: "${prompt}"`,
+      content: ``,
       parts: [
         {
           type: 'text' as const,
-          text: `Generated video: "${prompt}"`,
+          // text: `Generated video: "${prompt}"`,
+          text: ``,
         },
       ],
       experimental_attachments: [videoAttachment],
