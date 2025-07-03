@@ -7,7 +7,6 @@ import { ImageGallery } from './components/image-gallery';
 import { useImageGenerator } from './hooks/use-image-generator';
 import { Separator } from '@/components/ui/separator';
 import { ImageIcon, Sparkles, Zap } from 'lucide-react';
-import { ToolsNavigation } from '@/components/tools-navigation';
 
 // AICODE-NOTE: Main page component for standalone image generator tool
 export default function ImageGeneratorPage() {
@@ -29,9 +28,6 @@ export default function ImageGeneratorPage() {
 
   return (
     <div className="space-y-8">
-      {/* Navigation */}
-      <ToolsNavigation />
-      
       {/* Header */}
       <div className="text-center space-y-4">
         <div className="flex items-center justify-center space-x-2">
@@ -81,26 +77,23 @@ export default function ImageGeneratorPage() {
       <Separator />
 
       {/* Main content grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Left column - Form and Progress */}
-        <div className="lg:col-span-1 space-y-6">
+        <div className="space-y-4">
           <Suspense fallback={<div>Loading form...</div>}>
             <ImageGeneratorForm
               onGenerate={generateImage}
               isGenerating={isGenerating}
             />
           </Suspense>
-
-          {/* Progress indicator */}
           <GenerationProgress
             generationStatus={generationStatus}
             prompt={generationStatus.message}
             onForceCheck={forceCheckResults}
           />
         </div>
-
         {/* Right column - Gallery */}
-        <div className="lg:col-span-2">
+        <div>
           <Suspense fallback={<div>Loading gallery...</div>}>
             <ImageGallery
               images={generatedImages}

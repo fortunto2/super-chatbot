@@ -5,6 +5,8 @@ export interface ImageGenerationFormData {
   style?: string;
   shotSize?: string;
   seed?: number;
+  generationType?: 'text-to-image' | 'image-to-image';
+  file?: File;
 }
 
 export interface ImageGenerationApiResult {
@@ -14,27 +16,43 @@ export interface ImageGenerationApiResult {
   error?: string;
 }
 
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
 export async function generateImageApi(formData: ImageGenerationFormData): Promise<ImageGenerationApiResult> {
   try {
+    let payload: any = {
+      prompt: formData.prompt,
+      model: { name: formData.model || 'comfyui/flux' },
+      resolution: {
+        width: Number.parseInt(formData.resolution?.split('x')[0] || '1024'),
+        height: Number.parseInt(formData.resolution?.split('x')[1] || '1024')
+      },
+      style: { id: 'flux_watercolor' },
+      shotSize: { id: formData.shotSize || 'medium_shot' },
+      seed: formData.seed,
+      chatId: 'image-generator-tool',
+      steps: 30,
+      batchSize: 1
+    };
+    if (formData.generationType === 'image-to-image' && formData.file) {
+      payload.generationType = 'image-to-image';
+      payload.sourceImageUrl = await fileToBase64(formData.file);
+    } else {
+      payload.generationType = 'text-to-image';
+    }
     const response = await fetch('/api/generate/image', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        prompt: formData.prompt,
-        model: { name: formData.model || 'comfyui/flux' },
-        resolution: {
-          width: Number.parseInt(formData.resolution?.split('x')[0] || '1024'),
-          height: Number.parseInt(formData.resolution?.split('x')[1] || '1024')
-        },
-        style: { id: 'flux_watercolor' },
-        shotSize: { id: formData.shotSize || 'medium_shot' },
-        seed: formData.seed,
-        chatId: 'image-generator-tool',
-        steps: 30,
-        batchSize: 1
-      }),
+      body: JSON.stringify(payload),
     });
 
     if (!response.ok) {

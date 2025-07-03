@@ -13,11 +13,13 @@ import {
   SelectTrigger, 
   SelectValue 
 } from '@/components/ui/select';
-import { Loader2 } from 'lucide-react';
+import { Loader2, ImageIcon, Type } from 'lucide-react';
 import { toast } from 'sonner';
 import { z } from 'zod';
 import { getImageGenerationConfig } from '@/lib/config/media-settings-factory';
 import type { MediaOption, MediaResolution, AdaptedModel } from '@/lib/types/media-settings';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { ImageUpload } from '../../video-generator/components/image-upload';
 
 // AICODE-NOTE: Form validation schema for image generation parameters
 const imageGenerationSchema = z.object({
@@ -45,11 +47,11 @@ export function ImageGeneratorForm({
   // AICODE-NOTE: Form state management using React hooks
   const [formData, setFormData] = useState<ImageGenerationFormData>({
     prompt: '',
-    style: '',
-    resolution: '',
-    shotSize: '',
+    style: 'base',
+    resolution: '1024x1024',
+    shotSize: 'medium_shot',
     model: '',
-    seed: undefined,
+    seed: Math.floor(Math.random() * 1000000000000),
   });
 
   // AICODE-NOTE: Configuration state loaded from SuperDuperAI API
@@ -63,6 +65,9 @@ export function ImageGeneratorForm({
   
   const [isLoadingConfig, setIsLoadingConfig] = useState(true);
   const [configError, setConfigError] = useState<string | null>(null);
+
+  const [mode, setMode] = useState<'text-to-image' | 'image-to-image'>('text-to-image');
+  const [sourceImage, setSourceImage] = useState<{ file: File; previewUrl: string } | null>(null);
 
   // AICODE-NOTE: Load configuration from SuperDuperAI API on component mount
   useEffect(() => {
@@ -85,10 +90,11 @@ export function ImageGeneratorForm({
         // Set default values from configuration
         setFormData(prev => ({
           ...prev,
-          style: imageConfig.defaultSettings.style?.id || '',
-          resolution: imageConfig.defaultSettings.resolution?.label || '',
-          shotSize: imageConfig.defaultSettings.shotSize?.id || '',
+          style: imageConfig.defaultSettings.style?.id || 'base',
+          resolution: imageConfig.defaultSettings.resolution?.label || '1024x1024',
+          shotSize: imageConfig.defaultSettings.shotSize?.id || 'medium_shot',
           model: imageConfig.defaultSettings.model?.id || imageConfig.defaultSettings.model?.name || '',
+          seed: prev.seed ?? Math.floor(Math.random() * 1000000000000),
         }));
         
       } catch (error) {
@@ -110,21 +116,17 @@ export function ImageGeneratorForm({
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    // Validate form data
-    try {
-      const validatedData = imageGenerationSchema.parse(formData);
-      onGenerate(validatedData);
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        const firstError = error.errors[0];
-        toast.error(firstError.message);
-      } else {
-        toast.error('Invalid form data');
-      }
-    }
+  const handleModeChange = (value: string) => {
+    setMode(value as 'text-to-image' | 'image-to-image');
+    setSourceImage(null); // reset image on mode change
+  };
+
+  const handleImageSelect = (file: File, previewUrl: string) => {
+    setSourceImage({ file, previewUrl });
+  };
+
+  const handleImageRemove = () => {
+    setSourceImage(null);
   };
 
   // Show loading state while configuration is loading
@@ -173,59 +175,103 @@ export function ImageGeneratorForm({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>AI Image Generator</CardTitle>
+        <CardTitle className="flex items-center gap-2">
+          <ImageIcon className="size-5" />
+          AI Image Generator
+        </CardTitle>
         <p className="text-sm text-muted-foreground">
           Generate high-quality images using AI models from SuperDuperAI
         </p>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Prompt Input */}
-          <div className="space-y-2">
-            <Label htmlFor="prompt">Prompt *</Label>
-            <EnhancedTextarea
-              id="prompt"
-              placeholder="Describe the image you want to generate..."
-              value={formData.prompt}
-              onChange={(e) => handleInputChange('prompt', e.target.value)}
-              disabled={disabled || isGenerating}
-              rows={3}
-              fullscreenTitle="Image Description"
-            />
-            <p className="text-xs text-muted-foreground">
-              Be detailed and specific for better results
-            </p>
-          </div>
-
-          {/* Model Selection */}
-          <div className="space-y-2">
-            <Label htmlFor="model">AI Model</Label>
-            <Select
-              value={formData.model}
-              onValueChange={(value) => handleInputChange('model', value)}
-              disabled={disabled || isGenerating}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select a model" />
-              </SelectTrigger>
-              <SelectContent>
-                {config.availableModels.map((model) => (
-                  <SelectItem key={model.name} value={model.name}>
-                    <div className="flex items-center justify-between w-full">
-                      <span>{model.label || model.name}</span>
-                      {model.price && model.price > 0 && (
-                        <span className="text-xs text-muted-foreground ml-2">
-                          ${model.price}
-                        </span>
-                      )}
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
+        <form onSubmit={(e) => {
+          e.preventDefault();
+          onGenerate(formData);
+        }} className="space-y-6">
+          {/* Generation Type Tabs */}
+          <Tabs 
+            value={mode} 
+            onValueChange={handleModeChange}
+            className="w-full"
+          >
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="text-to-image" className="flex items-center gap-2">
+                <Type className="size-4" />
+                Text to Image
+              </TabsTrigger>
+              <TabsTrigger value="image-to-image" className="flex items-center gap-2">
+                <ImageIcon className="size-4" />
+                Image to Image
+              </TabsTrigger>
+            </TabsList>
+            <TabsContent value="text-to-image" className="space-y-6 mt-6">
+              {/* Text-to-Image Mode */}
+              <div className="space-y-2">
+                <Label htmlFor="prompt">Image Description *</Label>
+                <EnhancedTextarea
+                  id="prompt"
+                  placeholder="Describe the image you want to generate..."
+                  value={formData.prompt}
+                  onChange={(e) => handleInputChange('prompt', e.target.value)}
+                  disabled={disabled || isGenerating}
+                  rows={3}
+                  fullscreenTitle="Image Description"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Be detailed and specific for better results
+                </p>
+              </div>
+              {/* Model/Style/Resolution/ShotSize — вставить сюда нужные поля аналогично video-generator */}
+            </TabsContent>
+            <TabsContent value="image-to-image" className="space-y-6 mt-6">
+              {/* Image-to-Image Mode */}
+              <ImageUpload
+                onImageSelect={handleImageSelect}
+                onImageRemove={handleImageRemove}
+                selectedImage={sourceImage}
+                disabled={disabled || isGenerating}
+                className="mb-4"
+              />
+              <div className="space-y-2">
+                <Label htmlFor="prompt">Prompt *</Label>
+                <EnhancedTextarea
+                  id="prompt"
+                  placeholder="Describe the transformation you want..."
+                  value={formData.prompt}
+                  onChange={(e) => handleInputChange('prompt', e.target.value)}
+                  disabled={disabled || isGenerating}
+                  rows={2}
+                  fullscreenTitle="Image Transformation Description"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Describe how you want the source image to be changed
+                </p>
+              </div>
+              {/* Model/Style/Resolution/ShotSize — вставить сюда нужные поля аналогично video-generator */}
+            </TabsContent>
+          </Tabs>
+          {/* Остальные поля (Model, Style, Resolution, ShotSize) вынести из Tabs и оформить grid-ом, как в video-generator */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Model Selection */}
+            <div className="space-y-2">
+              <Label htmlFor="model">AI Model</Label>
+              <Select
+                value={formData.model}
+                onValueChange={(value) => handleInputChange('model', value)}
+                disabled={disabled || isGenerating}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a model" />
+                </SelectTrigger>
+                <SelectContent>
+                  {config.availableModels.map((model) => (
+                    <SelectItem key={model.id || model.name} value={model.id || model.name}>
+                      {model.label || model.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             {/* Style Selection */}
             <div className="space-y-2">
               <Label htmlFor="style">Style</Label>
@@ -246,7 +292,6 @@ export function ImageGeneratorForm({
                 </SelectContent>
               </Select>
             </div>
-
             {/* Resolution Selection */}
             <div className="space-y-2">
               <Label htmlFor="resolution">Resolution</Label>
@@ -267,9 +312,6 @@ export function ImageGeneratorForm({
                 </SelectContent>
               </Select>
             </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Shot Size Selection */}
             <div className="space-y-2">
               <Label htmlFor="shotSize">Shot Size</Label>
@@ -290,42 +332,11 @@ export function ImageGeneratorForm({
                 </SelectContent>
               </Select>
             </div>
-
-            {/* Seed Input */}
-            <div className="space-y-2">
-              <Label htmlFor="seed">Seed (Optional)</Label>
-              <Input
-                id="seed"
-                type="number"
-                placeholder="Random"
-                value={formData.seed || ''}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  handleInputChange('seed', value ? Number.parseInt(value) : undefined);
-                }}
-                disabled={disabled || isGenerating}
-              />
-              <p className="text-xs text-muted-foreground">
-                Use same seed for reproducible results
-              </p>
-            </div>
           </div>
-
-          {/* Generate Button */}
-          <Button
-            type="submit"
-            className="w-full"
-            disabled={disabled || isGenerating || !formData.prompt.trim()}
-            size="lg"
-          >
-            {isGenerating ? (
-              <>
-                <Loader2 className="mr-2 size-4 animate-spin" />
-                Generating Image...
-              </>
-            ) : (
-              'Generate Image'
-            )}
+          {/* Submit Button */}
+          <Button type="submit" className="w-full" disabled={isGenerating || disabled}>
+            {isGenerating ? <Loader2 className="size-4 animate-spin mr-2" /> : null}
+            Generate Image
           </Button>
         </form>
       </CardContent>

@@ -30,7 +30,7 @@ export function ToolsNavigation() {
           <span>Tools</span>
           <span>/</span>
           <span className="font-medium">
-            {currentTool ? currentTool.name : 'Unknown Tool'}
+            {currentTool ? currentTool.name : 'All Tools'}
           </span>
         </div>
       </div>

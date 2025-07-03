@@ -260,13 +260,13 @@ export function ImageUpload({
         // Selected Image Preview
         <Card className="relative">
           <CardContent className="p-4">
-            <div className="relative group">
+            <div className="relative group h-40">
               <NextImage
                 src={selectedImage.previewUrl}
                 alt="Selected image for video generation"
                 width={400}
                 height={160}
-                className="w-full h-40 object-cover rounded-lg"
+                className="size-full object-contain rounded-lg"
               />
               <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
                 <Button

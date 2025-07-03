@@ -6,7 +6,6 @@ import { EnhancementResult } from './components/enhancement-result';
 import { usePromptEnhancer } from './hooks/use-prompt-enhancer';
 import { Separator } from '@/components/ui/separator';
 import { Sparkles, Zap, Languages, Wand2 } from 'lucide-react';
-import { ToolsNavigation } from '@/components/tools-navigation';
 
 // AICODE-NOTE: Main page component for standalone prompt enhancer tool
 export default function PromptEnhancerPage() {
@@ -20,9 +19,6 @@ export default function PromptEnhancerPage() {
 
   return (
     <div className="space-y-8">
-      {/* Navigation */}
-      <ToolsNavigation />
-      
       {/* Header */}
       <div className="text-center space-y-4">
         <div className="flex items-center justify-center space-x-2">

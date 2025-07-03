@@ -1,8 +1,6 @@
 import Link from 'next/link';
-import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
 import { TOOLS_CONFIG } from '@/lib/config/tools-config';
 import { ToolIcon } from '@/lib/config/tools-icons';
 
@@ -11,24 +9,6 @@ export default function ToolsPage() {
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto space-y-8">
-          {/* Header with back button */}
-          <div className="flex items-center justify-between">
-            <Link href="/">
-              <Button variant="outline" size="sm" className="gap-2">
-                <ArrowLeft className="size-4" />
-                Back to Chat
-              </Button>
-            </Link>
-            
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <span>Home</span>
-              <span>/</span>
-              <span className="font-medium">AI Tools</span>
-            </div>
-          </div>
-
-          <Separator />
-
           {/* Main content */}
           <div className="text-center space-y-4">
             <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
