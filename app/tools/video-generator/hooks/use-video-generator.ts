@@ -10,6 +10,7 @@ import { useVideoSSE } from '@/hooks/use-video-sse';
 import { generationPersistence, type GenerationState } from '@/lib/websocket/generation-persistence';
 import type { VideoGenerationFormData } from '../components/video-generator-form';
 import type { GenerationStatus } from '../components/video-generation-progress';
+import { API_NEXT_ROUTES } from '@/lib/config/next-api-routes';
 
 // Legacy interfaces - MUST remain exactly the same for compatibility
 export interface GeneratedVideo {
@@ -380,7 +381,7 @@ export function useVideoGenerator(): UseVideoGeneratorReturn {
         
           console.log('🎬 Sending image-to-video request with FormData (multipart/form-data)');
         
-          response = await fetch('/api/generate/video', {
+          response = await fetch(API_NEXT_ROUTES.GENERATE_VIDEO, {
             method: 'POST',
             body: formDataToSend, 
           });
@@ -393,7 +394,7 @@ export function useVideoGenerator(): UseVideoGeneratorReturn {
         // Use JSON for text-to-video
         console.log('🎬 Sending text-to-video request with JSON');
         
-        response = await fetch('/api/generate/video', {
+        response = await fetch(API_NEXT_ROUTES.GENERATE_VIDEO, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

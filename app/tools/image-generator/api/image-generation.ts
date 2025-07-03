@@ -1,3 +1,5 @@
+import { API_NEXT_ROUTES } from "@/lib/config/next-api-routes";
+
 export interface ImageGenerationFormData {
   prompt: string;
   model?: string;
@@ -47,7 +49,7 @@ export async function generateImageApi(formData: ImageGenerationFormData): Promi
     } else {
       payload.generationType = 'text-to-image';
     }
-    const response = await fetch('/api/generate/image', {
+    const response = await fetch(API_NEXT_ROUTES.GENERATE_IMAGE, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

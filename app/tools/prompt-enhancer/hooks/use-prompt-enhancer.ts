@@ -1,3 +1,4 @@
+import { API_NEXT_ROUTES } from '@/lib/config/next-api-routes';
 import { useState, useCallback } from 'react';
 
 export interface EnhancementParams {
@@ -39,7 +40,7 @@ export function usePromptEnhancer() {
     setError(null);
 
     try {
-      const response = await fetch('/api/enhance-prompt', {
+      const response = await fetch(API_NEXT_ROUTES.ENHANCE_PROMPT, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

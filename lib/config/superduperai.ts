@@ -9,6 +9,7 @@ import { GenerationConfigService } from '@/lib/api/services/GenerationConfigServ
 import type { IGenerationConfigRead } from '@/lib/api/models/IGenerationConfigRead';
 import { GenerationTypeEnum } from '@/lib/api/models/GenerationTypeEnum';
 import { ListOrderEnum } from '@/lib/api/models/ListOrderEnum';
+import { API_NEXT_ROUTES } from './next-api-routes';
 
 // Type aliases for backward compatibility
 export type VideoModel = IGenerationConfigRead;
@@ -75,7 +76,7 @@ export function getSuperduperAIConfig(): SuperduperAIConfig {
 // Client-side function to get config from API
 export async function getClientSuperduperAIConfig(): Promise<SuperduperAIConfig> {
   try {
-    const response = await fetch('/api/config/superduperai');
+    const response = await fetch(API_NEXT_ROUTES.SUPERDUPERAI);
     if (!response.ok) {
       throw new Error('Failed to get SuperDuperAI config');
     }
