@@ -69,6 +69,23 @@ export const TOOLS_CONFIG: ToolConfig[] = [
     hoverColor: 'pink-600',
     bgColor: 'pink-100',
     hoverBgColor: 'pink-200'
+  },
+  {
+    id: 'script-generator',
+    name: 'Script Generator',
+    description: 'Generate detailed scripts and scenarios in Markdown format using AI. Edit and refine your script with a powerful Markdown editor.',
+    shortDescription: 'AI Script Generator',
+    iconName: 'wand',
+    href: '/tools/script-generator',
+    category: 'generation',
+    features: [
+      { iconName: 'sparkles', label: 'Markdown Output' },
+      { iconName: 'sparkles', label: 'Script Structuring' }
+    ],
+    primaryColor: 'green-600',
+    hoverColor: 'green-600',
+    bgColor: 'green-100',
+    hoverBgColor: 'green-200'
   }
 ];
 

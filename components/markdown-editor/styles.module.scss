@@ -1,0 +1,71 @@
+.editor {
+    @apply outline-none  mb-3 text-white max-w-none;
+
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    p,
+    span,
+    strong {
+        color: white;
+    }
+    // :global(._codeMirrorWrapper_uazmk_391) {
+    //     ::selection {
+    //         background-color: darkblue !important; 
+    //       }
+
+    //     background-color: black !important;
+   
+    // }
+    // :global(.ͼo){
+    //     background-color: black !important;
+    //     color: white !important;
+    // }
+    // :global(.cm-gutterElement){
+    //     color: white !important;
+    // }
+    // :global(.cm-gutters, .cm-activeLineGutter){
+    //     background-color: darkgray !important;
+    //     color: white !important;
+    // }
+    // :global(._tooltipTrigger_uazmk_676){
+    //     display: none !important;
+    // }
+   
+}
+
+:global(.mdxeditor-toolbar) {
+  background: #212225 !important;
+  color: #fff !important;
+  border-bottom: 1px solid #333 !important;
+}
+
+:global(.mdxeditor-toolbar button) {
+  background: #212225 !important;
+  color: #fff !important;
+  border: none !important;
+  transition: background 0.2s, color 0.2s;
+}
+
+:global(.mdxeditor-toolbar button:hover),
+:global(.mdxeditor-toolbar button:focus) {
+  background: #586174 !important;
+  color: #fff !important;
+}
+
+:global(.mdxeditor-toolbar button svg) {
+  color: #fff !important;
+  fill: #fff !important;
+}
+
+:global(.mdxeditor-toolbar .mdxeditor-toolbar-separator) {
+  background: #666 !important;
+}
+
+:global(.mdxeditor-root),
+:global(.mdxeditor-content) {
+  background: #f3f4f6 !important;
+  color: #181a20 !important;
+}
