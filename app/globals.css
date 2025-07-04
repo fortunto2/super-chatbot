@@ -172,3 +172,37 @@
         transform: translateX(200%) skewX(-12deg);
     }
 }
+
+.mdxeditor-toolbar {
+    background: #212225 !important;
+    color: #fff !important;
+    border-bottom: 1px solid #333 !important;
+  }
+  
+  .mdxeditor-toolbar button {
+    background: #212225 !important;
+    color: #fff !important;
+    border: none !important;
+    transition: background 0.2s, color 0.2s;
+  }
+  
+  .mdxeditor-toolbar button:hover,
+  .mdxeditor-toolbar button:focus {
+    background: #586174 !important;
+    color: #fff !important;
+  }
+  
+  .mdxeditor-toolbar button svg {
+    color: #fff !important;
+    fill: #fff !important;
+  }
+  
+  .mdxeditor-toolbar .mdxeditor-toolbar-separator {
+    background: #666 !important;
+  }
+  
+  .mdxeditor-root,
+  .mdxeditor-content {
+    background: #f3f4f6 !important;
+    color: #181a20 !important;
+  }
