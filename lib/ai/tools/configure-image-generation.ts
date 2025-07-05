@@ -85,6 +85,8 @@ export const configureImageGeneration = (params?: CreateImageDocumentParams) => 
       console.log('🔧 ✅ CREATING IMAGE DOCUMENT WITH PARAMS:', imageParams);
 
       try {
+        // AICODE-NOTE: For now we pass params as JSON in title for backward compatibility
+        // TODO: Refactor to use proper parameter passing mechanism
         const result = await params.createDocument.execute({
           title: JSON.stringify(imageParams),
           kind: 'image'

@@ -75,7 +75,15 @@ export async function GET(
           return reader.read().then(({ done, value }) => {
             if (done) {
               console.log('🔌 SSE Proxy: Stream completed');
-              controller.close();
+              try {
+                // Check if controller is not already closed before closing
+                if (controller.desiredSize !== null) {
+                  controller.close();
+                }
+              } catch (error) {
+                // Controller already closed, ignore error
+                console.log('🔌 SSE Proxy: Controller already closed, ignoring');
+              }
               return;
             }
             

@@ -87,30 +87,14 @@ export const imageDocumentHandler = createDocumentHandler<'image'>({
         batchSize
       });
 
-      // AICODE-DEBUG: Create API payload for debugging
-      const apiPayload = {
-        config: {
-          prompt,
-          negative_prompt: negativePrompt || '',
-          width: resolution.width,
-          height: resolution.height,
-          steps: 30,
-          shot_size: shotSize.id,
-          seed: seed || Math.floor(Math.random() * 1000000000000),
-          generation_config_name: model.name || model.id,
-          batch_size: Math.min(Math.max(batchSize || 1, 1), 3),
-          style_name: style.id,
-          references: [],
-          entity_ids: []
-        }
-      };
+      // AICODE-DEBUG: API payload removed to reduce duplication
+      // If needed for debugging, can be reconstructed from stored parameters
 
       if (!result.success) {
         draftContent = JSON.stringify({
           status: 'failed',
           error: result.error,
-          prompt: prompt,
-          apiPayload // Include API payload for debugging
+          prompt: prompt
         });
         return draftContent;
       }
@@ -130,15 +114,10 @@ export const imageDocumentHandler = createDocumentHandler<'image'>({
         negativePrompt,
         seed,
         batchSize,
-        // Debug info
-        apiPayload, // AICODE-DEBUG: Include full API payload
         timestamp: Date.now(),
         message: result.message || 'Image generation started, connecting to WebSocket...'
       });
-      
-      // AICODE-DEBUG: Log to verify apiPayload is included
-      console.log('🎨 Server: draftContent includes apiPayload:', !!JSON.parse(draftContent).apiPayload);
-      console.log('🎨 Server: apiPayload sample:', JSON.parse(draftContent).apiPayload);
+
     } catch (error: any) {
       console.error('🎨 ❌ IMAGE GENERATION ERROR:', error);
       draftContent = JSON.stringify({

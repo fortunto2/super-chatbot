@@ -35,7 +35,7 @@ function PureArtifactActions({
     throw new Error('Artifact definition not found!');
   }
 
-  const actionContext: ArtifactActionContext = {
+  const actionContext: ArtifactActionContext & { documentId: string } = {
     content: artifact.content,
     handleVersionChange,
     currentVersionIndex,
@@ -43,6 +43,7 @@ function PureArtifactActions({
     mode,
     metadata,
     setMetadata,
+    documentId: artifact.documentId,
   };
 
   return (

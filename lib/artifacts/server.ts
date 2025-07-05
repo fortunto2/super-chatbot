@@ -1,4 +1,3 @@
-
 import { imageDocumentHandler } from '@/artifacts/image/server';
 import { sheetDocumentHandler } from '@/artifacts/sheet/server';
 import { textDocumentHandler } from '@/artifacts/text/server';
@@ -63,15 +62,43 @@ export function createDocumentHandler<T extends ArtifactKind>(config: {
       });
 
       if (args.session?.user?.id) {
+        // AICODE-FIX: Extract human-readable title from JSON if needed
+        let readableTitle = args.title;
+        try {
+          // Check if title is JSON for image/video artifacts
+          if (config.kind === 'image' || config.kind === 'video') {
+            if (args.title.startsWith('{') && args.title.endsWith('}')) {
+              const titleParams = JSON.parse(args.title);
+              // Use prompt as readable title
+              readableTitle = titleParams.prompt || `AI Generated ${config.kind}`;
+            } else if (args.title.includes('Video: "')) {
+              // Handle video format: 'Video: "prompt" {...}'
+              const match = args.title.match(/Video: "([^"]+)"/);
+              if (match) {
+                readableTitle = match[1];
+              }
+            }
+          }
+        } catch (e) {
+          // If parse fails, keep original title
+          console.log('📄 Could not parse title, using as-is');
+        }
+        
+        // AICODE-NOTE: Truncate title to 255 characters for database storage
+        if (readableTitle.length > 255) {
+          readableTitle = readableTitle.substring(0, 252) + '...';
+          console.log('📄 Title truncated to 255 characters');
+        }
+        
         await saveDocument({
           id: args.id,
-          title: args.title,
+          title: readableTitle,
           content: draftContent,
           kind: config.kind,
           userId: args.session.user.id,
         });
         
-        console.log('📄 Document saved to database');
+        console.log('📄 Document saved to database with title:', readableTitle);
       }
 
       return;
@@ -95,6 +122,8 @@ export function createDocumentHandler<T extends ArtifactKind>(config: {
       });
 
       if (args.session?.user?.id) {
+        // AICODE-FIX: Use document's existing title for updates
+        // Title is already set when document was created, no need to re-parse
         await saveDocument({
           id: args.document.id,
           title: args.document.title,

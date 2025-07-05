@@ -135,6 +135,74 @@ AI agents should handle these artifact types:
 - `video`: Generated videos with SuperDuperAi Veo3 model
 - `sheet`: Interactive spreadsheets with data manipulation
 
+## AI Agent Workflow and Tool Architecture
+
+### Chat AI Agent Tool Chain
+
+The AI agent in chat interface (`app/(chat)/api/chat/route.ts`) uses AI SDK `streamText()` with 8 registered tools for intelligent content generation:
+
+```
+📱 User Input → 🌐 Chat API → 🤖 AI Agent → 🔧 Tool Chain → 📄 Artifact Creation
+```
+
+#### Available Tools
+- `configureImageGeneration`: FLUX Pro/Dev image generation with intelligent parameter selection
+- `configureVideoGeneration`: Video generation with model-specific optimization
+- `enhancePrompt`: Automatic prompt enhancement and translation (Russian → English)
+- `createDocument`: Dynamic artifact creation with real-time progress tracking
+- `updateDocument`: Collaborative document editing capabilities
+- `requestSuggestions`: Context-aware suggestion generation
+- `listVideoModels`: Dynamic video model discovery and caching
+- `findBestVideoModel`: Intelligent model selection based on requirements
+
+#### AI Agent Decision Matrix
+The AI agent intelligently decides tool usage based on:
+
+**Prompt Enhancement (`enhancePrompt`):**
+- Russian text detected → Automatic translation
+- Short prompts (<50 characters or <5 words) → Quality enhancement
+- Missing technical terms → Professional terminology addition
+
+**Model Selection Logic:**
+- Text-to-video: Prioritizes `sora` model
+- Image-to-video: Prioritizes `veo2` model
+- Text-to-image: Selects based on quality vs. cost analysis
+- Dynamic model loading via API with 1-hour caching
+
+**Parameter Intelligence:**
+- **Resolutions**: Flexible parsing ("1920x1080", "full hd", "4k", "square")
+- **Styles**: Partial matching, case-insensitive ("photorealistic", "anime", "oil painting")
+- **Shot Sizes**: Professional terminology ("close-up", "medium-shot", "wide-angle")
+- **Batch Processing**: Automatic optimization (1-3 images based on request)
+
+#### Tool Chain Execution Flow
+```
+1. User Message Analysis
+   ↓
+2. Enhancement Decision (enhancePrompt if needed)
+   ↓
+3. Generation Configuration (configureImageGeneration/configureVideoGeneration)
+   ↓
+4. Artifact Creation (createDocument with real-time progress)
+   ↓
+5. WebSocket/SSE Updates (live progress tracking)
+   ↓
+6. Final Result Display
+```
+
+#### Key Implementation Files
+- **Chat API**: `app/(chat)/api/chat/route.ts` - Main AI agent endpoint
+- **System Prompts**: `lib/ai/prompts.ts` - AI agent instructions and behavior
+- **Tool Implementations**: `lib/ai/tools/` - Individual tool logic
+- **Configuration**: `lib/config/superduperai.ts` - Model discovery and caching
+- **Generation Logic**: `lib/ai/api/image-generation/`, `lib/ai/api/video-generation/`
+
+#### Debug and Testing
+- API payload logging in artifacts for parameter verification
+- Real-time progress tracking via SSE/WebSocket
+- Comprehensive error handling with user-friendly messages
+- Model discovery with fallback to cached configurations
+
 ## Coding Conventions for AI Agents
 
 ### General Conventions for Agent Implementation

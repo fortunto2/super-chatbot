@@ -16,6 +16,7 @@ import {
   type ImageState
 } from '@/lib/utils/image-utils';
 import type { UseChatHelpers } from '@ai-sdk/react';
+import { toast } from 'sonner';
 
 interface ImageEditorProps {
   chatId?: string; 
@@ -23,6 +24,7 @@ interface ImageEditorProps {
   setMessages?: UseChatHelpers['setMessages'];
   initialState?: ImageState;
   setArtifact?: (fn: (prev: any) => any) => void;
+  parsedContent?: any;
 }
 
 function ImageSkeleton() {
@@ -111,13 +113,17 @@ function ImageDisplay({
   imageUrl, 
   prompt, 
   onCopyUrl, 
-  onGenerateNew
+  onGenerateNew,
+  apiPayload
 }: {
   imageUrl: string;
   prompt?: string;
   onCopyUrl: () => void;
   onGenerateNew: () => void;
+  apiPayload?: any;
 }) {
+  const [showApiConfig, setShowApiConfig] = useState(false);
+  
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2">
@@ -150,15 +156,60 @@ function ImageDisplay({
         </div>
       )}
       
-      <div className="flex justify-center pt-4">
-        <Button
-          onClick={onGenerateNew}
-          variant="outline"
-          size="sm"
-        >
-          Generate New Image
-        </Button>
-      </div>
+      {/* AICODE-DEBUG: API Config Display instead of Generate New button */}
+      {apiPayload && (
+        <div className="mt-4 border-t pt-4">
+          <button
+            onClick={() => setShowApiConfig(!showApiConfig)}
+            className="flex items-center gap-2 text-sm font-medium mb-3 hover:text-gray-700 transition-colors w-full"
+          >
+            <span className={`transform transition-transform ${showApiConfig ? 'rotate-90' : ''}`}>
+              ▶
+            </span>
+            Debug: API Configuration
+          </button>
+          
+          {showApiConfig && (
+            <div className="mt-2 space-y-3">
+              <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 overflow-x-auto">
+                <pre className="text-xs font-mono text-gray-700 dark:text-gray-300">
+                  {JSON.stringify(apiPayload, null, 2)}
+                </pre>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(JSON.stringify(apiPayload, null, 2));
+                    toast.success('API config copied to clipboard');
+                  }}
+                  className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+                >
+                  📋 Copy API Config
+                </button>
+                <button
+                  onClick={onGenerateNew}
+                  className="text-xs text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-300 ml-auto"
+                >
+                  🔄 Generate New Image
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+      
+      {/* Show Generate New button only if no apiPayload */}
+      {!apiPayload && (
+        <div className="flex justify-center pt-4">
+          <Button
+            onClick={onGenerateNew}
+            variant="outline"
+            size="sm"
+          >
+            Generate New Image
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
@@ -179,7 +230,8 @@ export function ImageEditor({
   append,
   setMessages,
   initialState,
-  setArtifact
+  setArtifact,
+  parsedContent
 }: ImageEditorProps) {
   const params = useParams();
   const chatId = propChatId || (params?.id as string);
@@ -458,6 +510,7 @@ export function ImageEditor({
             prompt={displayPrompt}
             onCopyUrl={handleCopyUrl}
             onGenerateNew={handleGenerateNew}
+            apiPayload={undefined} // Removed to avoid data duplication
           />
         )}
       </CardContent>

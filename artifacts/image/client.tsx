@@ -1,5 +1,5 @@
 import { Artifact } from '@/components/create-artifact';
-import { CopyIcon, RedoIcon, UndoIcon } from '@/components/icons';
+import { CopyIcon, RedoIcon, UndoIcon, ShareIcon } from '@/components/icons';
 import { ImageEditor } from '@/components/image-editor';
 import { toast } from 'sonner';
 import { memo, useMemo, useEffect } from 'react';
@@ -668,6 +668,21 @@ export const imageArtifact = new Artifact({
         } catch {
           // For legacy base64 content, always allow copy
           return false;
+        }
+      },
+    },
+    {
+      icon: <ShareIcon size={18} />,
+      description: 'Copy artifact link',
+      onClick: (context) => {
+        // Get documentId from props passed to content
+        const documentId = (context as any).documentId;
+        if (documentId && documentId !== 'init') {
+          const shareUrl = `${window.location.origin}/artifact/${documentId}`;
+          navigator.clipboard.writeText(shareUrl);
+          toast.success('Artifact link copied to clipboard!');
+        } else {
+          toast.error('Unable to generate share link - artifact not saved yet');
         }
       },
     },
