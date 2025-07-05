@@ -1,142 +1,102 @@
 import { type NextRequest, NextResponse } from 'next/server';
-import { getSuperduperAIConfig } from '@/lib/config/superduperai';
-import { getBestVideoModel } from '@/lib/ai/api/config-cache';
+import { configureSuperduperAI } from '@/lib/config/superduperai';
+import { generateVideoWithStrategy, type VideoGenerationParams, type ImageToVideoParams } from '@/lib/ai/api/video-generation';
+import { parseResolution } from '@/lib/utils/media-generation';
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
+    let body: any;
+    // All requests now come as JSON (with Base64 data URL for image-to-video)
+    console.log('🎬 Video API: Processing JSON request');
+    const contentType = request.headers.get('content-type') || '';
+
+    // Проверяем form-data или обычный JSON
+    const isFormData = contentType.includes('multipart/form-data');
+
+    if (isFormData) {
+      const formData = await request.formData();
+      // Извлекаем значения
+      body = {
+        prompt: formData.get('prompt')?.toString() ?? '',
+        model: formData.get('model')?.toString() ?? '',
+        resolution: formData.get('resolution')?.toString() ?? '',
+        chatId: formData.get('chatId')?.toString() ?? '',
+        negativePrompt: formData.get('negativePrompt')?.toString() ?? '',
+        duration: Number(formData.get('duration') ?? 5),
+        generationType: formData.get('generationType')?.toString() ?? 'text-to-video',
+        frameRate: Number(formData.get('frameRate') ?? 30),
+        style: formData.get('style')?.toString() ?? '',
+        shotSize: formData.get('shotSize')?.toString() ?? '',
+        seed: formData.get('seed')?.toString() ?? '',
+        file: formData.get('file') as File | null
+      }
+    } else {
+      body = await request.json();
+    }
+    const {chatId, generationType = 'text-to-video'} = body
     
-    console.log('🎬 Video API: Processing video generation request');
     console.log('📦 Request parameters:', JSON.stringify(body, null, 2));
-    
-    // Extract parameters from request body
-    const {
-      prompt,
-      model,
-      resolution,
-      chatId,
-      negativePrompt,
-      duration = 5,
-      sourceImageId,
-      sourceImageUrl
-    } = body;
+        // Configure SuperDuperAI for server-side operations
+    configureSuperduperAI();
 
-    // AICODE-FIX: Smart model selection - prioritize text_to_video models like Sora
-    let selectedModel = model;
-    if (!selectedModel || !selectedModel.name) {
-      console.log('🎯 No model specified, getting best model for text-to-video generation...');
-      
-      // Check if we have source image - this determines generation type
-      const hasSourceImage = sourceImageId || sourceImageUrl;
-      
-      if (hasSourceImage) {
-        console.log('🖼️ Source image detected, prioritizing image_to_video models');
-        // For image-to-video, we can use image_to_video models
-        selectedModel = await getBestVideoModel({ 
-          vipAllowed: true,
-          preferredDuration: duration 
-        });
-      } else {
-        console.log('📝 No source image, requiring text_to_video models');
-        // For text-only prompts, ONLY use text_to_video models
-        selectedModel = await getBestVideoModel({ 
-          vipAllowed: true,
-          preferredDuration: duration,
-          requireTextToVideo: true // Force text_to_video models only
-        });
-      }
-      
-      if (selectedModel) {
-        console.log('✅ Auto-selected model:', selectedModel.name, '(type:', selectedModel.type, ')');
-      } else {
-        console.warn('⚠️ No suitable model found, using fallback');
-        // Last resort fallback
-        selectedModel = { name: 'azure-openai/sora' };
-      }
+    // Add image-specific parameters if needed
+    const strategyParams: VideoGenerationParams | ImageToVideoParams = {...body};
+  
+    console.log(`🎬 Using strategy pattern for ${generationType} generation`);
+    console.log("strategyParams", strategyParams);
+    // Use strategy pattern for generation
+    const result = await generateVideoWithStrategy(generationType, strategyParams);
+    
+    if (!result.success) {
+      throw new Error(result.error || 'Video generation failed');
     }
-
-    // Use original working format with type: "media" and direct fetch
-    const config = getSuperduperAIConfig();
-    const url = `${config.url}/api/v1/file/generate-video`;
-    const headers = {
-      'Authorization': `Bearer ${config.token}`,
-      'Content-Type': 'application/json'
-    };
-
-    // AICODE-FIX: Use selected model name
-    const modelName = selectedModel?.name || 'azure-openai/sora';
-    console.log('🎬 Using model:', modelName);
-
-    // Use original working payload format with type: "media"
-    const payload = {
-      type: "media",           // ← CRITICAL: Always use this format, never "params"!
-      template_name: null,
-      style_name: "flux_watercolor", // Use working style
-      config: {
-        prompt,
-        negative_prompt: negativePrompt || '',
-        width: resolution?.width || 512,
-        height: resolution?.height || 512,
-        aspect_ratio: resolution?.aspectRatio || "16:9",
-        seed: Math.floor(Math.random() * 1000000000000),
-        generation_config_name: modelName, // Use selected model
-        duration,
-        frame_rate: 30,
-        batch_size: 1,
-        shot_size: "medium_shot", // Use working shot size
-        style_name: "flux_watercolor",
-        qualityType: "hd",
-        entity_ids: [],
-        references: sourceImageUrl ? [{
-          type: 'source',
-          reference_id: sourceImageId || '',
-          reference_url: sourceImageUrl
-        }] : []
-      }
-    };
-    
-    console.log('🎬 Final payload:', JSON.stringify(payload, null, 2));
-    
-    // Use original fetch approach that was working
-    const response = await fetch(url, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(payload),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`❌ API Error (${response.status}):`, errorText);
-      throw new Error(`API Error: ${response.status} ${response.statusText} - ${errorText}`);
-    }
-
-    const result = await response.json();
     
     console.log('✅ Video generation result:', result);
     
-    // Extract fileId from response (original logic)
-    const fileId = result.id ||
-                  result.data?.[0]?.value?.file_id || 
-                  result.data?.[0]?.id || 
-                  result.fileId;
-
-    // Transform result to match expected format
+    // Return standardized response
     const responseData = {
       success: true,
-      fileId: fileId,
-      projectId: chatId,
+      fileId: result.fileId,
+      projectId: result.projectId || chatId,
       url: result.url,
-      tasks: result.tasks || []
+      message: result.message
     };
     
     return NextResponse.json(responseData);
   } catch (error) {
     console.error('💥 Video API error:', error);
+    
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    
+    // Specific handling for backend magic library error
+    if (errorMessage.includes('magic') || errorMessage.includes('AttributeError')) {
+      return NextResponse.json(
+        { 
+          success: false,
+          error: 'Backend file processing error', 
+          details: 'The SuperDuperAI service is experiencing issues with file type detection. Please try using a different image format (PNG, JPG, WEBP) or try again later.'
+        },
+        { status: 500 }
+      );
+    }
+    
+    // Handle image upload failures specifically
+    if (errorMessage.includes('upload') || errorMessage.includes('image')) {
+      return NextResponse.json(
+        { 
+          success: false,
+          error: 'Image processing failed', 
+          details: 'Failed to process the source image. Please try using a different image or check the file format (PNG, JPG, WEBP supported).'
+        },
+        { status: 500 }
+      );
+    }
+    
     return NextResponse.json(
       { 
         success: false,
         error: 'Failed to generate video', 
-        details: error instanceof Error ? error.message : 'Unknown error' 
+        details: errorMessage
       },
       { status: 500 }
     );

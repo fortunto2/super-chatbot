@@ -136,7 +136,7 @@ export function VideoGallery({
               <Button
                 size="lg"
                 variant="outline"
-                className="bg-gray-900/90 hover:bg-gray-800 text-white border-gray-600 rounded-full h-14 w-14 p-0"
+                className="bg-gray-900/90 hover:bg-gray-800 text-white border-gray-600 rounded-full size-14 p-0"
                 onClick={() => setSelectedVideo(video)}
                 title="Play video"
               >
@@ -150,7 +150,7 @@ export function VideoGallery({
             <Button
               size="sm"
               variant="outline"
-              className="bg-gray-900/80 hover:bg-gray-800 text-white border-gray-600 h-8 w-8 p-0"
+              className="bg-gray-900/80 hover:bg-gray-800 text-white border-gray-600 size-8 p-0"
               onClick={() => onDownloadVideo(video)}
               title="Download video"
             >
@@ -159,7 +159,7 @@ export function VideoGallery({
             <Button
               size="sm"
               variant="outline"
-              className="bg-gray-900/80 hover:bg-gray-800 text-white border-gray-600 h-8 w-8 p-0"
+              className="bg-gray-900/80 hover:bg-gray-800 text-white border-gray-600 size-8 p-0"
               onClick={() => onCopyVideoUrl(video)}
               title="Copy video URL"
             >
@@ -168,7 +168,7 @@ export function VideoGallery({
             <Button
               size="sm"
               variant="outline"
-              className="bg-red-600/80 hover:bg-red-700 text-white border-red-500 h-8 w-8 p-0"
+              className="bg-red-600/80 hover:bg-red-700 text-white border-red-500 size-8 p-0"
               onClick={() => onDeleteVideo(video.id)}
               title="Delete video"
             >

@@ -13,6 +13,8 @@
 - `configureImageGeneration` - настройки генерации изображений
 - `configureVideoGeneration` - настройки генерации видео
 - `listVideoModels` - список доступных видео моделей
+- `findBestVideoModel` - автоматический выбор оптимальной видео модели
+- `enhancePrompt` - улучшение промптов с переводом и оптимизацией
 - `diagnoseImageGeneration` - диагностика проблем с генерацией изображений
 - Все инструменты используют AI SDK `tool()` функцию
 
@@ -164,9 +166,28 @@ if (toolName === "callExternalAPI" && state === "result") {
 }
 ```
 
-## Примеры использования
+## Примеры использования инструментов
 
-### 1. Получение данных пользователя
+### 1. Улучшение промптов (enhancePrompt)
+
+```typescript
+// Пользователь: "улучши мой промпт: мальчик с мячиком"
+enhancePrompt({
+  originalPrompt: "мальчик с мячиком",
+  mediaType: "image",
+  enhancementLevel: "detailed",
+  includeNegativePrompt: true
+});
+
+// Результат:
+// {
+//   enhancedPrompt: "boy with ball, professional photography, sharp focus, excellent composition, masterpiece quality, best quality, ultra detailed",
+//   negativePrompt: "blurry, low quality, pixelated, distorted, bad anatomy, poorly drawn, amateur, low resolution, artifacts, noise",
+//   improvements: ["Translated Russian words to English", "Added quality terms", ...]
+// }
+```
+
+### 2. Получение данных пользователя
 
 ```typescript
 // Пользователь: "Покажи мою статистику"

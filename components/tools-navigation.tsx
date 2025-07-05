@@ -2,15 +2,16 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { ArrowLeft, ImageIcon, VideoIcon, Home } from 'lucide-react';
+import { ArrowLeft, Home } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
+import { TOOLS_CONFIG, } from '@/lib/config/tools-config';
+import { ToolIcon } from '@/lib/config/tools-icons';
 
 export function ToolsNavigation() {
   const pathname = usePathname();
   
-  const isImageTool = pathname.includes('/image-generator');
-  const isVideoTool = pathname.includes('/video-generator');
+  const currentTool = TOOLS_CONFIG.find(tool => pathname.includes(tool.href));
   
   return (
     <div className="mb-6">
@@ -29,7 +30,7 @@ export function ToolsNavigation() {
           <span>Tools</span>
           <span>/</span>
           <span className="font-medium">
-            {isImageTool ? 'Image Generator' : isVideoTool ? 'Video Generator' : 'Unknown'}
+            {currentTool ? currentTool.name : 'All Tools'}
           </span>
         </div>
       </div>
@@ -45,27 +46,21 @@ export function ToolsNavigation() {
         
         <span className="text-muted-foreground">|</span>
         
-        <Link href="/tools/image-generator">
-          <Button 
-            variant={isImageTool ? "default" : "outline"} 
-            size="sm" 
-            className="gap-2"
-          >
-            <ImageIcon className="size-4" />
-            Image Generator
-          </Button>
-        </Link>
-        
-        <Link href="/tools/video-generator">
-          <Button 
-            variant={isVideoTool ? "default" : "outline"} 
-            size="sm"
-            className="gap-2"
-          >
-            <VideoIcon className="size-4" />
-            Video Generator
-          </Button>
-        </Link>
+        {TOOLS_CONFIG.map((tool) => {
+          const isActive = pathname.includes(tool.href);
+          return (
+            <Link key={tool.id} href={tool.href}>
+              <Button 
+                variant={isActive ? "default" : "outline"} 
+                size="sm" 
+                className="gap-2"
+              >
+                <ToolIcon name={tool.iconName} />
+                {tool.shortDescription || tool.name}
+              </Button>
+            </Link>
+          );
+        })}
       </div>
       
       <Separator />

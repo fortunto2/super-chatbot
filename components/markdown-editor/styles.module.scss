@@ -1,0 +1,15 @@
+.editor {
+    @apply outline-none  mb-3 text-white max-w-none;
+
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    p,
+    span,
+    strong {
+        color: white;
+    }
+}
+

@@ -68,8 +68,9 @@ export const configureVideoGeneration = (params?: CreateVideoDocumentParams) => 
     duration: z.number().optional().describe('Video duration in seconds. Default is 5 seconds for cost efficiency.'),
     sourceImageId: z.string().optional().describe('ID of source image for image-to-video models (VEO, KLING). Required for image-to-video generation.'),
     sourceImageUrl: z.string().optional().describe('URL of source image for image-to-video models. Alternative to sourceImageId.'),
+    generationType: z.enum(['text-to-video', 'image-to-video']).optional().describe('Generation mode: "text-to-video" for text prompts only, "image-to-video" when using source image'),
   }),
-  execute: async ({ prompt, negativePrompt, style, resolution, shotSize, model, frameRate, duration, sourceImageId, sourceImageUrl }) => {
+  execute: async ({ prompt, negativePrompt, style, resolution, shotSize, model, frameRate, duration, sourceImageId, sourceImageUrl, generationType }) => {
     console.log('🔧 configureVideoGeneration called with:', { prompt, negativePrompt, style, resolution, shotSize, model, frameRate, duration });
     console.log('🔧 createDocument available:', !!params?.createDocument);
     
@@ -285,6 +286,17 @@ export const configureVideoGeneration = (params?: CreateVideoDocumentParams) => 
         };
       }
 
+      // AICODE-NOTE: Auto-determine generation type for dual-mode compatibility
+      const autoGenerationType = (sourceImageId || sourceImageUrl) ? 'image-to-video' : 'text-to-video';
+      const finalGenerationType = generationType || autoGenerationType;
+      
+      console.log('🔧 🎯 Generation type determination:', {
+        provided: generationType,
+        autoDetected: autoGenerationType,
+        final: finalGenerationType,
+        hasSourceImage: !!(sourceImageId || sourceImageUrl)
+      });
+
       // Create the video document with all parameters
       const videoParams = {
         prompt,
@@ -296,7 +308,8 @@ export const configureVideoGeneration = (params?: CreateVideoDocumentParams) => 
         frameRate: frameRate || 30,
         duration: duration || DEFAULT_VIDEO_DURATION, // Use economical default
         sourceImageId: sourceImageId || undefined,
-        sourceImageUrl: sourceImageUrl || undefined
+        sourceImageUrl: sourceImageUrl || undefined,
+        generationType: finalGenerationType
       };
 
       console.log('🔧 ✅ CREATING VIDEO DOCUMENT WITH PARAMS:', videoParams);

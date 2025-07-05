@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Loader2, Image, CheckCircle, XCircle, RefreshCw } from 'lucide-react';
+import NextImage from 'next/image';
 
 // AICODE-NOTE: Simple Progress component since it's not available in UI library
 function Progress({ value, className }: { value: number; className?: string }) {
@@ -246,9 +247,11 @@ export function GenerationProgress({
           {/* Image Display */}
           {generationStatus.status === 'completed' && generationStatus.url && (
             <div className="mt-4">
-              <img 
+              <NextImage 
                 src={generationStatus.url} 
                 alt={`Generated image: ${prompt || 'Generated image'}`}
+                width={600}
+                height={384}
                 className="w-full h-auto rounded-lg border max-h-96 object-contain" 
               />
             </div>

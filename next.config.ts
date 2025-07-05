@@ -10,6 +10,9 @@ const nextConfig: NextConfig = {
       {
         hostname: 'avatar.vercel.sh',
       },
+      {
+        hostname: 'superduper-acdagaa3e2h7chh0.z02.azurefd.net',
+      },
     ],
   },
 };

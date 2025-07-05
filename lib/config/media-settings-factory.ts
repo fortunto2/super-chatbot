@@ -3,6 +3,7 @@ import type { ImageGenerationConfig, VideoGenerationConfig, MediaOption } from '
 import type { IGenerationConfigRead } from '../api/models/IGenerationConfigRead';
 import { ShotSizeEnum } from '@/lib/api/models/ShotSizeEnum';
 import { getStyles } from '@/lib/ai/api/get-styles';
+import { API_NEXT_ROUTES } from './next-api-routes';
 
 // Adapter function to convert OpenAPI model to MediaSettings format
 function adaptModelForMediaSettings(model: IGenerationConfigRead): IGenerationConfigRead & {
@@ -44,7 +45,7 @@ export async function getImageGenerationConfig(): Promise<ImageGenerationConfig>
   try {
     if (typeof window !== 'undefined') {
       // Client-side: fetch from API endpoint
-      const response = await fetch('/api/config/models');
+      const response = await fetch(API_NEXT_ROUTES.MODELS);
       const data = await response.json();
       imageModels = data?.data?.imageModels || [];
     } else {
@@ -98,7 +99,7 @@ export async function getImageGenerationConfig(): Promise<ImageGenerationConfig>
   try {
     if (typeof window !== 'undefined') {
       // Client-side: fetch from API endpoint
-      const response = await fetch('/api/config/models');
+      const response = await fetch(API_NEXT_ROUTES.MODELS);
       const data = await response.json();
       availableStyles = data.data?.styles || [
         { id: 'flux_watercolor', label: 'Watercolor', description: 'Watercolor painting style' },
@@ -187,7 +188,7 @@ export async function getVideoGenerationConfig(): Promise<VideoGenerationConfig>
   try {
     if (typeof window !== 'undefined') {
       // Client-side: fetch from API endpoint
-      const response = await fetch('/api/config/models');
+      const response = await fetch(API_NEXT_ROUTES.MODELS);
       const data = await response.json();
       videoModels = data?.data?.videoModels || [];
     } else {
@@ -208,7 +209,7 @@ export async function getVideoGenerationConfig(): Promise<VideoGenerationConfig>
   try {
     if (typeof window !== 'undefined') {
       // Client-side: fetch from API endpoint
-      const response = await fetch('/api/config/models');
+      const response = await fetch(API_NEXT_ROUTES.MODELS);
       const data = await response.json();
       availableStyles = data.data?.styles || [
         { id: 'cinematic', label: 'Cinematic', description: 'Movie-like style' },

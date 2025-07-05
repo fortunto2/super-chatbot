@@ -32,6 +32,7 @@ See: [Migration Completion](./maintenance/changelog/production-migration-complet
 - [Quick Start Guide](./getting-started/README.md) - Get up and running quickly
 
 ### API Integration Tasks
+
 1. Review [SuperDuperAI Integration](./api-integration/superduperai/README.md)
 2. **NEW**: [Image Generation API Guide](./api-integration/superduperai/image-generation-api-guide.md) - Complete cURL examples and testing
 3. **NEW**: [Video Generation API Guide](./api-integration/superduperai/video-generation-api-guide.md) - Complete video API with model pricing
@@ -42,6 +43,7 @@ See: [Migration Completion](./maintenance/changelog/production-migration-complet
 
 - [AI Development Methodology](./development/ai-development-methodology.md) - Two-phase development process
 - [Media Generation Framework](./architecture/media-generation-framework.md) - Unified media generation architecture
+- [Unified Tools Navigation System](./development/unified-tools-navigation-system.md) - Centralized tool configuration and navigation
 - [API Architecture](./architecture/api-architecture.md) - Backend API design and patterns
 - [Implementation Plans](./development/implementation-plans/) - Structured development planning
 
@@ -49,7 +51,8 @@ See: [Migration Completion](./maintenance/changelog/production-migration-complet
 
 - [Overview](./ai-capabilities/overview.md) - AI features and capabilities
 - [Image Generation](./ai-capabilities/image-generation/) - Image generation system
-- [Video Generation](./ai-capabilities/video-generation/) - Video generation system
+- [Video Generation](./ai-capabilities/video-generation/) - Video generation system with **Strategy Pattern + Fallback System** ⭐
+- [Prompt Enhancement](./ai-capabilities/prompt-enhancement/) - AI-powered prompt improvement system
 
 ### API Integration
 
@@ -67,6 +70,15 @@ See: [Migration Completion](./maintenance/changelog/production-migration-complet
 - [Glossary](./reference/glossary.md) - Technical terminology
 
 ## 🚀 Recent Major Updates
+
+### Enhanced Textarea with Unlimited Prompts (2025-01-28)
+
+- **Removed all prompt length limitations** (was 2000 characters, now unlimited)
+- **Real-time character/token counting** with approximate token estimation
+- **Fullscreen editing mode** for complex prompt engineering
+- **Universal implementation** across all forms (video, image, chat, media settings)
+- **Professional workflow support** for AI-first development methodology
+- **Responsive design** with accessibility features and keyboard navigation
 
 ### Video Model Selection Enhancement (2025-01-28)
 

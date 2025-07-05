@@ -7,7 +7,7 @@ import { VideoGallery } from './components/video-gallery';
 import { VideoGenerationProgress } from './components/video-generation-progress';
 import { useVideoGenerator } from './hooks/use-video-generator';
 import { useVideoEffects } from '@/hooks/use-video-effects';
-import { ToolsNavigation } from '@/components/tools-navigation';
+import { ImageIcon, VideoIcon } from 'lucide-react';
 
 export default function VideoGeneratorPage() {
   const [prompt, setPrompt] = useState('');
@@ -27,11 +27,13 @@ export default function VideoGeneratorPage() {
     isConnected,
     connectionStatus,
     generateVideo,
+    stopGeneration,
     clearCurrentGeneration,
     deleteVideo,
     clearAllVideos,
     downloadVideo,
     copyVideoUrl,
+    forceCheckResults,
   } = useVideoGenerator();
 
   // AICODE-NOTE: Video effects hook for auto-saving and side effects management
@@ -50,16 +52,19 @@ export default function VideoGeneratorPage() {
   });
 
   return (
-    <div className="space-y-6">
-      {/* Navigation */}
-      <ToolsNavigation />
-      
+    <div className="space-y-8">
       {/* Header */}
-      <div className="text-center space-y-2">
-        <h1 className="text-3xl font-bold">AI Video Generator</h1>
-        <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-          Generate high-quality videos using advanced AI models from SuperDuperAI. 
-          Create professional videos from text descriptions with models like VEO3, KLING, LTX, and more.
+      <div className="text-center space-y-4">
+        <div className="flex items-center justify-center space-x-2">
+          <div className="p-3 rounded-full bg-blue-100">
+            <VideoIcon className="size-8 text-blue-600" />
+          </div>
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+            AI Video Generator
+          </h1>
+        </div>
+        <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+          Generate high-quality videos using advanced AI models from SuperDuperAI. Create professional videos from text descriptions with models like VEO3, KLING, LTX, and more.
         </p>
       </div>
 
@@ -68,6 +73,7 @@ export default function VideoGeneratorPage() {
         <div className="space-y-4">
           <VideoGeneratorForm
             onGenerate={(formData) => {
+              console.log("formData", formData);
               setPrompt(formData.prompt);
               setHasInitialized(true);
               generateVideo(formData);
@@ -80,6 +86,8 @@ export default function VideoGeneratorPage() {
             <VideoGenerationProgress
               generationStatus={generationStatus}
               prompt={prompt}
+              onCheckStatus={forceCheckResults}
+              onStopGeneration={stopGeneration}
             />
           )}
           

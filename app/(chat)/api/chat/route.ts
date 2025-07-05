@@ -41,6 +41,7 @@ import * as Sentry from '@sentry/nextjs';
 import { configureImageGeneration } from '@/lib/ai/tools/configure-image-generation';
 import { configureVideoGeneration } from '@/lib/ai/tools/configure-video-generation';
 import { listVideoModels, findBestVideoModel } from '@/lib/ai/tools/list-video-models';
+import { enhancePrompt } from '@/lib/ai/tools/enhance-prompt';
 import { convertDBMessagesToUIMessages } from '@/lib/types/message-conversion';
 
 export const maxDuration = 60;
@@ -526,6 +527,7 @@ export async function POST(request: Request) {
                   'configureVideoGeneration',
                   'listVideoModels',
                   'findBestVideoModel',
+                  'enhancePrompt',
                   'createDocument',
                   'updateDocument',
                   'requestSuggestions',
@@ -542,6 +544,7 @@ export async function POST(request: Request) {
             }),
             listVideoModels,
             findBestVideoModel,
+            enhancePrompt,
           },
           onFinish: async ({ response }) => {
             if (session.user?.id) {
