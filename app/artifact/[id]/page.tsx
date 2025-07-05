@@ -33,7 +33,7 @@ export default function ArtifactPage({ params }: PageProps) {
             setError('Please login to view this artifact');
             router.push('/login');
           } else if (response.status === 403) {
-            setError('You don\'t have permission to view this artifact');
+            setError("You don't have permission to view this artifact");
           } else {
             setError('Failed to load artifact');
           }
@@ -87,7 +87,7 @@ export default function ArtifactPage({ params }: PageProps) {
       <div className="flex h-screen items-center justify-center">
         <div className="text-center">
           <h1 className="text-2xl font-bold mb-2">Artifact Not Found</h1>
-          <p className="text-muted-foreground mb-4">This artifact doesn't exist.</p>
+          <p className="text-muted-foreground mb-4">This artifact doesn&apos;t exist.</p>
           <Link href="/">
             <Button variant="outline">Back to Chat</Button>
           </Link>
@@ -107,7 +107,7 @@ export default function ArtifactPage({ params }: PageProps) {
         <div className="text-center">
           <h1 className="text-2xl font-bold mb-2">Unknown Artifact Type</h1>
           <p className="text-muted-foreground mb-4">
-            This artifact type "{document.kind}" is not supported.
+            This artifact type &quot;{document.kind}&quot; is not supported.
           </p>
           <Link href="/">
             <Button variant="outline">Back to Chat</Button>
@@ -154,7 +154,7 @@ export default function ArtifactPage({ params }: PageProps) {
           isInline={false}
           getDocumentContentById={() => document.content || ''}
           isLoading={false}
-          metadata={document.kind === 'text' ? { suggestions: [] } : {}}
+          metadata={document.kind === 'text' ? { suggestions: [] } : document.kind === 'image' ? {} : document.kind === 'video' ? {} : {}}
           setMetadata={() => {}}
         />
       </div>
