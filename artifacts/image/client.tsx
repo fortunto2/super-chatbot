@@ -19,13 +19,31 @@ const saveArtifactToDatabase = async (id: string | undefined, title: string, con
   try {
     console.log('💾 Saving updated artifact to database:', id);
     
+    // AICODE-FIX: Extract readable title from content if title is JSON
+    let readableTitle = title;
+    try {
+      // Check if title is JSON (starts with { and ends with })
+      if (title.startsWith('{') && title.endsWith('}')) {
+        const titleParams = JSON.parse(title);
+        // Use prompt as readable title
+        readableTitle = titleParams.prompt || 'AI Generated Image';
+      }
+    } catch (e) {
+      // If not JSON or parse fails, keep original title
+    }
+    
+    // AICODE-NOTE: Truncate title to 255 characters for database storage
+    if (readableTitle.length > 255) {
+      readableTitle = readableTitle.substring(0, 252) + '...';
+    }
+    
     const response = await fetch(`/api/document?id=${encodeURIComponent(id)}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        title,
+        title: readableTitle,
         content,
         kind: 'image'
       }),
@@ -325,16 +343,29 @@ const ImageArtifactWrapper = memo(function ImageArtifactWrapper(props: any) {
 
   // Memoize settings to prevent recreating object on every render
   const defaultSettings = useMemo(() => {
-    if (!parsedContent?.settings) return undefined;
+    // Support both old format (with settings object) and new format (flat structure)
+    if (parsedContent?.settings) {
+      // Old format with nested settings
+      return {
+        resolution: parsedContent.settings.resolution,
+        style: parsedContent.settings.style,
+        shotSize: parsedContent.settings.shotSize,
+        model: parsedContent.settings.model,
+        seed: parsedContent.settings.seed,
+      };
+    } else if (parsedContent?.style || parsedContent?.resolution) {
+      // New format with flat structure
+      return {
+        resolution: parsedContent.resolution,
+        style: parsedContent.style,
+        shotSize: parsedContent.shotSize,
+        model: parsedContent.model,
+        seed: parsedContent.seed,
+      };
+    }
     
-    return {
-      resolution: parsedContent.settings.resolution,
-      style: parsedContent.settings.style,
-      shotSize: parsedContent.settings.shotSize,
-      model: parsedContent.settings.model,
-      seed: parsedContent.settings.seed,
-    };
-  }, [parsedContent?.settings]);
+    return undefined;
+  }, [parsedContent?.settings, parsedContent?.style, parsedContent?.resolution]);
 
   // Memoize ImageEditor props to prevent unnecessary rerenders
   const imageEditorProps = useMemo(() => ({
@@ -348,6 +379,7 @@ const ImageArtifactWrapper = memo(function ImageArtifactWrapper(props: any) {
     setMessages: otherProps.setMessages,
     initialState,
     setArtifact,
+    parsedContent,
   }), [
     parsedContent?.projectId,
     otherProps.availableResolutions,
@@ -359,6 +391,7 @@ const ImageArtifactWrapper = memo(function ImageArtifactWrapper(props: any) {
     defaultSettings,
     initialState,
     setArtifact,
+    parsedContent,
   ]);
 
   // Handle different content types

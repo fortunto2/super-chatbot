@@ -1,5 +1,10 @@
 # Image Generation (text-to-image)
 
+## Recent Updates
+
+- **January 15, 2025**: [Optimized artifact content structure](artifact-content-structure.md) - Reduced storage by 80%
+- **January 15, 2025**: [Phase 1 Optimization](../../maintenance/changelog/optimize-image-artifact-content-phase1.md) - Removed redundant data from artifacts
+
 ## Overview
 
 Image generation в проекте реализована через современную архитектуру с использованием паттерна "стратегия" (strategy pattern). Поддерживается только режим text-to-image (генерация по текстовому prompt).

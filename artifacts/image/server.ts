@@ -87,35 +87,58 @@ export const imageDocumentHandler = createDocumentHandler<'image'>({
         batchSize
       });
 
+      // AICODE-DEBUG: Create API payload for debugging
+      const apiPayload = {
+        config: {
+          prompt,
+          negative_prompt: negativePrompt || '',
+          width: resolution.width,
+          height: resolution.height,
+          steps: 30,
+          shot_size: shotSize.id,
+          seed: seed || Math.floor(Math.random() * 1000000000000),
+          generation_config_name: model.name || model.id,
+          batch_size: Math.min(Math.max(batchSize || 1, 1), 3),
+          style_name: style.id,
+          references: [],
+          entity_ids: []
+        }
+      };
+
       if (!result.success) {
         draftContent = JSON.stringify({
           status: 'failed',
           error: result.error,
-          prompt: prompt
+          prompt: prompt,
+          apiPayload // Include API payload for debugging
         });
         return draftContent;
       }
 
-      // Формируем content с project info и доступными опциями для UI
+      // Формируем content только с выбранными параметрами (без available опций для оптимизации)
       draftContent = JSON.stringify({
         status: 'pending',
         projectId: result.projectId || chatId,
         requestId: result.requestId,
         fileId: result.fileId,
         prompt: prompt,
-        settings: {
-          style,
-          resolution,
-          model,
-          shotSize,
-          availableResolutions: RESOLUTIONS,
-          availableStyles,
-          availableShotSizes: SHOT_SIZES,
-          availableModels: availableModels,
-        },
+        // Store only selected values, not all available options
+        style,
+        resolution,
+        model,
+        shotSize,
+        negativePrompt,
+        seed,
+        batchSize,
+        // Debug info
+        apiPayload, // AICODE-DEBUG: Include full API payload
         timestamp: Date.now(),
         message: result.message || 'Image generation started, connecting to WebSocket...'
       });
+      
+      // AICODE-DEBUG: Log to verify apiPayload is included
+      console.log('🎨 Server: draftContent includes apiPayload:', !!JSON.parse(draftContent).apiPayload);
+      console.log('🎨 Server: apiPayload sample:', JSON.parse(draftContent).apiPayload);
     } catch (error: any) {
       console.error('🎨 ❌ IMAGE GENERATION ERROR:', error);
       draftContent = JSON.stringify({
@@ -180,16 +203,14 @@ export const imageDocumentHandler = createDocumentHandler<'image'>({
         requestId: result.requestId,
         fileId: result.fileId,
         prompt: prompt,
-        settings: {
-          style,
-          resolution,
-          model,
-          shotSize,
-          availableResolutions: RESOLUTIONS,
-          availableStyles: [],
-          availableShotSizes: SHOT_SIZES,
-          availableModels: [],
-        },
+        // Store only selected values, not all available options
+        style,
+        resolution,
+        model,
+        shotSize,
+        negativePrompt,
+        seed,
+        batchSize,
         timestamp: Date.now(),
         message: result.message || 'Image generation started, connecting to WebSocket...'
       });
