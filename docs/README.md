@@ -71,6 +71,17 @@ See: [Migration Completion](./maintenance/changelog/production-migration-complet
 
 ## 🚀 Recent Major Updates
 
+### Artifact Share Links (2025-01-15)
+
+- **Direct sharing capability** for all artifact types (image, text, video, spreadsheet)
+- **Standalone artifact viewer** at `/artifact/[id]` route for shared links
+- **Share button integration** in artifact action bars for easy link copying
+- **Secure access control** with authentication checks
+- **Consistent display** using existing artifact components
+- **Simple navigation** with "Back to Chat" functionality
+
+See: [Artifact Share Links Implementation](./maintenance/changelog/artifact-share-links.md)
+
 ### Enhanced Textarea with Unlimited Prompts (2025-01-28)
 
 - **Removed all prompt length limitations** (was 2000 characters, now unlimited)

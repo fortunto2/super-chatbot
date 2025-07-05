@@ -9,6 +9,7 @@ import {
   PenIcon,
   RedoIcon,
   UndoIcon,
+  ShareIcon,
 } from '@/components/icons';
 import type { Suggestion } from '@/lib/db/schema';
 import { toast } from 'sonner';
@@ -147,6 +148,20 @@ export const textArtifact = new Artifact<'text', TextArtifactMetadata>({
       onClick: ({ content }) => {
         navigator.clipboard.writeText(content);
         toast.success('Copied to clipboard!');
+      },
+    },
+    {
+      icon: <ShareIcon size={18} />,
+      description: 'Copy artifact link',
+      onClick: (context) => {
+        const documentId = (context as any).documentId;
+        if (documentId && documentId !== 'init') {
+          const shareUrl = `${window.location.origin}/artifact/${documentId}`;
+          navigator.clipboard.writeText(shareUrl);
+          toast.success('Artifact link copied to clipboard!');
+        } else {
+          toast.error('Unable to generate share link - artifact not saved yet');
+        }
       },
     },
   ],

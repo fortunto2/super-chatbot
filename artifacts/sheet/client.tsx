@@ -5,6 +5,7 @@ import {
   RedoIcon,
   SparklesIcon,
   UndoIcon,
+  ShareIcon,
 } from '@/components/icons';
 import { SpreadsheetEditor } from '@/components/sheet-editor';
 import { parse, unparse } from 'papaparse';
@@ -86,6 +87,20 @@ export const sheetArtifact = new Artifact<'sheet', Metadata>({
 
         navigator.clipboard.writeText(cleanedCsv);
         toast.success('Copied csv to clipboard!');
+      },
+    },
+    {
+      icon: <ShareIcon size={18} />,
+      description: 'Copy artifact link',
+      onClick: (context) => {
+        const documentId = (context as any).documentId;
+        if (documentId && documentId !== 'init') {
+          const shareUrl = `${window.location.origin}/artifact/${documentId}`;
+          navigator.clipboard.writeText(shareUrl);
+          toast.success('Artifact link copied to clipboard!');
+        } else {
+          toast.error('Unable to generate share link - artifact not saved yet');
+        }
       },
     },
   ],

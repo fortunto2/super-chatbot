@@ -1,5 +1,5 @@
 import { Artifact } from '@/components/create-artifact';
-import { CopyIcon, } from '@/components/icons';
+import { CopyIcon, ShareIcon, UndoIcon, RedoIcon } from '@/components/icons';
 import { VideoEditor } from '@/components/video-editor';
 import { toast } from 'sonner';
 import { memo, useMemo, useEffect } from 'react';
@@ -349,7 +349,73 @@ export const videoArtifact = new Artifact({
   kind: 'video',
   description: 'Useful for video generation with real-time progress tracking',
   content: ArtifactContentVideo,
-  actions: [],
+  actions: [
+    {
+      icon: <UndoIcon size={18} />,
+      description: 'View Previous version',
+      onClick: ({ handleVersionChange }) => {
+        handleVersionChange('prev');
+      },
+      isDisabled: ({ currentVersionIndex }) => {
+        if (currentVersionIndex === 0) {
+          return true;
+        }
+        return false;
+      },
+    },
+    {
+      icon: <RedoIcon size={18} />,
+      description: 'View Next version',
+      onClick: ({ handleVersionChange }) => {
+        handleVersionChange('next');
+      },
+      isDisabled: ({ isCurrentVersion }) => {
+        if (isCurrentVersion) {
+          return true;
+        }
+        return false;
+      },
+    },
+    {
+      icon: <CopyIcon size={18} />,
+      description: 'Copy video URL',
+      onClick: ({ content }) => {
+        try {
+          const parsedContent = JSON.parse(content);
+          if (parsedContent.status === 'completed' && parsedContent.videoUrl) {
+            navigator.clipboard.writeText(parsedContent.videoUrl);
+            toast.success('Video URL copied to clipboard!');
+          } else {
+            toast.error('Video is not ready yet');
+          }
+        } catch {
+          toast.error('Unable to copy video URL');
+        }
+      },
+      isDisabled: ({ content }) => {
+        try {
+          const parsedContent = JSON.parse(content);
+          return parsedContent.status !== 'completed';
+        } catch {
+          return true;
+        }
+      },
+    },
+    {
+      icon: <ShareIcon size={18} />,
+      description: 'Copy artifact link',
+      onClick: (context) => {
+        const documentId = (context as any).documentId;
+        if (documentId && documentId !== 'init') {
+          const shareUrl = `${window.location.origin}/artifact/${documentId}`;
+          navigator.clipboard.writeText(shareUrl);
+          toast.success('Artifact link copied to clipboard!');
+        } else {
+          toast.error('Unable to generate share link - artifact not saved yet');
+        }
+      },
+    },
+  ],
   toolbar: [],
   onStreamPart: ({ streamPart, setArtifact }) => {
    
