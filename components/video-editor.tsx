@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { CopyIcon } from '@/components/icons';
+import { DebugParameters } from '@/components/debug-parameters';
 import { toast } from 'sonner';
 import type { UseChatHelpers } from '@ai-sdk/react';
 
@@ -39,6 +40,7 @@ interface VideoEditorProps {
   availableModels?: any[];
   availableFrameRates?: any[];
   defaultSettings?: any;
+  parsedContent?: any;
 }
 
 function VideoSkeleton() {
@@ -105,12 +107,14 @@ function VideoDisplay({
   videoUrl, 
   prompt, 
   onCopyUrl, 
-  onGenerateNew
+  onGenerateNew,
+  apiPayload
 }: {
   videoUrl: string;
   prompt?: string;
   onCopyUrl: () => void;
   onGenerateNew: () => void;
+  apiPayload?: any;
 }) {
   return (
     <div className="space-y-4 px-4">
@@ -142,6 +146,9 @@ function VideoDisplay({
           &ldquo;{prompt}&rdquo;
         </div>
       )}
+      
+      {/* Debug Parameters Display */}
+      <DebugParameters data={apiPayload} />
     </div>
   );
 }
@@ -168,7 +175,8 @@ export function VideoEditor({
   availableShotSizes = [],
   availableModels = [],
   availableFrameRates = [],
-  defaultSettings
+  defaultSettings,
+  parsedContent
 }: VideoEditorProps) {
   const params = useParams();
   const chatId = propChatId || (params?.id as string);
@@ -236,6 +244,7 @@ export function VideoEditor({
         prompt={prompt}
         onCopyUrl={handleCopyUrl}
         onGenerateNew={handleGenerateNew}
+        apiPayload={parsedContent}
       />
     );
   }

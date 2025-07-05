@@ -46,6 +46,7 @@ See: [Migration Completion](./maintenance/changelog/production-migration-complet
 - [Unified Tools Navigation System](./development/unified-tools-navigation-system.md) - Centralized tool configuration and navigation
 - [API Architecture](./architecture/api-architecture.md) - Backend API design and patterns
 - [Implementation Plans](./development/implementation-plans/) - Structured development planning
+- [DebugParameters Component](./maintenance/changelog/debug-parameters-component.md) - Reusable debug display
 
 ### AI Capabilities
 

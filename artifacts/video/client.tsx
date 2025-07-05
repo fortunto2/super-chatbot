@@ -224,6 +224,7 @@ const VideoArtifactWrapper = memo(function VideoArtifactWrapper(props: any) {
     setMessages: otherProps.setMessages,
     initialState,
     setArtifact,
+    parsedContent,
   }), [
     parsedContent?.fileId,
     otherProps.chatId,
@@ -237,6 +238,7 @@ const VideoArtifactWrapper = memo(function VideoArtifactWrapper(props: any) {
     defaultSettings,
     initialState,
     setArtifact,
+    parsedContent,
   ]);
 
   // Handle different content types
