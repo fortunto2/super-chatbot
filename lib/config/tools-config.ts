@@ -5,9 +5,9 @@ export interface ToolConfig {
   name: string;
   description: string;
   shortDescription?: string;
-  iconName: 'image' | 'video' | 'wand' | 'sparkles' | 'zap' | 'play' | 'languages';
+  iconName: 'image' | 'video' | 'wand' | 'sparkles' | 'zap' | 'play' | 'languages' | 'gallery';
   href: string;
-  category: 'generation' | 'enhancement' | 'utility';
+  category: 'generation' | 'enhancement' | 'utility' | 'gallery';
   features: {
     iconName: 'sparkles' | 'zap' | 'play' | 'languages';
     label: string;
@@ -86,6 +86,23 @@ export const TOOLS_CONFIG: ToolConfig[] = [
     hoverColor: 'green-600',
     bgColor: 'green-100',
     hoverBgColor: 'green-200'
+  },
+  {
+    id: 'gallery',
+    name: 'Artifact Gallery',
+    description: 'Browse and discover AI-generated images, videos, text documents, and spreadsheets. View your own creations or explore public artifacts from the community.',
+    shortDescription: 'Artifacts',
+    iconName: 'image',
+    href: '/gallery',
+    category: 'gallery',
+    features: [
+      { iconName: 'sparkles', label: 'All Artifact Types' },
+      { iconName: 'zap', label: 'Advanced Search & Filters' }
+    ],
+    primaryColor: 'indigo-600',
+    hoverColor: 'indigo-600',
+    bgColor: 'indigo-100',
+    hoverBgColor: 'indigo-200'
   }
 ];
 

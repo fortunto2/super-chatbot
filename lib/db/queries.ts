@@ -10,6 +10,9 @@ import {
   gte,
   inArray,
   lt,
+  or,
+  sql,
+  ilike,
   type SQL,
 } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/postgres-js';
@@ -691,6 +694,223 @@ export async function getChatImageArtifacts({
     return imageArtifacts;
   } catch (error) {
     console.error('Failed to get chat image artifacts from database');
+    throw error;
+  }
+}
+
+// AICODE-NOTE: New document gallery query functions
+export async function getDocuments({
+  userId,
+  kind,
+  model,
+  visibility = 'all',
+  search,
+  dateFrom,
+  dateTo,
+  sortBy = 'newest',
+  page = 1,
+  limit = 20,
+}: {
+  userId?: string;
+  kind?: ArtifactKind;
+  model?: string;
+  visibility?: 'mine' | 'public' | 'all';
+  search?: string;
+  dateFrom?: Date;
+  dateTo?: Date;
+  sortBy?: 'newest' | 'oldest' | 'popular';
+  page?: number;
+  limit?: number;
+}) {
+  try {
+    const offset = (page - 1) * limit;
+    const conditions: SQL[] = [];
+
+    // Visibility filter
+    if (visibility === 'mine' && userId) {
+      conditions.push(eq(document.userId, userId));
+    } else if (visibility === 'public') {
+      conditions.push(eq(document.visibility, 'public'));
+    } else if (visibility === 'all' && userId) {
+      const visibilityCondition = or(
+        eq(document.userId, userId),
+        eq(document.visibility, 'public')
+      );
+      if (visibilityCondition) {
+        conditions.push(visibilityCondition);
+      }
+    }
+
+    // Kind filter
+    if (kind) {
+      conditions.push(eq(document.kind, kind));
+    }
+
+    // Model filter
+    if (model) {
+      conditions.push(eq(document.model, model));
+    }
+
+    // Date range filters
+    if (dateFrom) {
+      conditions.push(gte(document.createdAt, dateFrom));
+    }
+    if (dateTo) {
+      conditions.push(lt(document.createdAt, dateTo));
+    }
+
+    // Search filter - search in title and tags
+    if (search) {
+      const searchCondition = or(
+        ilike(document.title, `%${search}%`),
+        sql`${document.tags}::text LIKE '%${search}%'`
+      );
+      if (searchCondition) {
+        conditions.push(searchCondition);
+      }
+    }
+
+    // Build query
+    const baseQuery = db
+      .select({
+        id: document.id,
+        title: document.title,
+        kind: document.kind,
+        thumbnailUrl: document.thumbnailUrl,
+        createdAt: document.createdAt,
+        userId: document.userId,
+        model: document.model,
+        tags: document.tags,
+        viewCount: document.viewCount,
+        visibility: document.visibility,
+        metadata: document.metadata,
+        username: user.email,
+      })
+      .from(document)
+      .leftJoin(user, eq(document.userId, user.id));
+
+    const queryWithWhere = conditions.length > 0 
+      ? baseQuery.where(and(...conditions))
+      : baseQuery;
+
+    // Apply sorting
+    const queryWithSort = sortBy === 'newest' 
+      ? queryWithWhere.orderBy(desc(document.createdAt))
+      : sortBy === 'oldest'
+      ? queryWithWhere.orderBy(asc(document.createdAt))
+      : sortBy === 'popular'
+      ? queryWithWhere.orderBy(desc(document.viewCount))
+      : queryWithWhere.orderBy(desc(document.createdAt));
+
+    // Get total count for pagination
+    const countQuery = db
+      .select({ count: count() })
+      .from(document);
+    
+    if (conditions.length > 0) {
+      countQuery.where(and(...conditions));
+    }
+
+    const [{ count: total }] = await countQuery;
+
+    // Get documents with pagination
+    const documents = await queryWithSort.limit(limit).offset(offset);
+
+    return {
+      documents,
+      pagination: {
+        page,
+        limit,
+        total,
+        hasMore: offset + documents.length < total,
+      },
+    };
+  } catch (error) {
+    console.error('Failed to get documents from database');
+    throw error;
+  }
+}
+
+export async function getPublicDocuments({
+  kind,
+  model,
+  search,
+  dateFrom,
+  dateTo,
+  sortBy = 'newest',
+  page = 1,
+  limit = 20,
+}: {
+  kind?: ArtifactKind;
+  model?: string;
+  search?: string;
+  dateFrom?: Date;
+  dateTo?: Date;
+  sortBy?: 'newest' | 'oldest' | 'popular';
+  page?: number;
+  limit?: number;
+}) {
+  return getDocuments({
+    visibility: 'public',
+    kind,
+    model,
+    search,
+    dateFrom,
+    dateTo,
+    sortBy,
+    page,
+    limit,
+  });
+}
+
+export async function incrementDocumentViewCount({ id }: { id: string }) {
+  try {
+    return await db
+      .update(document)
+      .set({ viewCount: sql`${document.viewCount} + 1` })
+      .where(eq(document.id, id));
+  } catch (error) {
+    console.error('Failed to increment document view count');
+    throw error;
+  }
+}
+
+export async function updateDocumentVisibility({
+  id,
+  visibility,
+  userId,
+}: {
+  id: string;
+  visibility: 'public' | 'private';
+  userId: string;
+}) {
+  try {
+    return await db
+      .update(document)
+      .set({ visibility })
+      .where(and(eq(document.id, id), eq(document.userId, userId)));
+  } catch (error) {
+    console.error('Failed to update document visibility');
+    throw error;
+  }
+}
+
+export async function updateDocumentMetadata({
+  id,
+  metadata,
+  userId,
+}: {
+  id: string;
+  metadata: Record<string, any>;
+  userId: string;
+}) {
+  try {
+    return await db
+      .update(document)
+      .set({ metadata })
+      .where(and(eq(document.id, id), eq(document.userId, userId)));
+  } catch (error) {
+    console.error('Failed to update document metadata');
     throw error;
   }
 }

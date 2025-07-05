@@ -1,6 +1,6 @@
 import { ImageIcon, VideoIcon, Wand2, Sparkles, Zap, Play, Languages } from 'lucide-react';
 
-export type IconName = 'image' | 'video' | 'wand' | 'sparkles' | 'zap' | 'play' | 'languages';
+export type IconName = 'image' | 'video' | 'wand' | 'sparkles' | 'zap' | 'play' | 'languages' | 'gallery';
 
 interface ToolIconProps {
   name: IconName;
@@ -23,6 +23,8 @@ export function ToolIcon({ name, className = "size-4" }: ToolIconProps) {
       return <Play className={className} />;
     case 'languages':
       return <Languages className={className} />;
+    case 'gallery':
+      return <ImageIcon className={className} />;
     default:
       return <Sparkles className={className} />;
   }
