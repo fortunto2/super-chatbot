@@ -93,6 +93,12 @@ export function DocumentPreview({
           id: artifact.documentId,
           createdAt: new Date(),
           userId: 'noop',
+          visibility: 'private' as const,
+          model: null,
+          tags: null,
+          viewCount: 0,
+          thumbnailUrl: null,
+          metadata: null,
         }
       : null;
 
