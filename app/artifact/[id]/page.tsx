@@ -118,7 +118,7 @@ export default function ArtifactPage({ params }: PageProps) {
   }
 
   // Render the artifact content using the existing component
-  const ArtifactContent = artifactDefinition.content;
+  const ArtifactContent = artifactDefinition.content as any;
 
   return (
     <div className="min-h-screen bg-background">
@@ -154,7 +154,7 @@ export default function ArtifactPage({ params }: PageProps) {
           isInline={false}
           getDocumentContentById={() => document.content || ''}
           isLoading={false}
-          metadata={document.kind === 'text' ? { suggestions: [] } : document.kind === 'image' ? {} : document.kind === 'video' ? {} : {}}
+          metadata={document.kind === 'text' ? { suggestions: [] } : {}}
           setMetadata={() => {}}
         />
       </div>
