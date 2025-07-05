@@ -82,6 +82,16 @@ See: [Migration Completion](./maintenance/changelog/production-migration-complet
 
 See: [Artifact Share Links Implementation](./maintenance/changelog/artifact-share-links.md)
 
+### Image Artifact Debug Parameters (2025-01-15)
+
+- **Debug parameters display** in collapsible section for image artifacts
+- **All generation parameters visible** including prompt, model, resolution, style, etc.
+- **Copy parameters as JSON** for easy debugging and sharing
+- **Clean UI design** with debug info hidden by default
+- **Improved Generate New Image button** - always visible at the bottom
+
+See: [Debug Parameters Display](./maintenance/changelog/image-artifact-debug-parameters.md)
+
 ### Enhanced Textarea with Unlimited Prompts (2025-01-28)
 
 - **Removed all prompt length limitations** (was 2000 characters, now unlimited)
