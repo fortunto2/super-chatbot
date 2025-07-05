@@ -42,16 +42,18 @@ Implemented Phase 1 optimization for image artifact content structure, reducing 
 
 ### 2. Client-side Changes (artifacts/image/client.tsx)
 
-Added backward compatibility to support both old and new content formats:
+Simplified to use only the new flat structure format:
 
 ```typescript
-// Support both old format (with settings object) and new format (flat structure)
-if (parsedContent?.settings) {
-  // Old format with nested settings
-  return parsedContent.settings;
-} else if (parsedContent?.style || parsedContent?.resolution) {
-  // New format with flat structure
-  return parsedContent;
+// Use flat structure directly from parsedContent
+if (parsedContent?.style || parsedContent?.resolution) {
+  return {
+    resolution: parsedContent.resolution,
+    style: parsedContent.style,
+    shotSize: parsedContent.shotSize,
+    model: parsedContent.model,
+    seed: parsedContent.seed,
+  };
 }
 ```
 
@@ -66,7 +68,7 @@ if (parsedContent?.settings) {
 1. **Storage Reduction**: Content size reduced from ~20KB to ~4KB (80% reduction)
 2. **Cleaner Structure**: No more redundant available options in every artifact
 3. **Better Performance**: Faster loading and parsing of artifacts
-4. **Backward Compatibility**: Old artifacts continue to work without issues
+4. **Simpler Code**: No need to support multiple formats
 5. **Debug Capability**: API payload still available when needed
 
 ## Technical Details
@@ -86,10 +88,9 @@ if (parsedContent?.settings) {
 
 ## Migration Notes
 
-- No migration needed for existing artifacts
-- Both old and new formats are supported
-- New artifacts automatically use optimized format
-- Options are now loaded on-demand when editing
+- No migration needed (no existing artifacts stored)
+- Only new optimized format is supported
+- Options will be loaded on-demand when editing (future feature)
 
 ## Testing
 

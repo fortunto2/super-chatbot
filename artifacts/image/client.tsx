@@ -343,18 +343,8 @@ const ImageArtifactWrapper = memo(function ImageArtifactWrapper(props: any) {
 
   // Memoize settings to prevent recreating object on every render
   const defaultSettings = useMemo(() => {
-    // Support both old format (with settings object) and new format (flat structure)
-    if (parsedContent?.settings) {
-      // Old format with nested settings
-      return {
-        resolution: parsedContent.settings.resolution,
-        style: parsedContent.settings.style,
-        shotSize: parsedContent.settings.shotSize,
-        model: parsedContent.settings.model,
-        seed: parsedContent.settings.seed,
-      };
-    } else if (parsedContent?.style || parsedContent?.resolution) {
-      // New format with flat structure
+    // Use flat structure directly from parsedContent
+    if (parsedContent?.style || parsedContent?.resolution) {
       return {
         resolution: parsedContent.resolution,
         style: parsedContent.style,
@@ -365,7 +355,7 @@ const ImageArtifactWrapper = memo(function ImageArtifactWrapper(props: any) {
     }
     
     return undefined;
-  }, [parsedContent?.settings, parsedContent?.style, parsedContent?.resolution]);
+  }, [parsedContent?.style, parsedContent?.resolution]);
 
   // Memoize ImageEditor props to prevent unnecessary rerenders
   const imageEditorProps = useMemo(() => ({

@@ -127,5 +127,10 @@ Potential optimizations could include:
 2. Using PostgreSQL JSON type for better querying
 3. Compressing the content before storage
 4. Loading options on-demand for rarely used features
+5. Moving debug payload to separate field or metadata
 
-However, the current approach prioritizes developer experience and debugging capabilities over minor storage optimizations. 
+However, the current approach prioritizes developer experience and debugging capabilities over minor storage optimizations.
+
+## Note on Backward Compatibility
+
+Since no artifacts are currently stored in production, we don't support the old format with nested `settings` object. The system only uses the new flat structure. 
