@@ -156,7 +156,7 @@ function ImageDisplay({
         </div>
       )}
       
-      {/* AICODE-DEBUG: API Config Display instead of Generate New button */}
+      {/* Debug Parameters Display */}
       {apiPayload && (
         <div className="mt-4 border-t pt-4">
           <button
@@ -166,7 +166,7 @@ function ImageDisplay({
             <span className={`transform transition-transform ${showApiConfig ? 'rotate-90' : ''}`}>
               ▶
             </span>
-            Debug: API Configuration
+            Debug: Generation Parameters
           </button>
           
           {showApiConfig && (
@@ -180,17 +180,11 @@ function ImageDisplay({
                 <button
                   onClick={() => {
                     navigator.clipboard.writeText(JSON.stringify(apiPayload, null, 2));
-                    toast.success('API config copied to clipboard');
+                    toast.success('Parameters copied to clipboard');
                   }}
                   className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
                 >
-                  📋 Copy API Config
-                </button>
-                <button
-                  onClick={onGenerateNew}
-                  className="text-xs text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-300 ml-auto"
-                >
-                  🔄 Generate New Image
+                  📋 Copy Parameters
                 </button>
               </div>
             </div>
@@ -198,18 +192,16 @@ function ImageDisplay({
         </div>
       )}
       
-      {/* Show Generate New button only if no apiPayload */}
-      {!apiPayload && (
-        <div className="flex justify-center pt-4">
-          <Button
-            onClick={onGenerateNew}
-            variant="outline"
-            size="sm"
-          >
-            Generate New Image
-          </Button>
-        </div>
-      )}
+      {/* Generate New button - always show at the bottom */}
+      <div className="flex justify-center pt-4">
+        <Button
+          onClick={onGenerateNew}
+          variant="outline"
+          size="sm"
+        >
+          Generate New Image
+        </Button>
+      </div>
     </div>
   );
 }
@@ -510,7 +502,7 @@ export function ImageEditor({
             prompt={displayPrompt}
             onCopyUrl={handleCopyUrl}
             onGenerateNew={handleGenerateNew}
-            apiPayload={undefined} // Removed to avoid data duplication
+            apiPayload={parsedContent} // Pass parsed content for debug display
           />
         )}
       </CardContent>

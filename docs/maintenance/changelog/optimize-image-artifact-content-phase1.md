@@ -69,7 +69,7 @@ if (parsedContent?.style || parsedContent?.resolution) {
 2. **Cleaner Structure**: No more redundant available options in every artifact
 3. **Better Performance**: Faster loading and parsing of artifacts
 4. **Simpler Code**: No need to support multiple formats
-5. **Debug Capability**: API payload still available when needed
+5. **Debug Capability**: Parameters are displayed in UI via collapsible debug section
 
 ## Technical Details
 
