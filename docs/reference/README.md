@@ -51,4 +51,5 @@ SUPERDUPERAI_TOKEN="your-api-token"
 - [SuperDuperAI API Documentation](https://dev-editor.superduperai.co/openapi.json)
 - [Next.js 15 App Router](https://nextjs.org/docs)
 - [Vercel AI SDK](https://sdk.vercel.ai/)
-- [Drizzle ORM](https://orm.drizzle.team/) 
+- [Drizzle ORM](https://orm.drizzle.team/)
+- Document Gallery available at `/gallery` showing thumbnails for all artifacts

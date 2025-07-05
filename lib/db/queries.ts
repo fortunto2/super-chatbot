@@ -914,3 +914,35 @@ export async function updateDocumentMetadata({
     throw error;
   }
 }
+
+export async function updateDocumentThumbnail({
+  id,
+  userId,
+  thumbnailUrl,
+  model,
+  metadata,
+  tags,
+}: {
+  id: string
+  userId: string
+  thumbnailUrl?: string
+  model?: string
+  metadata?: Record<string, any>
+  tags?: string[]
+}) {
+  try {
+    const updateData: any = {}
+    if (thumbnailUrl !== undefined) updateData.thumbnailUrl = thumbnailUrl
+    if (model !== undefined) updateData.model = model
+    if (metadata !== undefined) updateData.metadata = metadata
+    if (tags !== undefined) updateData.tags = tags
+
+    return await db
+      .update(document)
+      .set(updateData)
+      .where(and(eq(document.id, id), eq(document.userId, userId)))
+  } catch (error) {
+    console.error('Failed to update document thumbnail')
+    throw error
+  }
+}

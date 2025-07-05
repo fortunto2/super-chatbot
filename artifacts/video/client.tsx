@@ -159,6 +159,14 @@ const VideoArtifactWrapper = memo(function VideoArtifactWrapper(props: any) {
           });
         }
 
+        if (otherProps.documentId) {
+          fetch(`/api/document?id=${otherProps.documentId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ thumbnailUrl, metadata: { videoUrl } }),
+          }).catch((err) => console.error('Failed to update thumbnail', err));
+        }
+
         // Auto-save video to chat history if we have required data
         if (otherProps.setMessages && otherProps.chatId && parsedContent?.prompt) {
           console.log('🎬 Video completed via SSE, auto-saving to chat...');

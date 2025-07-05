@@ -34,7 +34,7 @@ const saveArtifactToDatabase = async (id: string | undefined, title: string, con
     
     // AICODE-NOTE: Truncate title to 255 characters for database storage
     if (readableTitle.length > 255) {
-      readableTitle = readableTitle.substring(0, 252) + '...';
+      readableTitle = `${readableTitle.substring(0, 252)}...`;
     }
     
     const response = await fetch(`/api/document?id=${encodeURIComponent(id)}`, {
@@ -147,6 +147,14 @@ const ImageArtifactWrapper = memo(function ImageArtifactWrapper(props: any) {
               };
               
               saveArtifactToDatabase(prev.documentId || prev.id, prev.title, JSON.stringify(updatedContent));
+
+              if (prev.documentId) {
+                fetch(`/api/document?id=${prev.documentId}`, {
+                  method: 'PATCH',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ thumbnailUrl: result.data.url }),
+                }).catch((err) => console.error('Failed to update thumbnail', err));
+              }
               
               return {
                 ...prev,
@@ -196,6 +204,14 @@ const ImageArtifactWrapper = memo(function ImageArtifactWrapper(props: any) {
               
               // Save updated content to database (use documentId which is the actual ID)
               saveArtifactToDatabase(prev.documentId || prev.id, prev.title, JSON.stringify(updatedContent));
+
+              if (prev.documentId) {
+                fetch(`/api/document?id=${prev.documentId}`, {
+                  method: 'PATCH',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ thumbnailUrl: fileObject.url }),
+                }).catch((err) => console.error('Failed to update thumbnail', err));
+              }
               
               return {
                 ...prev,
@@ -230,6 +246,14 @@ const ImageArtifactWrapper = memo(function ImageArtifactWrapper(props: any) {
                     
                     // Save updated content to database (use documentId which is the actual ID)
                     saveArtifactToDatabase(prev.documentId || prev.id, prev.title, JSON.stringify(updatedContent));
+
+                    if (prev.documentId) {
+                      fetch(`/api/document?id=${prev.documentId}`, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ thumbnailUrl: fileResponse.url }),
+                      }).catch((err) => console.error('Failed to update thumbnail', err));
+                    }
                     
                     return {
                       ...prev,
@@ -288,6 +312,14 @@ const ImageArtifactWrapper = memo(function ImageArtifactWrapper(props: any) {
             
             // Save updated content to database (use documentId which is the actual ID)
             saveArtifactToDatabase(prev.documentId || prev.id, prev.title, JSON.stringify(updatedContent));
+
+            if (prev.documentId) {
+              fetch(`/api/document?id=${prev.documentId}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ thumbnailUrl: imageUrl }),
+              }).catch((err) => console.error('Failed to update thumbnail', err));
+            }
             
             return {
               ...prev,
