@@ -52,5 +52,5 @@ SUPERDUPERAI_TOKEN="your-api-token"
 - [Next.js 15 App Router](https://nextjs.org/docs)
 - [Vercel AI SDK](https://sdk.vercel.ai/)
 - [Drizzle ORM](https://orm.drizzle.team/)
-- Document Gallery available at `/gallery` showing thumbnails for all artifacts
+- Document Gallery available at `/gallery` showing thumbnails for all artifacts using API `thumbnail_url` when provided
 

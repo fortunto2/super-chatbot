@@ -132,7 +132,7 @@ const VideoArtifactWrapper = memo(function VideoArtifactWrapper(props: any) {
       // Handle video completion events
       if (message.type === 'file' && message.object?.url && message.object?.type === 'video') {
         const videoUrl = message.object.url;
-        const thumbnailUrl = message.object.thumbnail_url;
+        const thumbnailUrl = message.object.thumbnail_url || message.object.url;
         
         console.log('🎬 Video completed via SSE:', `${videoUrl.substring(0, 50)}...`);
         

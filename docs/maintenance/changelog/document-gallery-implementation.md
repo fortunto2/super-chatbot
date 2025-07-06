@@ -169,7 +169,7 @@ GET /api/document?list=true&kind=video&sort=popular
 
 ## Known Issues
 
-1. **Thumbnails**: Thumbnails saved automatically when generation completes
+1. **Thumbnails**: API-provided `thumbnail_url` is used when available
 2. **Search**: Basic text search, full-text search planned
 3. **Mobile**: Responsive design works but could be optimized
 
