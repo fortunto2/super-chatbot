@@ -53,3 +53,4 @@ SUPERDUPERAI_TOKEN="your-api-token"
 - [Vercel AI SDK](https://sdk.vercel.ai/)
 - [Drizzle ORM](https://orm.drizzle.team/)
 - Document Gallery available at `/gallery` showing thumbnails for all artifacts
+

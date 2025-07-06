@@ -24,8 +24,10 @@ export async function GET(request: Request) {
     const model = searchParams.get('model') || undefined;
     const visibility = searchParams.get('visibility') as 'mine' | 'public' | 'all' || 'all';
     const search = searchParams.get('search') || undefined;
-    const dateFrom = searchParams.get('dateFrom') ? new Date(searchParams.get('dateFrom')!) : undefined;
-    const dateTo = searchParams.get('dateTo') ? new Date(searchParams.get('dateTo')!) : undefined;
+    const dateFromParam = searchParams.get('dateFrom');
+    const dateToParam = searchParams.get('dateTo');
+    const dateFrom = dateFromParam ? new Date(dateFromParam) : undefined;
+    const dateTo = dateToParam ? new Date(dateToParam) : undefined;
     const sortBy = searchParams.get('sort') as 'newest' | 'oldest' | 'popular' || 'newest';
     const page = Number.parseInt(searchParams.get('page') || '1', 10);
     const limit = Number.parseInt(searchParams.get('limit') || '20', 10);
