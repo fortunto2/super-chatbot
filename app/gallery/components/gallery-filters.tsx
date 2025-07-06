@@ -48,8 +48,8 @@ export function GalleryFilters({
         if (response.ok) {
           const data = await response.json();
           const allModels = [
-            ...data.imageModels.map((m: any) => m.name),
-            ...data.videoModels.map((m: any) => m.name),
+            ...(data.imageModels ?? []).map((m: any) => m.name),
+            ...(data.videoModels ?? []).map((m: any) => m.name),
           ];
           setModels(Array.from(new Set(allModels)));
         }

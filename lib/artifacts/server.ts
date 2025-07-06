@@ -1,4 +1,21 @@
 import { imageDocumentHandler } from '@/artifacts/image/server';
+// Utility: extract thumbnail URL from JSON content string
+function getThumbnailUrl(content: string): string | null {
+  try {
+    const data = JSON.parse(content);
+    if (!data) return null;
+    // Common fields
+    if (typeof data.thumbnailUrl === 'string') return data.thumbnailUrl;
+    if (typeof data.thumbnail_url === 'string') return data.thumbnail_url;
+    // Fallbacks for image/video specific
+    if (typeof data.imageUrl === 'string') return data.imageUrl;
+    if (typeof data.videoUrl === 'string') return data.videoUrl;
+  } catch (_) {
+    // ignore parse errors
+  }
+  return null;
+}
+
 import { sheetDocumentHandler } from '@/artifacts/sheet/server';
 import { textDocumentHandler } from '@/artifacts/text/server';
 import { videoDocumentHandler } from '@/artifacts/video/server';
@@ -96,6 +113,7 @@ export function createDocumentHandler<T extends ArtifactKind>(config: {
           content: draftContent,
           kind: config.kind,
           userId: args.session.user.id,
+          thumbnailUrl: getThumbnailUrl(draftContent),
         });
         
         console.log('📄 Document saved to database with title:', readableTitle);
@@ -130,6 +148,7 @@ export function createDocumentHandler<T extends ArtifactKind>(config: {
           content: draftContent,
           kind: config.kind,
           userId: args.session.user.id,
+          thumbnailUrl: getThumbnailUrl(draftContent),
         });
         
         console.log('📄 Document updated in database');

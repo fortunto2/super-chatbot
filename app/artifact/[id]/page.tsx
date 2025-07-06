@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { artifactDefinitions } from '@/components/artifact';
 import type { Document } from '@/lib/db/schema';
 import { Button } from '@/components/ui/button';
@@ -17,6 +17,9 @@ export default function ArtifactPage({ params }: PageProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const fromChat = searchParams?.get('from') === 'chat';
+  const backHref = fromChat ? '/' : '/gallery';
 
   useEffect(() => {
     const loadDocument = async () => {
@@ -74,8 +77,8 @@ export default function ArtifactPage({ params }: PageProps) {
         <div className="text-center">
           <h1 className="text-2xl font-bold mb-2">Error</h1>
           <p className="text-muted-foreground mb-4">{error}</p>
-          <Link href="/">
-            <Button variant="outline">Back to Chat</Button>
+          <Link href={backHref}>
+            <Button variant="outline">Back</Button>
           </Link>
         </div>
       </div>
@@ -88,8 +91,8 @@ export default function ArtifactPage({ params }: PageProps) {
         <div className="text-center">
           <h1 className="text-2xl font-bold mb-2">Artifact Not Found</h1>
           <p className="text-muted-foreground mb-4">This artifact doesn&apos;t exist.</p>
-          <Link href="/">
-            <Button variant="outline">Back to Chat</Button>
+          <Link href={backHref}>
+            <Button variant="outline">Back</Button>
           </Link>
         </div>
       </div>
@@ -109,8 +112,8 @@ export default function ArtifactPage({ params }: PageProps) {
           <p className="text-muted-foreground mb-4">
             This artifact type &quot;{document.kind}&quot; is not supported.
           </p>
-          <Link href="/">
-            <Button variant="outline">Back to Chat</Button>
+          <Link href={backHref}>
+            <Button variant="outline">Back</Button>
           </Link>
         </div>
       </div>
@@ -124,8 +127,8 @@ export default function ArtifactPage({ params }: PageProps) {
     <div className="min-h-screen bg-background">
       {/* Simple header */}
       <div className="border-b px-4 py-2 flex items-center justify-between">
-        <Link href="/" className="text-sm text-muted-foreground hover:text-foreground">
-          ← Back to Chat
+        <Link href={backHref} className="text-sm text-muted-foreground hover:text-foreground">
+          ← Back
         </Link>
         <Button
           variant="outline"
