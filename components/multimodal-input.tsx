@@ -42,7 +42,6 @@ function PureMultimodalInput({
   setMessages,
   append,
   handleSubmit,
-  handleScriptArtifact, // новый пропс
   className,
   selectedVisibilityType,
 }: {
@@ -57,7 +56,6 @@ function PureMultimodalInput({
   setMessages: UseChatHelpers['setMessages'];
   append: UseChatHelpers['append'];
   handleSubmit: UseChatHelpers['handleSubmit'];
-  handleScriptArtifact: (prompt: string) => void; // новый тип
   className?: string;
   selectedVisibilityType: VisibilityType;
 }) {
@@ -118,34 +116,6 @@ function PureMultimodalInput({
       return;
     }
 
-    // --- Блокировка генерации сценария (как у image/video) ---
-    // Если attachments пусты и явно выбран режим сценария (например, по UI или по props), только тогда вызываем handleScriptArtifact
-    // Если у вас есть selectedMode === 'script', используйте его вместо эвристики
-    const isScriptMode = typeof handleScriptArtifact === 'function' &&
-      attachments.length === 0 &&
-      /сценарий|script|story/i.test(input.trim());
-    if (isScriptMode) {
-      // 1. Добавить пользовательское сообщение
-      setMessages(prev => [
-        ...prev,
-        {
-          id: generateUUID(),
-          role: 'user',
-          content: input.trim(),
-          parts: [{ type: 'text', text: input.trim() }],
-          createdAt: new Date(),
-        }
-      ]);
-      // 2. Генерировать сценарий
-      handleScriptArtifact(input.trim());
-      setInput('');
-      setAttachments([]);
-      setLocalStorageInput('');
-      resetHeight();
-      return;
-    }
-    // --- END ---
-
     window.history.replaceState({}, '', `/chat/${chatId}`);
 
     handleSubmit(undefined, {
@@ -159,7 +129,7 @@ function PureMultimodalInput({
     if (width && width > 768) {
       textareaRef.current?.focus();
     }
-  }, [attachments, handleSubmit, setAttachments, setLocalStorageInput, width, chatId, input, handleScriptArtifact]);
+  }, [attachments, handleSubmit, setAttachments, setLocalStorageInput, width, chatId, input]);
 
   const uploadFile = async (file: File) => {
     const formData = new FormData();

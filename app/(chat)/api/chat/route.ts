@@ -18,6 +18,8 @@ import {
   saveMessages,
   getOrCreateOAuthUser,
   getUser,
+  saveDocument,
+  getDocumentsById,
 } from '@/lib/db/queries';
 import { generateUUID, getTrailingMessageId } from '@/lib/utils';
 import { generateTitleFromUserMessage } from '../../actions';
@@ -107,6 +109,28 @@ function getStreamContext() {
   }
 
   return globalStreamContext;
+}
+
+function isScriptPrompt(prompt: string): boolean {
+  const p = prompt.toLowerCase();
+  // Ключевые слова и фразы для сценариев (расширяем по необходимости)
+  return (
+    /сценар(ий|ия|ию|ием|ии|ий|иию|иием|иии)?/.test(p) ||
+    /script/.test(p) ||
+    /story/.test(p) ||
+    /play/.test(p) ||
+    /пьес[аы]/.test(p) ||
+    /рассказ/.test(p) ||
+    /сюжет/.test(p) ||
+    /инсценировк[аеи]/.test(p) ||
+    /сделай.*сценар/.test(p) ||
+    /напиши.*сценар/.test(p) ||
+    /любой.*сценар/.test(p) ||
+    /generate.*script/.test(p) ||
+    /make.*script/.test(p) ||
+    /write.*script/.test(p) ||
+    /create.*script/.test(p)
+  );
 }
 
 export async function POST(request: Request) {
@@ -449,27 +473,6 @@ export async function POST(request: Request) {
       // Continue execution, as we can still try to get a response without saving the message
     }
 
-    // --- SPECIAL CASE: assistant notification for script (do not trigger LLM, just save) ---
-    if (
-      String(message.role) === 'assistant' &&
-      typeof message.content === 'string' &&
-      message.content.includes('Сценарий будет сгенерирован и появится справа в артефакте')
-    ) {
-      await saveMessages({
-        messages: [
-          {
-            chatId: id,
-            id: message.id,
-            role: 'assistant',
-            parts: message.parts || [],
-            attachments: message.experimental_attachments || [],
-            createdAt: new Date(),
-          },
-        ],
-      });
-      return new Response(JSON.stringify({ ok: true }), { status: 200 });
-    }
-
     // --- SPECIAL CASE: assistant message with only attachment (image/video/script artifact) ---
     if (
       String(message.role) === 'assistant' &&
@@ -498,6 +501,67 @@ export async function POST(request: Request) {
         ],
       });
       return new Response(JSON.stringify({ ok: true }), { status: 200 });
+    }
+
+    // --- SCRIPT GENERATION SPECIAL CASE ---
+    const userPrompt = (message.content || '').trim();
+    if (isScriptPrompt(userPrompt)) {
+      // 1. Генерируем сценарий через API
+      const scriptRes = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/generate/script`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: userPrompt }),
+      });
+      const data = await scriptRes.json();
+      const script = data?.script || '';
+      if (!script) {
+        return new Response(JSON.stringify({ error: 'Script generation failed' }), { status: 500 });
+      }
+      // 2. Создаём документ-сценарий
+      const docId = generateUUID();
+      const userId = session.user.id;
+      const now = new Date();
+      await saveDocument({
+        id: docId,
+        title: userPrompt,
+        kind: 'text',
+        content: script,
+        userId,
+      });
+      // 3. Проверяем, что документ реально создан
+      const docs = await getDocumentsById({ id: docId });
+      const doc = Array.isArray(docs) ? docs[0] : docs;
+      if (!doc || !doc.id) {
+        return new Response(JSON.stringify({ error: 'Failed to create script document' }), { status: 500 });
+      }
+      // 4. Только теперь добавляем ассистентское сообщение с attachment
+      const assistantMessageId = generateUUID();
+      const assistantAttachmentMessage = {
+        id: assistantMessageId,
+        chatId: id,
+        role: 'assistant',
+        parts: [],
+        attachments: [
+          {
+            url: `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/document?id=${docId}`,
+            name: userPrompt || 'Scenario.md',
+            contentType: 'text/markdown',
+            documentId: docId,
+          },
+        ],
+        createdAt: now,
+      };
+      await saveMessages({ messages: [assistantAttachmentMessage] });
+      // Возвращаем поток, как для image/video
+      const stream = createDataStream({
+        execute: (buffer) => {
+          buffer.writeData({
+            type: 'append-message',
+            message: JSON.stringify(assistantAttachmentMessage),
+          });
+        },
+      });
+      return new Response(stream);
     }
 
     const streamId = generateUUID();
