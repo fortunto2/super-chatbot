@@ -159,15 +159,6 @@ function ImageDisplay({
       <DebugParameters data={apiPayload} />
       
       {/* Generate New button - always show at the bottom */}
-      <div className="flex justify-center pt-4">
-        <Button
-          onClick={onGenerateNew}
-          variant="outline"
-          size="sm"
-        >
-          Generate New Image
-        </Button>
-      </div>
     </div>
   );
 }

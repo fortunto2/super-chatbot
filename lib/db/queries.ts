@@ -763,10 +763,10 @@ export async function getDocuments({
     }
 
     // Search filter - search in title and tags
-    if (search) {
+    if (search && typeof search === 'string' && search.length > 0) {
       const searchCondition = or(
         ilike(document.title, `%${search}%`),
-        sql`${document.tags}::text LIKE '%${search}%'`
+        sql`${document.tags}::text LIKE ${'%' + search + '%'}` // <-- исправлено
       );
       if (searchCondition) {
         conditions.push(searchCondition);
