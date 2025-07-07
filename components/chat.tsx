@@ -11,7 +11,7 @@ import { Artifact } from './artifact';
 import { MultimodalInput } from './multimodal-input';
 import { Messages } from './messages';
 import type { VisibilityType } from './visibility-selector';
-import { useArtifactSelector } from '@/hooks/use-artifact';
+import { useArtifact, useArtifactSelector } from '@/hooks/use-artifact';
 import { unstable_serialize } from 'swr/infinite';
 import { getChatHistoryPaginationKey } from './sidebar-history';
 import { toast } from './toast';
@@ -124,6 +124,7 @@ function ChatContent({
 
   const [attachments, setAttachments] = useState<Array<Attachment>>([]);
   const isArtifactVisible = useArtifactSelector((state) => state.isVisible);
+  const { setArtifact } = useArtifact();
 
   // Notify parent about dataStream changes for artifacts
   useEffect(() => {
@@ -185,6 +186,82 @@ function ChatContent({
     }
   }, [chatImageSSE, chatVideoSSE, messages]);
 
+  // --- SCRIPT GENERATION HANDLER (аналог image/video) ---
+  const handleScriptArtifact = async (userPrompt: string) => {
+    try {
+      // 1. Сгенерировать сценарий через API
+      const scriptRes = await fetch('/api/generate/script', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: userPrompt }),
+      });
+      const data = await scriptRes.json();
+      const script = data?.script || '';
+      if (!script) throw new Error('Script generation failed');
+
+      // 2. Сохранить сценарий в документ
+      const generatedId = generateUUID();
+      const docRes = await fetch(`/api/document?id=${generatedId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: userPrompt,
+          content: script,
+          kind: 'text',
+        }),
+      });
+      const [doc] = await docRes.json();
+      if (!doc?.id) throw new Error('Failed to create script artifact');
+
+      // 3. Добавить ассистентское сообщение-уведомление
+      const artifactMessage = {
+        role: 'assistant',
+        content: 'Сценарий будет сгенерирован и появится справа в артефакте.',
+        parts: [
+          {
+            type: 'text',
+            text: 'Сценарий будет сгенерирован и появится справа в артефакте.',
+          },
+        ],
+        createdAt: new Date(),
+        id: generateUUID(),
+      };
+      setMessages(prev => [...prev, artifactMessage as UIMessage]);
+      setArtifact({
+        title: userPrompt,
+        documentId: doc.id,
+        kind: 'text',
+        content: script,
+        isVisible: true,
+        status: 'idle',
+        boundingBox: { top: 0, left: 0, width: 0, height: 0 },
+      });
+      // Обновить URL с artifactId
+      if (typeof window !== 'undefined') {
+        window.history.replaceState({}, '', `/chat/${id}?artifact=${doc.id}`);
+      }
+    } catch (e) {
+      toast({ type: 'error', description: 'Script artifact creation failed: ' + (e as Error).message });
+    }
+  };
+  // --- END SCRIPT GENERATION HANDLER ---
+
+  // useEffect(() => {
+  //   if (messages.length > 0) {
+  //     const lastMsg = messages[messages.length - 1];
+  //     if (lastMsg.role === 'user' && typeof lastMsg.content === 'string') {
+  //       const prompt = lastMsg.content.trim().toLowerCase();
+  //       // Эвристика: если есть "сценарий" или "script" или "story" в prompt
+  //       if (
+  //         /сценарий|script|story/.test(prompt)
+  //       ) {
+  //         // Не добавлять обычный ответ ассистента, только артефакт
+  //         handleScriptArtifact(lastMsg.content);
+  //       }
+  //     }
+  //   }
+  // }, [messages]);
+
   return (
     <>
       <div className="flex flex-col min-w-0 h-dvh bg-background">
@@ -225,6 +302,7 @@ function ChatContent({
               setMessages={setMessages}
               append={append}
               selectedVisibilityType={visibilityType}
+              handleScriptArtifact={handleScriptArtifact} // проброс
             />
           )}
         </form>

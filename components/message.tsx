@@ -20,6 +20,7 @@ import type { UseChatHelpers } from '@ai-sdk/react';
 import { MediaSettings } from './artifacts/media-settings';
 import type { ImageGenerationConfig, ImageSettings, VideoGenerationConfig, VideoSettings as VideoSettingsType } from '@/lib/types/media-settings';
 import { useArtifact } from '@/hooks/use-artifact';
+import { ScriptArtifactViewer } from '@/artifacts/text/client';
 
 const PurePreviewMessage = ({
   chatId,
@@ -112,6 +113,28 @@ const PurePreviewMessage = ({
 
               if (type === 'text') {
                 if (mode === 'view') {
+                  // --- EMBED ARTIFACT (image/video/text) ---
+                  let artifact: any = null;
+                  if (part.text.startsWith('```json')) {
+                    try {
+                      const jsonMatch = part.text.match(/```json\s*({[\s\S]*?})\s*```/);
+                      if (jsonMatch) {
+                        artifact = JSON.parse(jsonMatch[1]);
+                      }
+                    } catch {}
+                  } else if (part.text.startsWith('{') && part.text.endsWith('}')) {
+                    try {
+                      artifact = JSON.parse(part.text);
+                    } catch {}
+                  }
+                  if (artifact && artifact.kind === 'text' && artifact.content) {
+                    return (
+                      <div key={key} className="flex flex-row gap-2 items-start">
+                        <ScriptArtifactViewer title={artifact.title || ''} content={artifact.content} />
+                      </div>
+                    );
+                  }
+                  // --- END EMBED ---
                   // Check if this is a resolution selection message
                   if (part.text.startsWith('Выбрано разрешение:')) {
                     const resolutionMatch = part.text.match(/разрешение: (\d+)x(\d+), стиль: (.+?), размер кадра: (.+?), модель: (.+?)(?:, сид: (\d+))?$/);

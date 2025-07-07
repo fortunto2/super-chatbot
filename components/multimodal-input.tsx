@@ -28,6 +28,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { ArrowDown } from 'lucide-react';
 import { useScrollToBottom } from '@/hooks/use-scroll-to-bottom';
 import type { VisibilityType } from './visibility-selector';
+import { generateUUID } from '@/lib/utils';
 
 function PureMultimodalInput({
   chatId,
@@ -41,6 +42,7 @@ function PureMultimodalInput({
   setMessages,
   append,
   handleSubmit,
+  handleScriptArtifact, // новый пропс
   className,
   selectedVisibilityType,
 }: {
@@ -55,6 +57,7 @@ function PureMultimodalInput({
   setMessages: UseChatHelpers['setMessages'];
   append: UseChatHelpers['append'];
   handleSubmit: UseChatHelpers['handleSubmit'];
+  handleScriptArtifact: (prompt: string) => void; // новый тип
   className?: string;
   selectedVisibilityType: VisibilityType;
 }) {
@@ -115,6 +118,29 @@ function PureMultimodalInput({
       return;
     }
 
+    // --- Блокировка генерации сценария ---
+    if (/сценарий|script|story/i.test(input.trim())) {
+      // 1. Добавить пользовательское сообщение
+      setMessages(prev => [
+        ...prev,
+        {
+          id: generateUUID(),
+          role: 'user',
+          content: input.trim(),
+          parts: [{ type: 'text', text: input.trim() }],
+          createdAt: new Date(),
+        }
+      ]);
+      // 2. Генерировать сценарий
+      handleScriptArtifact(input.trim());
+      setInput('');
+      setAttachments([]);
+      setLocalStorageInput('');
+      resetHeight();
+      return;
+    }
+    // --- END ---
+
     window.history.replaceState({}, '', `/chat/${chatId}`);
 
     handleSubmit(undefined, {
@@ -128,15 +154,7 @@ function PureMultimodalInput({
     if (width && width > 768) {
       textareaRef.current?.focus();
     }
-  }, [
-    attachments,
-    handleSubmit,
-    setAttachments,
-    setLocalStorageInput,
-    width,
-    chatId,
-    input,
-  ]);
+  }, [attachments, handleSubmit, setAttachments, setLocalStorageInput, width, chatId, input, handleScriptArtifact]);
 
   const uploadFile = async (file: File) => {
     const formData = new FormData();

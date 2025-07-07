@@ -2,6 +2,7 @@ import { Artifact } from '@/components/create-artifact';
 import { DiffView } from '@/components/diffview';
 import { DocumentSkeleton } from '@/components/document-skeleton';
 import { Editor } from '@/components/text-editor';
+import { Markdown } from '@/components/markdown';
 import {
   ClockRewind,
   CopyIcon,
@@ -190,3 +191,15 @@ export const textArtifact = new Artifact<'text', TextArtifactMetadata>({
     },
   ],
 });
+
+// Новый компонент для просмотра сценария (markdown)
+export function ScriptArtifactViewer({ title, content }: { title: string; content: string }) {
+  return (
+    <div className="p-8 md:p-20 max-w-3xl mx-auto">
+      <h2 className="text-2xl font-bold mb-4">{title}</h2>
+      <div className="prose dark:prose-invert">
+        <Markdown>{content}</Markdown>
+      </div>
+    </div>
+  );
+}
