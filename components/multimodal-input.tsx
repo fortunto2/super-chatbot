@@ -118,8 +118,13 @@ function PureMultimodalInput({
       return;
     }
 
-    // --- Блокировка генерации сценария ---
-    if (/сценарий|script|story/i.test(input.trim())) {
+    // --- Блокировка генерации сценария (как у image/video) ---
+    // Если attachments пусты и явно выбран режим сценария (например, по UI или по props), только тогда вызываем handleScriptArtifact
+    // Если у вас есть selectedMode === 'script', используйте его вместо эвристики
+    const isScriptMode = typeof handleScriptArtifact === 'function' &&
+      attachments.length === 0 &&
+      /сценарий|script|story/i.test(input.trim());
+    if (isScriptMode) {
       // 1. Добавить пользовательское сообщение
       setMessages(prev => [
         ...prev,

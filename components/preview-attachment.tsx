@@ -43,6 +43,21 @@ export const PreviewAttachment = ({
         title: name || 'Video',
       }));
     }
+    else if (contentType === 'text/markdown') {
+      // Попробовать взять documentId из attachment, иначе — из url
+      let documentId = (attachment as any).documentId;
+      if (!documentId && url) {
+        const match = url.match(/id=([a-f0-9-]+)/);
+        if (match) documentId = match[1];
+      }
+      setArtifact((prev) => ({
+        ...prev,
+        isVisible: true,
+        kind: 'text',
+        documentId,
+        title: name || 'Script',
+      }));
+    }
   };
 
   return (
@@ -90,6 +105,21 @@ export const PreviewAttachment = ({
                 </div>
               </div>
             </div>
+         ) : contentType === 'text/markdown' ? (
+           <div
+             role="button"
+             tabIndex={0}
+             className="rounded-md size-full bg-white cursor-pointer flex items-center justify-center relative border border-zinc-200"
+             onClick={handleAttachmentClick}
+             onKeyDown={(e) => {
+               if (e.key === 'Enter' || e.key === ' ') {
+                 e.preventDefault();
+                 handleAttachmentClick();
+               }
+             }}
+           >
+             <span className="text-zinc-700 text-2xl">📄</span>
+            </div>
           ) : (
             <div className="" />
           )
@@ -97,7 +127,7 @@ export const PreviewAttachment = ({
           <div className="" />
         )}
 
-        {isUploading && (
+        {isUploading && contentType !== 'text/markdown' && (
           <div
             data-testid="input-attachment-loader"
             className="animate-spin absolute text-zinc-500"

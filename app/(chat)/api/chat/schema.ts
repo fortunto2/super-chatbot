@@ -10,7 +10,7 @@ export const postRequestBodySchema = z.object({
   message: z.object({
     id: z.string().uuid(),
     createdAt: z.coerce.date(),
-    role: z.enum(['user']),
+    role: z.enum(['user', 'assistant']),
     content: z.string().min(1),
     parts: z.array(textPartSchema),
     experimental_attachments: z
@@ -18,7 +18,7 @@ export const postRequestBodySchema = z.object({
         z.object({
           url: z.string().url(),
           name: z.string().min(1),
-          contentType: z.enum(['image/png', 'image/jpg', 'image/jpeg']),
+          contentType: z.enum(['image/png', 'image/jpg', 'image/jpeg', 'text/markdown']),
         }),
       )
       .optional(),

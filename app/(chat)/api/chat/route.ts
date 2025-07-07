@@ -449,6 +449,57 @@ export async function POST(request: Request) {
       // Continue execution, as we can still try to get a response without saving the message
     }
 
+    // --- SPECIAL CASE: assistant notification for script (do not trigger LLM, just save) ---
+    if (
+      String(message.role) === 'assistant' &&
+      typeof message.content === 'string' &&
+      message.content.includes('Сценарий будет сгенерирован и появится справа в артефакте')
+    ) {
+      await saveMessages({
+        messages: [
+          {
+            chatId: id,
+            id: message.id,
+            role: 'assistant',
+            parts: message.parts || [],
+            attachments: message.experimental_attachments || [],
+            createdAt: new Date(),
+          },
+        ],
+      });
+      return new Response(JSON.stringify({ ok: true }), { status: 200 });
+    }
+
+    // --- SPECIAL CASE: assistant message with only attachment (image/video/script artifact) ---
+    if (
+      String(message.role) === 'assistant' &&
+      Array.isArray(message.parts) && message.parts.length === 0 &&
+      Array.isArray(message.experimental_attachments) && message.experimental_attachments.length > 0 &&
+      [
+        'image/png',
+        'image/jpg',
+        'image/jpeg',
+        'video/mp4',
+        'video/webm',
+        'video/quicktime',
+        'text/markdown', // сценарий
+      ].includes(message.experimental_attachments[0].contentType)
+    ) {
+      await saveMessages({
+        messages: [
+          {
+            chatId: id,
+            id: message.id,
+            role: 'assistant',
+            parts: [],
+            attachments: message.experimental_attachments,
+            createdAt: new Date(),
+          },
+        ],
+      });
+      return new Response(JSON.stringify({ ok: true }), { status: 200 });
+    }
+
     const streamId = generateUUID();
     try {
       await createStreamId({ streamId, chatId: id });

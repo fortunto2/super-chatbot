@@ -130,7 +130,22 @@ const PurePreviewMessage = ({
                   if (artifact && artifact.kind === 'text' && artifact.content) {
                     return (
                       <div key={key} className="flex flex-row gap-2 items-start">
-                        <ScriptArtifactViewer title={artifact.title || ''} content={artifact.content} />
+                        <div
+                          className="cursor-pointer w-full"
+                          onClick={() => {
+                            setArtifact({
+                              title: artifact.title || '',
+                              documentId: artifact.projectId,
+                              kind: 'text',
+                              content: artifact.content,
+                              isVisible: true,
+                              status: 'idle',
+                              boundingBox: { top: 0, left: 0, width: 0, height: 0 },
+                            });
+                          }}
+                        >
+                          <ScriptArtifactViewer title={artifact.title || ''} content={artifact.content} />
+                        </div>
                       </div>
                     );
                   }
