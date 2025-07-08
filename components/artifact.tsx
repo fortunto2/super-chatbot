@@ -27,6 +27,7 @@ import { imageArtifact } from '@/artifacts/image/client';
 import { sheetArtifact } from '@/artifacts/sheet/client';
 import { textArtifact } from '@/artifacts/text/client';
 import { videoArtifact } from '@/artifacts/video/client';
+import { scriptArtifact } from '@/artifacts/script/client';
 import type { UseChatHelpers } from '@ai-sdk/react';
 import type { VisibilityType } from './visibility-selector';
 
@@ -35,6 +36,7 @@ export const artifactDefinitions = [
   imageArtifact,
   sheetArtifact,
   videoArtifact,
+  scriptArtifact,
 ];
 export type ArtifactKind = (typeof artifactDefinitions)[number]['kind'];
 

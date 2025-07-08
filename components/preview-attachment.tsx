@@ -44,18 +44,20 @@ export const PreviewAttachment = ({
       }));
     }
     else if (contentType === 'text/markdown') {
-      // Попробовать взять documentId из attachment, иначе — из url
-      let documentId = (attachment as any).documentId;
-      if (!documentId && url) {
-        const match = url.match(/id=([a-f0-9-]+)/);
-        if (match) documentId = match[1];
+      let documentId;
+      if (url) {
+        const urlParts = url.split('/');
+        documentId = urlParts[urlParts.length - 1];
+      } else {
+        documentId = (attachment as any).documentId;
       }
+      const kind = (attachment as any).kind === 'script' ? 'script' : 'text';
       setArtifact((prev) => ({
         ...prev,
         isVisible: true,
-        kind: 'text',
+        kind,
         documentId,
-        title: name || 'Script',
+        title: name || (kind === 'script' ? 'Script' : 'Document'),
       }));
     }
   };

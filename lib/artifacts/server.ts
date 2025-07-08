@@ -24,6 +24,7 @@ import type { DataStreamWriter } from 'ai';
 import type { Document } from '../db/schema';
 import { saveDocument } from '../db/queries';
 import type { Session } from 'next-auth';
+import { scriptDocumentHandler } from '@/artifacts/script/server';
 
 export interface SaveDocumentProps {
   id: string;
@@ -31,11 +32,13 @@ export interface SaveDocumentProps {
   kind: ArtifactKind;
   content: string;
   userId: string;
+  visibility?: 'public' | 'private';
 }
 
 export interface CreateDocumentCallbackProps {
   id: string;
   title: string;
+  content?: string; // Optional content for artifacts that generate their own content
   dataStream: DataStreamWriter;
   session: Session;
 }
@@ -66,6 +69,7 @@ export function createDocumentHandler<T extends ArtifactKind>(config: {
       const draftContent = await config.onCreateDocument({
         id: args.id,
         title: args.title,
+        content: args.content, // Now properly typed
         dataStream: args.dataStream,
         session: args.session,
       });
@@ -167,6 +171,7 @@ export const documentHandlersByArtifactKind: Array<DocumentHandler> = [
   imageDocumentHandler,
   sheetDocumentHandler,
   videoDocumentHandler,
+  scriptDocumentHandler,
 ];
 
-export const artifactKinds = ['text', 'image', 'sheet', 'video'] as const;
+export const artifactKinds = ['text', 'image', 'sheet', 'video', 'script'] as const;

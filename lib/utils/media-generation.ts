@@ -1,4 +1,7 @@
 export const parseResolution = (resolutionString: string) => {
+  if (typeof resolutionString !== 'string') {
+    return resolutionString
+  }
     let width = 1280;
     let height = 720;
     let aspectRatio = "16:9";

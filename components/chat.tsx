@@ -24,6 +24,51 @@ import { useChatVideoSSE } from '@/hooks/use-chat-video-sse';
 import { ChatWebSocketCleanup } from '@/lib/utils/chat-websocket-cleanup';
 import { LoaderIcon } from './icons';
 
+// --- UNIVERSAL SAVE SCRIPT ARTIFACT TO CHAT ---
+async function saveScriptArtifactToChat({
+  chatId,
+  userPrompt,
+  docId,
+  setMessages,
+  initialChatModel,
+  visibilityType,
+}: {
+  chatId: string;
+  userPrompt: string;
+  docId: string;
+  setMessages: (fn: (prev: UIMessage[]) => UIMessage[]) => void;
+  initialChatModel: string;
+  visibilityType: string;
+}) {
+  const artifactAttachmentMessage = {
+    role: 'assistant',
+    content: ' ',
+    parts: [],
+    experimental_attachments: [
+      {
+        url: (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000') + `/api/document?id=${docId}`,
+        name: userPrompt || 'Scenario.md',
+        contentType: 'text/markdown',
+        documentId: docId,
+      }
+    ],
+    createdAt: new Date(),
+    id: generateUUID(),
+  };
+  setMessages(prev => [...prev, artifactAttachmentMessage as UIMessage]);
+  await fetch('/api/chat', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      id: chatId,
+      message: artifactAttachmentMessage,
+      selectedChatModel: initialChatModel,
+      selectedVisibilityType: visibilityType,
+    }),
+  });
+}
+// --- END UNIVERSAL SAVE SCRIPT ARTIFACT TO CHAT ---
+
 function ChatContent({
   id,
   initialMessages,
@@ -163,10 +208,18 @@ function ChatContent({
     enabled: !isReadonly, // Only enable for non-readonly chats
   });
 
-  // Register WebSocket instance for debugging
+  // Register WebSocket instance for debugging and expose chat context for script artifacts
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const globalWindow = window as any;
+      
+      // Expose chat instance for script artifacts to access setMessages
+      globalWindow.chatInstance = {
+        setMessages,
+        chatId: id,
+        messages,
+      };
+      
       if (globalWindow.setChatWebSocketInstance) {
         // Create a persistent storage object that maintains lastImageUrl
         if (!globalWindow.chatWebSocketInstance) {
@@ -185,155 +238,7 @@ function ChatContent({
         // Debugging instance stored silently
       }
     }
-  }, [chatImageSSE, chatVideoSSE, messages]);
-
-  // --- SCRIPT GENERATION HANDLER (аналог image/video) ---
-  const handleScriptArtifact = async (userPrompt: string) => {
-    try {
-      setScriptStatus('submitted');
-      // 0. Явно создать чат, если его нет
-      const chatExists = messages.length > 0;
-      if (!chatExists) {
-        await fetch('/api/chat', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            id: id,
-            message: {
-              id: generateUUID(),
-              createdAt: new Date(),
-              role: 'user',
-              content: userPrompt,
-              parts: [{ type: 'text', text: userPrompt }],
-              experimental_attachments: []
-            },
-            selectedChatModel: initialChatModel,
-            selectedVisibilityType: visibilityType,
-          }),
-        });
-      }
-      // 1. Добавить ассистентское уведомление (как у image/video)
-      const noticeMessage = {
-        id: generateUUID(),
-        role: 'assistant',
-        content: 'Сценарий будет сгенерирован и появится справа в артефакте.',
-        parts: [{ type: 'text', text: 'Сценарий будет сгенерирован и появится справа в артефакте.' }],
-        createdAt: new Date(),
-      };
-      setMessages(prev => [...prev, noticeMessage as UIMessage]);
-      await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id: id,
-          message: noticeMessage,
-          selectedChatModel: initialChatModel,
-          selectedVisibilityType: visibilityType,
-        }),
-      });
-      // 2. Сгенерировать сценарий через API
-      const scriptRes = await fetch('/api/generate/script', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: userPrompt }),
-      });
-      const data = await scriptRes.json();
-      const script = data?.script || '';
-      if (!script) throw new Error('Script generation failed');
-
-      // 3. Сохранить сценарий в документ
-      const generatedId = generateUUID();
-      const docRes = await fetch(`/api/document?id=${generatedId}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: userPrompt,
-          content: script,
-          kind: 'text',
-        }),
-      });
-      const [doc] = await docRes.json();
-      if (!doc?.id) throw new Error('Failed to create script artifact');
-
-      // 4. Только теперь добавить ассистентское сообщение с attachment (аналог image/video)
-      const artifactAttachmentMessage = {
-        role: 'assistant',
-        content: ' ', // один пробел, как у image/video
-        parts: [],   // пусто, как у image/video
-        experimental_attachments: [
-          {
-            url: (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000') + `/api/document?id=${doc.id}`,
-            name: userPrompt || 'Scenario.md',
-            contentType: 'text/markdown',
-            documentId: doc.id,
-          }
-        ],
-        createdAt: new Date(),
-        id: generateUUID(),
-      };
-      setMessages(prev => [...prev, artifactAttachmentMessage as UIMessage]);
-
-      // Сохраняем ассистентское сообщение с attachment в базу
-      await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id: id,
-          message: {
-            id: artifactAttachmentMessage.id,
-            createdAt: artifactAttachmentMessage.createdAt,
-            role: 'assistant',
-            content: ' ', // один пробел, как у image/video
-            parts: [],   // пусто, как у image/video
-            experimental_attachments: [
-              {
-                url: (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000') + `/api/document?id=${doc.id}`,
-                name: userPrompt || 'Scenario.md',
-                contentType: 'text/markdown',
-                documentId: doc.id,
-              }
-            ],
-          },
-          selectedChatModel: initialChatModel,
-          selectedVisibilityType: visibilityType,
-        }),
-      });
-      setArtifact({
-        title: userPrompt,
-        documentId: doc.id,
-        kind: 'text',
-        content: script,
-        isVisible: true,
-        status: 'idle',
-        boundingBox: { top: 0, left: 0, width: 0, height: 0 },
-      });
-      // Обновить URL с artifactId
-      if (typeof window !== 'undefined') {
-        window.history.replaceState({}, '', `/chat/${id}?artifact=${doc.id}`);
-      }
-      setScriptStatus('idle');
-    } catch (e) {
-      toast({ type: 'error', description: 'Script artifact creation failed: ' + (e as Error).message });
-      setScriptStatus('idle');
-    }
-  };
-  // --- END SCRIPT GENERATION HANDLER ---
-
-  // useEffect(() => {
-  //   if (messages.length > 0) {
-  //     const lastMsg = messages[messages.length - 1];
-  //     if (lastMsg.role === 'user' && typeof lastMsg.content === 'string') {
-  //       const prompt = lastMsg.content.trim().toLowerCase();
-  //       // Эвристика: если есть "сценарий" или "script" или "story" в prompt
-  //       if (
-  //         /сценарий|script|story/.test(prompt)
-  //       ) {
-  //         // Не добавлять обычный ответ ассистента, только артефакт
-  //         handleScriptArtifact(lastMsg.content);
-  //       }
-  //     }
-  //   }
-  // }, [messages]);
+  }, [chatImageSSE, chatVideoSSE, messages, setMessages, id]);
 
   return (
     <>
@@ -375,7 +280,6 @@ function ChatContent({
               setMessages={setMessages}
               append={append}
               selectedVisibilityType={visibilityType}
-              handleScriptArtifact={handleScriptArtifact} // проброс
             />
           )}
         </form>
