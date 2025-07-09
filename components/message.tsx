@@ -235,6 +235,29 @@ const PurePreviewMessage = ({
 
                 if (state === 'result') {
                   const { result } = toolInvocation;
+
+                  if (toolName === 'configureScriptGeneration' && result && typeof result === 'object' && 'id' in result && 'title' in result) {
+                    return (
+                      <div key={toolCallId} className="flex flex-row gap-2 items-start">
+                        <div
+                          className="cursor-pointer w-full"
+                          onClick={() => {
+                            setArtifact({
+                              title: result.title as string,
+                              documentId: result.id as string,
+                              kind: 'script',
+                              content: '', // Content will be fetched in the artifact viewer
+                              isVisible: true,
+                              status: 'idle',
+                              boundingBox: { top: 0, left: 0, width: 0, height: 0 },
+                            });
+                          }}
+                        >
+                          <ScriptArtifactViewer title={result.title as string} content={''} />
+                        </div>
+                      </div>
+                    );
+                  }
                   
                   // Handle image generation configuration
                   if (toolName === 'configureImageGeneration' && result?.type === 'image-generation-settings') {

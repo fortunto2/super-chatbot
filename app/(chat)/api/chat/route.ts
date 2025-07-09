@@ -108,9 +108,10 @@ function getStreamContext() {
       }
     }
   }
-
   return globalStreamContext;
 }
+
+const streamContext = getStreamContext();
 
 export async function POST(request: Request) {
   let requestBody: PostRequestBody;
@@ -566,9 +567,15 @@ export async function POST(request: Request) {
           experimental_generateMessageId: generateUUID,
           tools: {
             ...tools,
-            configureImageGeneration: configureImageGeneration({ createDocument: tools.createDocument }),
-            configureVideoGeneration: configureVideoGeneration({ createDocument: tools.createDocument }),
-            configureScriptGeneration: configureScriptGeneration({ createDocument: tools.createDocument }),
+            configureImageGeneration: configureImageGeneration({
+              createDocument: createDocument({ session, dataStream: enhancedDataStream }),
+            }),
+            configureVideoGeneration: configureVideoGeneration({
+              createDocument: createDocument({ session, dataStream: enhancedDataStream }),
+            }),
+            configureScriptGeneration: configureScriptGeneration({
+              createDocument: createDocument({ session, dataStream: enhancedDataStream }),
+            }),
             listVideoModels,
             findBestVideoModel,
             enhancePrompt,
@@ -576,41 +583,18 @@ export async function POST(request: Request) {
           onFinish: async ({ response }) => {
             if (session.user?.id) {
               try {
-                // Сохраняем только ассистентские сообщения с experimental_attachments
-                let assistantMessages = response.messages.filter(
-                  (message) =>
-                    message.role === 'assistant' &&
-                    Array.isArray((message as any).experimental_attachments) &&
-                    (message as any).experimental_attachments.length > 0
-                );
+                const lastMessage = response.messages[response.messages.length - 1];
 
-                // Если таких сообщений нет, ищем toolResults с experimental_attachments
-                if (assistantMessages.length === 0 && Array.isArray((response as any).toolResults)) {
-                  assistantMessages = (response as any).toolResults.filter(
-                    (toolResult: any) =>
-                      Array.isArray(toolResult.experimental_attachments) &&
-                      toolResult.experimental_attachments.length > 0
-                  ).map((toolResult: any) => ({
-                    ...toolResult,
-                    role: toolResult.role || 'assistant',
-                    parts: Array.isArray(toolResult.parts) ? toolResult.parts : [],
-                  }));
-                }
-
-                if (assistantMessages.length === 0) {
-                  console.warn('No assistant messages with attachments found in response or toolResults');
-                  return;
-                }
-
-                for (const assistantMessage of assistantMessages) {
+                // Ensure it's an assistant message and has parts before saving
+                if (lastMessage.role === 'assistant' && 'parts' in lastMessage) {
                   await saveMessages({
                     messages: [
                       {
-                        id: assistantMessage.id,
+                        id: lastMessage.id,
                         chatId: id,
-                        role: assistantMessage.role,
-                        parts: Array.isArray((assistantMessage as any).parts) ? (assistantMessage as any).parts : [],
-                        attachments: (assistantMessage as any).experimental_attachments,
+                        role: lastMessage.role,
+                        parts: lastMessage.parts,
+                        attachments: (lastMessage as any).experimental_attachments ?? [],
                         createdAt: new Date(),
                       },
                     ],
@@ -641,8 +625,6 @@ export async function POST(request: Request) {
       },
     });
 
-    const streamContext = getStreamContext();
-
     if (streamContext) {
       return new Response(
         await streamContext.resumableStream(streamId, () => stream),
@@ -657,7 +639,6 @@ export async function POST(request: Request) {
 
 export async function GET(request: Request) {
   try {
-    const streamContext = getStreamContext();
     const resumeRequestedAt = new Date();
 
     if (!streamContext) {
