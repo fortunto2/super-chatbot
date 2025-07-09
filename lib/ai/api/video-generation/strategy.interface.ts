@@ -1,9 +1,10 @@
 import { GenerationTypeEnum } from "@/lib/api";
+import { VideoModel } from "@/lib/config/superduperai";
 
 // Base interfaces for video generation
 export interface VideoGenerationParams {
     prompt: string;
-    model: string;
+    model: string | VideoModel;
     style: string;
     resolution: string;
     shotSize: string;

@@ -12,5 +12,6 @@ export const API_NEXT_ROUTES = {
     MODELS: '/api/config/models',
     SUPERDUPERAI: '/api/config/superduperai',
     EVENTS_FILE: (fileId: string) => `/api/events/file.${fileId}`,
+    GENERATE_SCRIPT: '/api/generate/script',
     // Добавьте сюда только те эндпоинты, которые реально реализованы в app/api/
   } as const

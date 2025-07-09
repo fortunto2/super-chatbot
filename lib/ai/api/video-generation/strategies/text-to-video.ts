@@ -15,24 +15,36 @@ export class TextToVideoStrategy implements VideoGenerationStrategy {
     }
   
     generatePayload(params: VideoGenerationParams): any {
-      // Use correct structure from SuperDuperAI API documentation
       const { width, height, aspectRatio } = parseResolution(params.resolution);
-
+    
+      // style и shotSize — тоже только id/label, если API требует строку
       const styleObject = { id: params.style || "flux_watercolor", label: params.style || "Watercolor" };
       const shotSizeObject = { id: params.shotSize || "medium_shot", label: params.shotSize || "Medium Shot" };
-
+    
+      let modelName: string;
+      if (typeof params.model === 'string') {
+        modelName = params.model;
+      } else if (params.model && typeof params.model === 'object') {
+        if ('name' in params.model && params.model.name) {
+          modelName = params.model.name;
+        }  else {
+          modelName = 'azure-openai/sora';
+        }
+      } else {
+        modelName = 'azure-openai/sora';
+      }
       const modelObject = { 
-        name: params.model || 'azure-openai/sora', 
-        label: params.model || 'Sora',
+        name: modelName, 
+        label: modelName,
         type: 'TEXT_TO_VIDEO' as any,
         source: 'superduperai' as any,
         params: {} as any
       };
-
-      return {
+    
+      const payload = {
         config: {
           prompt: params.prompt,
-          generation_config_name: modelObject.name,
+          generation_config_name: modelName, // <-- теперь всегда строка!
           duration: params.duration,
           aspect_ratio: aspectRatio || "16:9",
           seed: params.seed || Math.floor(Math.random() * 1000000000000),
@@ -44,6 +56,9 @@ export class TextToVideoStrategy implements VideoGenerationStrategy {
           style_name: styleObject,
           model: modelObject
         }
-      };
+      }
+      console.log("payload", payload)
+    
+      return payload
     }
   }

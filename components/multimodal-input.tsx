@@ -28,6 +28,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { ArrowDown } from 'lucide-react';
 import { useScrollToBottom } from '@/hooks/use-scroll-to-bottom';
 import type { VisibilityType } from './visibility-selector';
+import { generateUUID } from '@/lib/utils';
 
 function PureMultimodalInput({
   chatId,
@@ -128,15 +129,7 @@ function PureMultimodalInput({
     if (width && width > 768) {
       textareaRef.current?.focus();
     }
-  }, [
-    attachments,
-    handleSubmit,
-    setAttachments,
-    setLocalStorageInput,
-    width,
-    chatId,
-    input,
-  ]);
+  }, [attachments, handleSubmit, setAttachments, setLocalStorageInput, width, chatId, input]);
 
   const uploadFile = async (file: File) => {
     const formData = new FormData();

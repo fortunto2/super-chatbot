@@ -43,6 +43,7 @@ import { configureVideoGeneration } from '@/lib/ai/tools/configure-video-generat
 import { listVideoModels, findBestVideoModel } from '@/lib/ai/tools/list-video-models';
 import { enhancePrompt } from '@/lib/ai/tools/enhance-prompt';
 import { convertDBMessagesToUIMessages } from '@/lib/types/message-conversion';
+import { configureScriptGeneration } from '@/lib/ai/tools/configure-script-generation';
 
 export const maxDuration = 60;
 
@@ -525,6 +526,7 @@ export async function POST(request: Request) {
               : [
                   'configureImageGeneration',
                   'configureVideoGeneration',
+                  'configureScriptGeneration',
                   'listVideoModels',
                   'findBestVideoModel',
                   'enhancePrompt',
@@ -540,6 +542,9 @@ export async function POST(request: Request) {
               createDocument: tools.createDocument,
             }),
             configureVideoGeneration: configureVideoGeneration({
+              createDocument: tools.createDocument,
+            }),
+            configureScriptGeneration: configureScriptGeneration({
               createDocument: tools.createDocument,
             }),
             listVideoModels,
@@ -760,7 +765,6 @@ export async function DELETE(request: Request) {
     return formatErrorResponse(error);
   }
 }
-
 
 
 

@@ -9,6 +9,7 @@ import {
   primaryKey,
   foreignKey,
   boolean,
+  integer,
 } from 'drizzle-orm/pg-core';
 
 export const user = pgTable('User', {
@@ -109,12 +110,21 @@ export const document = pgTable(
     createdAt: timestamp('createdAt').notNull(),
     title: text('title').notNull(),
     content: text('content'),
-    kind: varchar('text', { enum: ['text', 'image', 'sheet', 'video'] })
+    kind: varchar('text', { enum: ['text', 'image', 'sheet', 'video', 'script'] })
       .notNull()
       .default('text'),
     userId: uuid('userId')
       .notNull()
       .references(() => user.id),
+    // AICODE-NOTE: New fields for document gallery feature
+    visibility: varchar('visibility', { enum: ['public', 'private'] })
+      .notNull()
+      .default('private'),
+    tags: json('tags').notNull().default([]),
+    model: varchar('model'),
+    viewCount: integer('viewCount').notNull().default(0),
+    thumbnailUrl: text('thumbnailUrl'),
+    metadata: json('metadata').notNull().default({}),
   },
   (table) => {
     return {

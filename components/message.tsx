@@ -20,6 +20,7 @@ import type { UseChatHelpers } from '@ai-sdk/react';
 import { MediaSettings } from './artifacts/media-settings';
 import type { ImageGenerationConfig, ImageSettings, VideoGenerationConfig, VideoSettings as VideoSettingsType } from '@/lib/types/media-settings';
 import { useArtifact } from '@/hooks/use-artifact';
+import { ScriptArtifactViewer } from '@/artifacts/text/client';
 
 const PurePreviewMessage = ({
   chatId,
@@ -112,6 +113,43 @@ const PurePreviewMessage = ({
 
               if (type === 'text') {
                 if (mode === 'view') {
+                  // --- EMBED ARTIFACT (image/video/text) ---
+                  let artifact: any = null;
+                  if (part.text.startsWith('```json')) {
+                    try {
+                      const jsonMatch = part.text.match(/```json\s*({[\s\S]*?})\s*```/);
+                      if (jsonMatch) {
+                        artifact = JSON.parse(jsonMatch[1]);
+                      }
+                    } catch {}
+                  } else if (part.text.startsWith('{') && part.text.endsWith('}')) {
+                    try {
+                      artifact = JSON.parse(part.text);
+                    } catch {}
+                  }
+                  if (artifact && artifact.kind === 'text' && artifact.content) {
+                    return (
+                      <div key={key} className="flex flex-row gap-2 items-start">
+                        <div
+                          className="cursor-pointer w-full"
+                          onClick={() => {
+                            setArtifact({
+                              title: artifact.title || '',
+                              documentId: artifact.projectId,
+                              kind: 'text',
+                              content: artifact.content,
+                              isVisible: true,
+                              status: 'idle',
+                              boundingBox: { top: 0, left: 0, width: 0, height: 0 },
+                            });
+                          }}
+                        >
+                          <ScriptArtifactViewer title={artifact.title || ''} content={artifact.content} />
+                        </div>
+                      </div>
+                    );
+                  }
+                  // --- END EMBED ---
                   // Check if this is a resolution selection message
                   if (part.text.startsWith('Выбрано разрешение:')) {
                     const resolutionMatch = part.text.match(/разрешение: (\d+)x(\d+), стиль: (.+?), размер кадра: (.+?), модель: (.+?)(?:, сид: (\d+))?$/);
@@ -197,6 +235,29 @@ const PurePreviewMessage = ({
 
                 if (state === 'result') {
                   const { result } = toolInvocation;
+
+                  if (toolName === 'configureScriptGeneration' && result && typeof result === 'object' && 'id' in result && 'title' in result) {
+                    return (
+                      <div key={toolCallId} className="flex flex-row gap-2 items-start">
+                        <div
+                          className="cursor-pointer w-full"
+                          onClick={() => {
+                            setArtifact({
+                              title: result.title as string,
+                              documentId: result.id as string,
+                              kind: 'script',
+                              content: '', // Content will be fetched in the artifact viewer
+                              isVisible: true,
+                              status: 'idle',
+                              boundingBox: { top: 0, left: 0, width: 0, height: 0 },
+                            });
+                          }}
+                        >
+                          <ScriptArtifactViewer title={result.title as string} content={''} />
+                        </div>
+                      </div>
+                    );
+                  }
                   
                   // Handle image generation configuration
                   if (toolName === 'configureImageGeneration' && result?.type === 'image-generation-settings') {

@@ -20,6 +20,9 @@ This is a guide for using artifacts tools: \`createDocument\` and \`updateDocume
 - For conversational responses
 - When asked to keep it in chat
 
+**Special rule for script/scenario/story requests:**
+- If the user requests a script, scenario, story, play, or similar (including in Russian: сценарий, рассказ, пьеса, сюжет, инсценировка, etc.), ALWAYS use the \`configureScriptGeneration\` tool to generate the script artifact. Do NOT generate the script directly in the chat. The script must be created as an artifact using the tool.
+
 **Using \`updateDocument\`:**
 - Default to full document rewrites for major changes
 - Use targeted updates only for specific, isolated changes

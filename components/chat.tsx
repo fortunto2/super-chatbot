@@ -11,7 +11,7 @@ import { Artifact } from './artifact';
 import { MultimodalInput } from './multimodal-input';
 import { Messages } from './messages';
 import type { VisibilityType } from './visibility-selector';
-import { useArtifactSelector } from '@/hooks/use-artifact';
+import { useArtifact, useArtifactSelector } from '@/hooks/use-artifact';
 import { unstable_serialize } from 'swr/infinite';
 import { getChatHistoryPaginationKey } from './sidebar-history';
 import { toast } from './toast';
@@ -23,6 +23,51 @@ import { useChatImageSSE } from '@/hooks/use-chat-image-sse';
 import { useChatVideoSSE } from '@/hooks/use-chat-video-sse';
 import { ChatWebSocketCleanup } from '@/lib/utils/chat-websocket-cleanup';
 import { LoaderIcon } from './icons';
+
+// --- UNIVERSAL SAVE SCRIPT ARTIFACT TO CHAT ---
+async function saveScriptArtifactToChat({
+  chatId,
+  userPrompt,
+  docId,
+  setMessages,
+  initialChatModel,
+  visibilityType,
+}: {
+  chatId: string;
+  userPrompt: string;
+  docId: string;
+  setMessages: (fn: (prev: UIMessage[]) => UIMessage[]) => void;
+  initialChatModel: string;
+  visibilityType: string;
+}) {
+  const artifactAttachmentMessage = {
+    role: 'assistant',
+    content: ' ',
+    parts: [],
+    experimental_attachments: [
+      {
+        url: (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000') + `/api/document?id=${docId}`,
+        name: userPrompt || 'Scenario.md',
+        contentType: 'text/markdown',
+        documentId: docId,
+      }
+    ],
+    createdAt: new Date(),
+    id: generateUUID(),
+  };
+  setMessages(prev => [...prev, artifactAttachmentMessage as UIMessage]);
+  await fetch('/api/chat', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      id: chatId,
+      message: artifactAttachmentMessage,
+      selectedChatModel: initialChatModel,
+      selectedVisibilityType: visibilityType,
+    }),
+  });
+}
+// --- END UNIVERSAL SAVE SCRIPT ARTIFACT TO CHAT ---
 
 function ChatContent({
   id,
@@ -104,6 +149,7 @@ function ChatContent({
   const query = searchParams.get('query');
 
   const [hasAppendedQuery, setHasAppendedQuery] = useState(false);
+  const [scriptStatus, setScriptStatus] = useState<'idle' | 'submitted'>('idle');
 
   useEffect(() => {
     if (query && !hasAppendedQuery) {
@@ -124,6 +170,7 @@ function ChatContent({
 
   const [attachments, setAttachments] = useState<Array<Attachment>>([]);
   const isArtifactVisible = useArtifactSelector((state) => state.isVisible);
+  const { setArtifact } = useArtifact();
 
   // Notify parent about dataStream changes for artifacts
   useEffect(() => {
@@ -161,10 +208,18 @@ function ChatContent({
     enabled: !isReadonly, // Only enable for non-readonly chats
   });
 
-  // Register WebSocket instance for debugging
+  // Register WebSocket instance for debugging and expose chat context for script artifacts
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const globalWindow = window as any;
+      
+      // Expose chat instance for script artifacts to access setMessages
+      globalWindow.chatInstance = {
+        setMessages,
+        chatId: id,
+        messages,
+      };
+      
       if (globalWindow.setChatWebSocketInstance) {
         // Create a persistent storage object that maintains lastImageUrl
         if (!globalWindow.chatWebSocketInstance) {
@@ -183,7 +238,7 @@ function ChatContent({
         // Debugging instance stored silently
       }
     }
-  }, [chatImageSSE, chatVideoSSE, messages]);
+  }, [chatImageSSE, chatVideoSSE, messages, setMessages, id]);
 
   return (
     <>
@@ -198,7 +253,7 @@ function ChatContent({
 
         <Messages
           chatId={id}
-          status={status}
+          status={scriptStatus === 'submitted' ? 'submitted' : status}
           votes={votes}
           messages={messages}
           setMessages={setMessages}
