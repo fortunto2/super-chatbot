@@ -1,10 +1,16 @@
 import { auth } from '@/app/(auth)/auth';
-import { saveMessages, getMessageById } from '@/lib/db/queries';
+import { 
+  saveMessages, 
+  getMessageById, 
+  getChatById, 
+  saveChat 
+} from '@/lib/db/queries';
 import { type NextRequest, NextResponse } from 'next/server';
 import { eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import { message } from '@/lib/db/schema';
+import { generateTitleFromUserMessage } from '../../actions';
 
 // Initialize database connection
 const client = postgres(process.env.POSTGRES_URL || '');
@@ -36,6 +42,42 @@ export async function POST(request: NextRequest) {
         { error: 'Missing chatId or message' }, 
         { status: 400 }
       );
+    }
+
+    // AICODE-NOTE: Check if chat exists and create it if it doesn't to prevent foreign key violations.
+    const chat = await getChatById({ id: chatId });
+    if (!chat) {
+      console.log(`💾 Chat with ID ${chatId} not found, creating it...`);
+      try {
+        // The message object from the client might not have a 'content' field,
+        // which is used for title generation. We construct it from 'parts'.
+        if (!messageData.content && Array.isArray(messageData.parts)) {
+          messageData.content = messageData.parts
+            .map((part: any) => (part.text ? part.text : ''))
+            .join('\n');
+        }
+
+        const title = await generateTitleFromUserMessage({
+          message: messageData,
+        });
+
+        await saveChat({
+          id: chatId,
+          userId: session.user.id,
+          title,
+          visibility: 'private', // Default to private for saved messages
+        });
+        console.log(`💾 ✅ Chat ${chatId} created successfully.`);
+      } catch (createError) {
+        console.error(`💾 ❌ Failed to create chat ${chatId}:`, createError);
+        return NextResponse.json(
+          { 
+            error: 'Failed to create chat for message',
+            details: createError instanceof Error ? createError.message : String(createError)
+          }, 
+          { status: 500 }
+        );
+      }
     }
     
     // Check if message already exists to avoid duplicates

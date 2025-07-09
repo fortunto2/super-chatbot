@@ -44,7 +44,7 @@ export const configureScriptGeneration = (params?: CreateScriptDocumentParams) =
       // 3. Return the result which will be sent to the client
       return {
         id: result.id,
-        title: result.title,
+        title: '📝 Script created!',
         kind: 'script',
       };
     } catch (error) {

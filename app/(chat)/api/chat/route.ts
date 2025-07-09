@@ -18,8 +18,6 @@ import {
   saveMessages,
   getOrCreateOAuthUser,
   getUser,
-  saveDocument,
-  getDocumentsById,
 } from '@/lib/db/queries';
 import { generateUUID, getTrailingMessageId } from '@/lib/utils';
 import { generateTitleFromUserMessage } from '../../actions';
@@ -108,10 +106,9 @@ function getStreamContext() {
       }
     }
   }
+
   return globalStreamContext;
 }
-
-const streamContext = getStreamContext();
 
 export async function POST(request: Request) {
   let requestBody: PostRequestBody;
@@ -453,32 +450,6 @@ export async function POST(request: Request) {
       // Continue execution, as we can still try to get a response without saving the message
     }
 
-    // --- SPECIAL CASE: assistant message with only attachment (image/video/script artifact) ---
-    if (
-      String(message.role) === 'assistant' &&
-      Array.isArray(message.experimental_attachments) &&
-      message.experimental_attachments.length > 0
-    ) {
-      console.log('✅ Saving assistant message with attachments:', {
-        messageId: message.id,
-        chatId: id,
-        attachmentCount: message.experimental_attachments.length,
-      });
-      await saveMessages({
-        messages: [
-          {
-            chatId: id,
-            id: message.id,
-            role: 'assistant',
-            parts: message.parts || [],
-            attachments: message.experimental_attachments,
-            createdAt: new Date(),
-          },
-        ],
-      });
-      return new Response(JSON.stringify({ ok: true }), { status: 200 });
-    }
-
     const streamId = generateUUID();
     try {
       await createStreamId({ streamId, chatId: id });
@@ -568,13 +539,13 @@ export async function POST(request: Request) {
           tools: {
             ...tools,
             configureImageGeneration: configureImageGeneration({
-              createDocument: createDocument({ session, dataStream: enhancedDataStream }),
+              createDocument: tools.createDocument,
             }),
             configureVideoGeneration: configureVideoGeneration({
-              createDocument: createDocument({ session, dataStream: enhancedDataStream }),
+              createDocument: tools.createDocument,
             }),
             configureScriptGeneration: configureScriptGeneration({
-              createDocument: createDocument({ session, dataStream: enhancedDataStream }),
+              createDocument: tools.createDocument,
             }),
             listVideoModels,
             findBestVideoModel,
@@ -583,23 +554,47 @@ export async function POST(request: Request) {
           onFinish: async ({ response }) => {
             if (session.user?.id) {
               try {
-                const lastMessage = response.messages[response.messages.length - 1];
+                const assistantMessages = response.messages.filter(
+                  (message) => message.role === 'assistant'
+                );
 
-                // Ensure it's an assistant message and has parts before saving
-                if (lastMessage.role === 'assistant' && 'parts' in lastMessage) {
-                  await saveMessages({
-                    messages: [
-                      {
-                        id: lastMessage.id,
-                        chatId: id,
-                        role: lastMessage.role,
-                        parts: lastMessage.parts,
-                        attachments: (lastMessage as any).experimental_attachments ?? [],
-                        createdAt: new Date(),
-                      },
-                    ],
-                  });
+                if (assistantMessages.length === 0) {
+                  console.warn('No assistant messages found in response');
+                  return;
                 }
+
+                const assistantId = getTrailingMessageId({
+                  messages: assistantMessages,
+                });
+
+                if (!assistantId) {
+                  console.warn('No assistant message ID found');
+                  return;
+                }
+
+                const [, assistantMessage] = appendResponseMessages({
+                  messages: [message],
+                  responseMessages: response.messages,
+                });
+
+                if (!assistantMessage) {
+                  console.warn('Failed to append response messages');
+                  return;
+                }
+
+                await saveMessages({
+                  messages: [
+                    {
+                      id: assistantId,
+                      chatId: id,
+                      role: assistantMessage.role,
+                      parts: assistantMessage.parts,
+                      attachments:
+                        assistantMessage.experimental_attachments ?? [],
+                      createdAt: new Date(),
+                    },
+                  ],
+                });
               } catch (error) {
                 console.error('Failed to save assistant message:', error);
                 if (error instanceof Error) {
@@ -625,6 +620,8 @@ export async function POST(request: Request) {
       },
     });
 
+    const streamContext = getStreamContext();
+
     if (streamContext) {
       return new Response(
         await streamContext.resumableStream(streamId, () => stream),
@@ -639,6 +636,7 @@ export async function POST(request: Request) {
 
 export async function GET(request: Request) {
   try {
+    const streamContext = getStreamContext();
     const resumeRequestedAt = new Date();
 
     if (!streamContext) {
@@ -767,7 +765,6 @@ export async function DELETE(request: Request) {
     return formatErrorResponse(error);
   }
 }
-
 
 
 
