@@ -3,7 +3,7 @@
 
 'use client';
 
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { toast } from 'sonner';
 import { saveVideo, getStoredVideos, deleteStoredVideo, clearStoredVideos } from '@/lib/utils/local-storage';
 import { useVideoSSE } from '@/hooks/use-video-sse';
@@ -11,6 +11,16 @@ import { generationPersistence, type GenerationState } from '@/lib/websocket/gen
 import type { VideoGenerationFormData } from '../components/video-generator-form';
 import type { GenerationStatus } from '../components/video-generation-progress';
 import { API_NEXT_ROUTES } from '@/lib/config/next-api-routes';
+
+// AICODE-CHANGE: Add type for SSE events
+interface VideoSseEvent {
+  type: 'render_progress' | 'file' | 'error';
+  progress?: number;
+  data?: { message?: string };
+  object?: { url?: string };
+  error?: string;
+}
+
 
 // Legacy interfaces - MUST remain exactly the same for compatibility
 export interface GeneratedVideo {
@@ -90,101 +100,101 @@ export function useVideoGenerator(): UseVideoGeneratorReturn {
   const [currentFileId, setCurrentFileId] = useState<string>('');
   const requestIdRef = useRef<string>('');
 
-  // AICODE-NOTE: SSE event handlers for real-time updates
-  const eventHandlers = [
-    (event: any) => {
-      console.log('🎬 📡 Video SSE event received:', event);
+  // AICODE-NOTE: SSE event handlers for real-time updates (прогресс + готовое видео для совместимости с чатом)
+  const handleSseEvent = useCallback((event: any) => {
+    console.log('🎬 📡 Video SSE event received:', event);
+    
+    if (event.type === 'render_progress') {
+      setGenerationStatus(prev => ({
+        ...prev,
+        status: 'processing',
+        progress: Math.round((event.progress || 0) * 100),
+        message: event.data?.message || 'Processing video...',
+      }));
       
-      if (event.type === 'render_progress') {
-        setGenerationStatus(prev => ({
-          ...prev,
+      // Update persistence
+      if (currentFileId) {
+        generationPersistence.updateState(currentFileId, {
           status: 'processing',
           progress: Math.round((event.progress || 0) * 100),
           message: event.data?.message || 'Processing video...',
-        }));
-        
-        // Update persistence
-        if (currentFileId) {
-          generationPersistence.updateState(currentFileId, {
-            status: 'processing',
-            progress: Math.round((event.progress || 0) * 100),
-            message: event.data?.message || 'Processing video...',
-          });
-        }
-      }
-      
-      if (event.type === 'file' && !!event.object?.url) {
-        console.log('🎬 ✅ Video generation completed:', event);
-        
-        if (event.object?.url || event.url) {
-          const videoUrl = event.object?.url || event.url;
-          
-          setGenerationStatus(prev => ({
-            ...prev,
-            status: 'completed',
-            progress: 100,
-            message: 'Video generation completed!',
-          }));
-          
-          // Create completed video
-          const completedVideo: GeneratedVideo = {
-            id: currentFileId || event.id || Date.now().toString(),
-            url: videoUrl,
-            prompt: generationStatus.message || 'Generated video',
-            timestamp: Date.now(),
-            projectId: currentFileId,
-            requestId: requestIdRef.current,
-            settings: {
-              model: 'Unknown',
-              style: 'base',
-              resolution: '1280x720',
-              shotSize: 'medium',
-              duration: 5,
-              frameRate: 30
-            }
-          };
-          
-          setCurrentGeneration(completedVideo);
-          setGeneratedVideos(prev => [completedVideo, ...prev]);
-          saveVideo(completedVideo);
-          
-          // Update persistence to completed
-          if (currentFileId) {
-            generationPersistence.updateState(currentFileId, {
-              status: 'completed',
-              progress: 100,
-              message: 'Video generation completed!',
-              url: videoUrl,
-            });
-          }
-          
-          toast.success('Video generated successfully!');
-          setIsGenerating(false);
-        }
-      }
-      
-      if (event.type === 'error') {
-        console.error('🎬 ❌ Video generation error:', event);
-        
-        setGenerationStatus(prev => ({
-          ...prev,
-          status: 'error',
-          message: event.error || 'Video generation failed',
-        }));
-        
-        // Update persistence to error
-        if (currentFileId) {
-          generationPersistence.updateState(currentFileId, {
-            status: 'error',
-            message: event.error || 'Video generation failed',
-          });
-        }
-        
-        toast.error(event.error || 'Video generation failed');
-        setIsGenerating(false);
+        });
       }
     }
-  ];
+    
+    // AICODE-NOTE: Handle video completion events (for chat compatibility)
+    if (event.type === 'file' && event.object?.url) {
+      console.log('🎬 ✅ Video generation completed via SSE:', event);
+      
+      const videoUrl = event.object.url;
+      
+      setGenerationStatus(prev => ({
+        ...prev,
+        status: 'completed',
+        progress: 100,
+        message: 'Video generation completed!',
+      }));
+      
+      // Create completed video
+      const completedVideo: GeneratedVideo = {
+        id: currentFileId || event.object.id || Date.now().toString(),
+        url: videoUrl,
+        prompt: generationStatus.message || 'Generated video',
+        timestamp: Date.now(),
+        projectId: currentFileId,
+        requestId: requestIdRef.current,
+        settings: {
+          model: 'Unknown',
+          style: 'base',
+          resolution: '1280x720',
+          shotSize: 'medium_shot',
+          duration: 5,
+          frameRate: 30
+        }
+      };
+      
+      setCurrentGeneration(completedVideo);
+      setGeneratedVideos(prev => [completedVideo, ...prev]);
+      saveVideo(completedVideo);
+      
+      // Update persistence to completed
+      if (currentFileId) {
+        generationPersistence.updateState(currentFileId, {
+          status: 'completed',
+          progress: 100,
+          message: 'Video generation completed!',
+          url: videoUrl,
+        });
+      }
+      
+      toast.success('Video generated successfully via SSE!');
+      setIsGenerating(false);
+      setConnectionStatus('disconnected');
+    }
+    
+    if (event.type === 'error') {
+      console.error('🎬 ❌ Video generation error:', event);
+      
+      setGenerationStatus(prev => ({
+        ...prev,
+        status: 'error',
+        message: event.error || 'Video generation failed',
+      }));
+      
+      // Update persistence to error
+      if (currentFileId) {
+        generationPersistence.updateState(currentFileId, {
+          status: 'error',
+          message: event.error || 'Video generation failed',
+        });
+      }
+      
+      toast.error(event.error || 'Video generation failed');
+      setIsGenerating(false);
+    }
+  }, [currentFileId, generationStatus.message]);
+  
+  const eventHandlers = useMemo(() => [handleSseEvent], [handleSseEvent]);
 
   // AICODE-NOTE: Use ready-made SSE hook instead of custom implementation
   const { isConnected, disconnect } = useVideoSSE({
@@ -459,47 +469,28 @@ export function useVideoGenerator(): UseVideoGeneratorReturn {
       
       console.log('🎬 ✅ Video generation started:', { fileId, requestId });
 
-      // Start polling fallback after 15 seconds if SSE doesn't deliver results
-      setTimeout(async () => {
-        if (currentFileId === fileId && generationStatus.status === 'processing') {
-          console.log('🔄 Starting automatic polling fallback for video:', fileId);
-          
-          try {
-            // Import polling function
-            const { pollFileCompletion } = await import('@/lib/utils/smart-polling-manager');
-            
-            const result = await pollFileCompletion(fileId, {
-              maxDuration: 180000, // 3 minutes for video
-              initialInterval: 10000, // Start with 10s intervals
-              maxInterval: 30000, // Max 30s intervals
-              onProgress: (attempt, elapsed, nextInterval) => {
-                console.log(`🔄 Video polling attempt ${attempt} (${Math.round(elapsed / 1000)}s elapsed, next in ${nextInterval/1000}s)`);
-                
-                // Update UI with polling progress
-                setGenerationStatus(prev => ({
-                  ...prev,
-                  message: `Checking video progress... (${Math.round(elapsed / 1000)}s elapsed)`,
-                  progress: Math.min(90, 20 + (elapsed / 180000) * 70) // Progress from 20% to 90%
-                }));
-              }
-            });
+      // Start polling for result (like image-generator)
+      const checkResult = async (attempts = 0): Promise<void> => {
+        if (attempts > 18) { // 3 minutes max (18 * 10s)
+          throw new Error('Video generation timeout');
+        }
 
-            if (result.success && result.data?.url) {
-              console.log('✅ Video ready via polling!', result.data.url);
+        await new Promise(resolve => setTimeout(resolve, 10000)); // Wait 10 seconds
+
+        try {
+          // Check if we have a result in fileId
+          console.log(`🔄 Video polling attempt ${attempts + 1}`, fileId);
+          const checkResponse = await fetch(`/api/file/${fileId}`);
+          if (checkResponse.ok) {
+            const fileData = await checkResponse.json();
+            if (fileData.url) {
+              // Success!
+              console.log('🎬 ✅ Video ready via polling!', fileData.url);
               
-              // Update status to completed
-              setGenerationStatus(prev => ({
-                ...prev,
-                status: 'completed',
-                progress: 100,
-                message: 'Video generation completed!'
-              }));
-
-              // Create video object and add to results
-              const newVideo: GeneratedVideo = {
+              const generatedVideo: GeneratedVideo = {
                 id: fileId,
-                url: result.data.url,
-                prompt: formData.prompt || 'Video',
+                url: fileData.url,
+                prompt: formData.prompt,
                 timestamp: Date.now(),
                 projectId: fileId,
                 requestId,
@@ -514,47 +505,60 @@ export function useVideoGenerator(): UseVideoGeneratorReturn {
                 }
               };
 
-              setGeneratedVideos(prev => [newVideo, ...prev]);
-              setCurrentGeneration(newVideo);
+              setCurrentGeneration(generatedVideo);
+              setGeneratedVideos(prev => [generatedVideo, ...prev]);
               
               // Save to localStorage
-              const storedVideo = {
-                id: newVideo.id,
-                url: newVideo.url,
-                prompt: newVideo.prompt,
-                timestamp: newVideo.timestamp,
+              saveVideo({
+                id: generatedVideo.id,
+                url: generatedVideo.url,
+                prompt: generatedVideo.prompt,
+                timestamp: generatedVideo.timestamp,
                 fileId,
                 requestId,
-                settings: newVideo.settings
-              };
-              saveVideo(storedVideo);
+                settings: generatedVideo.settings
+              });
+
+              setGenerationStatus({
+                status: 'completed',
+                progress: 100,
+                message: 'Video generation completed!',
+                estimatedTime: 0,
+                projectId: fileId,
+                requestId,
+                fileId
+              });
 
               // Clean up persistence state
               generationPersistence.updateState(fileId, {
                 status: 'completed',
                 progress: 100,
-                url: result.data.url
+                url: fileData.url
               });
 
               setIsGenerating(false);
               setConnectionStatus('disconnected');
-              toast.success('Video is ready! (via polling)');
-              
-            } else {
-              console.log('⏳ Video still processing after polling timeout');
-              setGenerationStatus(prev => ({
-                ...prev,
-                message: 'Video generation taking longer than expected. Please check back later.',
-                progress: 95
-              }));
+              toast.success('Video generated successfully!');
+              return;
             }
-
-          } catch (pollingError) {
-            console.error('❌ Polling fallback failed:', pollingError);
-            // Don't show error to user - SSE might still work
           }
+        } catch (error) {
+          console.log('Polling attempt', attempts + 1, 'failed, retrying...');
         }
-      }, 15000); // Start polling after 15 seconds
+
+        // Update progress based on polling attempts
+        const progressIncrement = Math.min(80, 10 + (attempts * 4)); // Progress from 10% to 80%
+        setGenerationStatus(prev => ({
+          ...prev,
+          progress: progressIncrement,
+          message: `Checking video progress... (attempt ${attempts + 1})`
+        }));
+
+        // Continue polling
+        return checkResult(attempts + 1);
+      };
+
+      await checkResult();
 
     } catch (error) {
       console.error('🎬 ❌ Video generation error:', error);

@@ -3,6 +3,21 @@ import { uploadFile } from "../../upload-file";
 import type { ImageToVideoParams, VideoGenerationStrategy } from "../strategy.interface";
 import { parseResolution } from "@/lib/utils/media-generation";
 
+// Simple snake_case converter
+function snakeCase(str: string | undefined | null): string | undefined {
+  if (!str) return undefined;
+  return str.trim().replace(/\s+/g, '_').toLowerCase();
+}
+
+// Helper function to extract string value from object or string
+function getStringValue(value: any): string | undefined {
+  if (!value) return undefined;
+  if (typeof value === 'string') return value;
+  if (typeof value === 'object' && value.id) return value.id;
+  if (typeof value === 'object' && value.label) return value.label;
+  return undefined;
+}
+
 export class ImageToVideoStrategy implements VideoGenerationStrategy {
     readonly type = 'image-to-video';
     readonly requiresSourceImage = true;
@@ -54,21 +69,14 @@ export class ImageToVideoStrategy implements VideoGenerationStrategy {
 
       const { width, height, aspectRatio } = parseResolution(params.resolution);
 
-      const styleObject = { id: params.style || "flux_watercolor", label: params.style || "Watercolor" };
-      const shotSizeObject = { id: params.shotSize || "medium_shot", label: params.shotSize || "Medium Shot" };
-
-      const modelObject = { 
-        name: params.model || 'azure-openai/sora', 
-        label: params.model || 'Sora',
-        type: 'TEXT_TO_VIDEO' as any,
-        source: 'superduperai' as any,
-        params: {} as any
-      };
+      const modelName = typeof params.model === 'string' 
+        ? params.model 
+        : params.model?.name || 'azure-openai/sora';
 
       const payload: any = {
         config: {
           prompt: params.prompt || "animate this image naturally", // Default for image-to-video
-          generation_config_name: modelObject.name,
+          generation_config_name: modelName,
           duration: params.duration,
           aspect_ratio: aspectRatio || "16:9",
           seed: params.seed || Math.floor(Math.random() * 1000000000000),
@@ -76,9 +84,8 @@ export class ImageToVideoStrategy implements VideoGenerationStrategy {
           width: width,
           height: height,
           frame_rate: params.frameRate,
-          shot_size: shotSizeObject,
-          style_name: styleObject,
-          model: modelObject,
+          shot_size: snakeCase(getStringValue(params.shotSize)), // Extract string from object/string
+          style_name: snakeCase(getStringValue(params.style)),   // Extract string from object/string
           references: [
             {
               type: ReferenceTypeEnum.SOURCE,
