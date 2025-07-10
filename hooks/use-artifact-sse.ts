@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 
 // AICODE-NOTE: Universal SSE message interface for artifacts
 export interface ArtifactSSEMessage {
@@ -31,6 +31,11 @@ export const useArtifactSSE = ({ channel, eventHandlers, enabled = true }: Props
   const [connectionAttempts, setConnectionAttempts] = useState(0);
   const eventSourceRef = useRef<EventSource | null>(null);
   const mountedRef = useRef(true);
+  const handlersRef = useRef(eventHandlers);
+
+  useEffect(() => {
+    handlersRef.current = eventHandlers;
+  }, [eventHandlers]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -39,9 +44,19 @@ export const useArtifactSSE = ({ channel, eventHandlers, enabled = true }: Props
     };
   }, []);
 
+  const disconnect = useCallback(() => {
+    console.log('🔌 Manual SSE disconnect requested for channel:', channel);
+    if (eventSourceRef.current) {
+      eventSourceRef.current.close();
+      eventSourceRef.current = null;
+    }
+    setIsConnected(false);
+    setConnectionAttempts(0);
+  }, [channel]);
+
   // AICODE-NOTE: Main effect for SSE connection management
   useEffect(() => {
-    if (!enabled || !channel || eventHandlers.length === 0) {
+    if (!enabled || !channel || handlersRef.current.length === 0) {
       setIsConnected(false);
       setConnectionAttempts(0);
       return;
@@ -74,10 +89,10 @@ export const useArtifactSSE = ({ channel, eventHandlers, enabled = true }: Props
         
         try {
           const message: ArtifactSSEMessage = JSON.parse(event.data);
-          console.log('📡 SSE message received:', message);
+          // console.log('📡 SSE message received:', message);
 
           // Call all registered handlers
-          eventHandlers.forEach(handler => {
+          handlersRef.current.forEach(handler => {
             try {
               handler(message);
             } catch (error) {
@@ -119,7 +134,7 @@ export const useArtifactSSE = ({ channel, eventHandlers, enabled = true }: Props
       
       setConnectionAttempts(0);
     };
-  }, [channel, eventHandlers, enabled]);
+  }, [channel, enabled]);
 
   // AICODE-NOTE: Force cleanup on unmount with immediate execution
   useEffect(() => {
@@ -138,16 +153,6 @@ export const useArtifactSSE = ({ channel, eventHandlers, enabled = true }: Props
     isConnected,
     connectionAttempts,
     maxAttempts: 3, // For compatibility
-    disconnect: () => {
-      console.log('🔌 Manual SSE disconnect requested for channel:', channel);
-      
-      if (eventSourceRef.current) {
-        eventSourceRef.current.close();
-        eventSourceRef.current = null;
-      }
-      
-      setIsConnected(false);
-      setConnectionAttempts(0);
-    },
+    disconnect,
   };
 };
