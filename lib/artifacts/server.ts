@@ -105,11 +105,13 @@ export function createDocumentHandler<T extends ArtifactKind>(config: {
           console.log('📄 Could not parse title, using as-is');
         }
         
-        // AICODE-NOTE: Truncate title to 255 characters for database storage
+        // AICODE-NOTE: Truncate title to 255 characters for database storage - this is not a database requirement, text column has no limit
+        /*
         if (readableTitle.length > 255) {
           readableTitle = readableTitle.substring(0, 252) + '...';
           console.log('📄 Title truncated to 255 characters');
         }
+        */
         
         await saveDocument({
           id: args.id,

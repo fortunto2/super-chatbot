@@ -1,6 +1,22 @@
 import { parseResolution } from "@/lib/utils/media-generation";
 import type { VideoGenerationParams, VideoGenerationStrategy } from "../strategy.interface";
 
+// Simple snake_case converter
+function snakeCase(str: string | undefined | null): string | undefined {
+  if (!str) return undefined;
+  // Handles "Long Shot" -> "long_shot"
+  return str.trim().replace(/\s+/g, '_').toLowerCase();
+}
+
+// Helper function to extract string value from object or string
+function getStringValue(value: any): string | undefined {
+  if (!value) return undefined;
+  if (typeof value === 'string') return value;
+  if (typeof value === 'object' && value.id) return value.id;
+  if (typeof value === 'object' && value.label) return value.label;
+  return undefined;
+}
+
 // Text-to-Video Strategy
 export class TextToVideoStrategy implements VideoGenerationStrategy {
     readonly type = 'text-to-video';
@@ -16,35 +32,15 @@ export class TextToVideoStrategy implements VideoGenerationStrategy {
   
     generatePayload(params: VideoGenerationParams): any {
       const { width, height, aspectRatio } = parseResolution(params.resolution);
-    
-      // style и shotSize — тоже только id/label, если API требует строку
-      const styleObject = { id: params.style || "flux_watercolor", label: params.style || "Watercolor" };
-      const shotSizeObject = { id: params.shotSize || "medium_shot", label: params.shotSize || "Medium Shot" };
-    
-      let modelName: string;
-      if (typeof params.model === 'string') {
-        modelName = params.model;
-      } else if (params.model && typeof params.model === 'object') {
-        if ('name' in params.model && params.model.name) {
-          modelName = params.model.name;
-        }  else {
-          modelName = 'azure-openai/sora';
-        }
-      } else {
-        modelName = 'azure-openai/sora';
-      }
-      const modelObject = { 
-        name: modelName, 
-        label: modelName,
-        type: 'TEXT_TO_VIDEO' as any,
-        source: 'superduperai' as any,
-        params: {} as any
-      };
-    
+      
+      const modelName = typeof params.model === 'string' 
+        ? params.model 
+        : params.model?.name || 'azure-openai/sora';
+  
       const payload = {
         config: {
           prompt: params.prompt,
-          generation_config_name: modelName, // <-- теперь всегда строка!
+          generation_config_name: modelName,
           duration: params.duration,
           aspect_ratio: aspectRatio || "16:9",
           seed: params.seed || Math.floor(Math.random() * 1000000000000),
@@ -52,13 +48,11 @@ export class TextToVideoStrategy implements VideoGenerationStrategy {
           width: width,
           height: height,
           frame_rate: params.frameRate,
-          shot_size: shotSizeObject,
-          style_name: styleObject,
-          model: modelObject
+          shot_size: snakeCase(getStringValue(params.shotSize)), // Extract string from object/string
+          style_name: snakeCase(getStringValue(params.style)),     // Extract string from object/string
         }
       }
-      console.log("payload", payload)
-    
+      
       return payload
     }
   }
