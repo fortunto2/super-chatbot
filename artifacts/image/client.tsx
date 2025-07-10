@@ -102,7 +102,7 @@ const ImageDisplay = ({ imageUrl, prompt }: { imageUrl: string; prompt: string }
       <img
         src={imageUrl}
         alt={prompt || 'AI-generated artwork'}
-        className="w-full h-auto"
+        className="w-full h-auto object-contain"
         style={{ maxHeight: '70vh' }}
       />
     </div>
@@ -120,8 +120,16 @@ const ImageArtifactWrapper = memo(function ImageArtifactWrapper(props: any) {
 
   const parsedContent = useMemo(() => {
     try {
-      return JSON.parse(localContent);
-    } catch {
+      const parsed = JSON.parse(localContent);
+      return parsed;
+    } catch (error) {
+      // Only log parsing errors for debugging if needed
+      if (localContent?.trim()) {
+        console.log('🖼️ ❌ Failed to parse image content:', { 
+          contentPreview: localContent?.substring(0, 100), 
+          error: error instanceof Error ? error.message : String(error)
+        });
+      }
       return null;
     }
   }, [localContent]);
@@ -180,10 +188,21 @@ const ImageArtifactWrapper = memo(function ImageArtifactWrapper(props: any) {
     enabled: !!projectId && status !== 'completed' && !!requestId
   });
 
+  // Show skeleton while loading or if content cannot be parsed
+  if (!parsedContent) {
+    return (
+      <div className="space-y-2">
+        <Skeleton className="w-full h-[400px] rounded-lg" />
+        <Skeleton className="w-3/4 h-4 rounded-lg" />
+      </div>
+    );
+  }
+
   if (status === 'completed' && imageUrl) {
     return <ImageDisplay imageUrl={imageUrl} prompt={prompt} />;
   }
 
+  // Show skeleton for pending/processing states
   return (
     <div className="space-y-2">
       <Skeleton className="w-full h-[400px] rounded-lg" />
@@ -201,7 +220,15 @@ export const imageArtifact = new Artifact({
   description: 'Useful for image generation with real-time progress tracking',
   onStreamPart: ({ streamPart, setArtifact }) => {
     if (streamPart.type === 'text-delta') {
-      setArtifact((draft) => ({ ...draft, content: streamPart.content as string, isVisible: true }));
+      // AICODE-FIX: Validate JSON content before overwriting to prevent skeleton disappearing
+      const newContent = streamPart.content as string;
+      try {
+        JSON.parse(newContent);
+        setArtifact((draft) => ({ ...draft, content: newContent, isVisible: true }));
+      } catch {
+        // Invalid JSON - don't overwrite existing content
+        console.log('🖼️ ⚠️ Skipping invalid JSON content in stream part');
+      }
     }
     if (streamPart.type === 'finish') {
       setArtifact((draft) => ({ ...draft, status: 'idle' }));
