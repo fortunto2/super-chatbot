@@ -1,5 +1,4 @@
-import { GenerationTypeEnum } from "@/lib/api";
-import { VideoModel } from "@/lib/config/superduperai";
+import type { GenerationTypeEnum } from "@/lib/api";
 
 // Base interfaces for video generation
 export interface VideoGenerationParams {

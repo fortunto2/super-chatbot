@@ -1,4 +1,4 @@
-import { NextRequest } from "next/server";
+import type { NextRequest } from "next/server";
 import { generateText } from "ai";
 import { myProvider } from "@/lib/ai/providers";
 

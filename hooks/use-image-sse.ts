@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import { imageSSEStore, type ImageEventHandler } from "@/lib/websocket/image-sse-store";
-import { createFileSSEURL } from "@/lib/config/superduperai";
+import { createFileSSEURL } from "@/lib/utils/client-websocket";
 
 type Props = {
   fileId: string; // Only fileId needed for image/video generation

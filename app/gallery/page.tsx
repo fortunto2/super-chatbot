@@ -1,11 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, } from 'react';
 import { DocumentGallery } from './components/document-gallery';
 import { GalleryFilters } from './components/gallery-filters';
 import { GallerySearch } from './components/gallery-search';
-import { GallerySkeleton } from './components/gallery-skeleton';
-import { Button } from '@/components/ui/button';
 import type { ArtifactKind } from '@/components/artifact';
 import { useSession } from 'next-auth/react';
 

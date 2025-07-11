@@ -1,27 +1,44 @@
 import { type NextRequest, NextResponse } from 'next/server';
-import { getSuperduperAIConfig } from '@/lib/config/superduperai';
-import { OpenAPI } from '@/lib/api/core/OpenAPI';
-import { generateImageWithStrategy, ImageGenerationParams, ImageToImageParams } from '@/lib/ai/api/image-generation';
+import { auth } from '@/app/(auth)/auth';
+import { configureSuperduperAIForUser } from '@/lib/config/superduperai';
+import { getUserSuperduperAIStatus } from '@/lib/db/queries';
+import { generateImageWithStrategy, type ImageGenerationParams, type ImageToImageParams } from '@/lib/ai/api/image-generation';
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     
     console.log('🖼️ Image API: Processing image generation request');
-    console.log('📦 Request parameters:', JSON.stringify(body, null, 2));
+    
+    // Получаем пользователя из сессии
+    const session = await auth();
+    const userId = session?.user?.id;
+    
+    // Проверяем баланс пользователя (если подключен SuperDuperAI)
+    if (userId) {
+      const userStatus = await getUserSuperduperAIStatus(userId);
+      if (userStatus.isConnected && userStatus.balance <= 0) {
+        return NextResponse.json({
+          success: false,
+          error: 'Insufficient credits',
+          details: 'You have 0 credits left. Please top up your SuperDuperAI balance to continue generating images.',
+          balance: 0,
+          requiresTopUp: true
+        }, { status: 402 }); // Payment Required
+      }
+    }
     
     const {
       chatId,
       generationType = 'text-to-image',
     } = body;
     
-    // Configure OpenAPI client for server-side usage
-    const config = getSuperduperAIConfig();
-    OpenAPI.BASE = config.url;
-    OpenAPI.TOKEN = config.token;
+    // Настраиваем SuperDuperAI с токеном пользователя (или системным)
+    await configureSuperduperAIForUser(userId);
+    
+    console.log(`🔑 Using ${userId ? 'user' : 'system'} token for generation`);
     
     // Create image generation config using OpenAPI types
-
     const strategyParams: ImageGenerationParams | ImageToImageParams = {...body}
    
     // Use OpenAPI client to generate image
@@ -34,7 +51,8 @@ export async function POST(request: NextRequest) {
       fileId: result.fileId,
       projectId: result.projectId || chatId,
       url: result.url,
-      message: result.message
+      message: result.message,
+      usingUserToken: !!userId
     };
     
     return NextResponse.json(response);
@@ -64,6 +82,19 @@ export async function POST(request: NextRequest) {
           details: 'Failed to process the source image. Please try using a different image or check the file format (PNG, JPG, WEBP supported).'
         },
         { status: 500 }
+      );
+    }
+    
+    // Handle authorization errors (invalid user token)
+    if (errorMessage.includes('401') || errorMessage.includes('Unauthorized')) {
+      return NextResponse.json(
+        { 
+          success: false,
+          error: 'Authentication failed', 
+          details: 'Your SuperDuperAI connection may have expired. Please reconnect your account.',
+          needsReconnection: true
+        },
+        { status: 401 }
       );
     }
     

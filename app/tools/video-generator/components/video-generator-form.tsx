@@ -35,7 +35,7 @@ import { getVideoGenerationConfig } from '@/lib/config/media-settings-factory';
 import type { MediaOption, MediaResolution, AdaptedModel } from '@/lib/types/media-settings';
 import { ImageUpload } from './image-upload';
 import { GenerationTypeEnum } from '@/lib/api/models/GenerationTypeEnum';
-import { getModelLabel } from '@/lib/config/superduperai';
+import { getModelLabel } from '@/lib/utils/model-helpers';
 
 // AICODE-NOTE: Duration options for different video use cases
 const DURATION_OPTIONS = [

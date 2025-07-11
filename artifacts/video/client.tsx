@@ -35,7 +35,7 @@ const saveArtifactToDatabase = async (id: string | undefined, title: string, con
     
     // AICODE-NOTE: Truncate title to 255 characters for database storage
     if (readableTitle.length > 255) {
-      readableTitle = readableTitle.substring(0, 252) + '...';
+      readableTitle = `${readableTitle.substring(0, 252)}...`;
     }
     
     const response = await fetch(`/api/document?id=${encodeURIComponent(id)}`, {

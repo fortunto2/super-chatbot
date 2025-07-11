@@ -4,7 +4,7 @@ import { getStyles } from '@/lib/ai/api/get-styles';
 import type { MediaOption } from '@/lib/types/media-settings';
 import type { VideoModel } from '@/lib/config/superduperai';
 import { getAvailableVideoModels } from '@/lib/config/superduperai';
-import { SHOT_SIZES, VIDEO_FRAME_RATES, DEFAULT_VIDEO_RESOLUTION, DEFAULT_VIDEO_DURATION, getModelCompatibleResolutions, DEFAULT_VIDEO_PARAMS } from '@/lib/config/video-constants';
+import { SHOT_SIZES, VIDEO_FRAME_RATES, getModelCompatibleResolutions, DEFAULT_VIDEO_PARAMS } from '@/lib/config/video-constants';
 import { GenerationSourceEnum, GenerationTypeEnum } from '@/lib/api';
 
 function convertToVideoModel(sdModel: VideoModel): VideoModel {

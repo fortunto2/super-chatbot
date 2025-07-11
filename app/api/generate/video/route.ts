@@ -1,5 +1,7 @@
 import { type NextRequest, NextResponse } from 'next/server';
-import { configureSuperduperAI } from '@/lib/config/superduperai';
+import { auth } from '@/app/(auth)/auth';
+import { configureSuperduperAIForUser } from '@/lib/config/superduperai';
+import { getUserSuperduperAIStatus } from '@/lib/db/queries';
 import { generateVideoWithStrategy, type VideoGenerationParams, type ImageToVideoParams } from '@/lib/ai/api/video-generation';
 
 export async function POST(request: NextRequest) {
@@ -8,6 +10,24 @@ export async function POST(request: NextRequest) {
     // All requests now come as JSON (with Base64 data URL for image-to-video)
     console.log('🎬 Video API: Processing JSON request');
     const contentType = request.headers.get('content-type') || '';
+
+    // Получаем пользователя из сессии
+    const session = await auth();
+    const userId = session?.user?.id;
+    
+    // Проверяем баланс пользователя (если подключен SuperDuperAI)
+    if (userId) {
+      const userStatus = await getUserSuperduperAIStatus(userId);
+      if (userStatus.isConnected && userStatus.balance <= 0) {
+        return NextResponse.json({
+          success: false,
+          error: 'Insufficient credits',
+          details: 'You have 0 credits left. Please top up your SuperDuperAI balance to continue generating videos.',
+          balance: 0,
+          requiresTopUp: true
+        }, { status: 402 }); // Payment Required
+      }
+    }
 
     // Проверяем form-data или обычный JSON
     const isFormData = contentType.includes('multipart/form-data');
@@ -34,15 +54,16 @@ export async function POST(request: NextRequest) {
     }
     const {chatId, generationType = 'text-to-video'} = body
     
-    console.log('📦 Request parameters:', JSON.stringify(body, null, 2));
-        // Configure SuperDuperAI for server-side operations
-    configureSuperduperAI();
+    // Настраиваем SuperDuperAI с токеном пользователя (или системным)
+    await configureSuperduperAIForUser(userId);
+    
+    console.log(`🔑 Using ${userId ? 'user' : 'system'} token for video generation`);
 
     // Add image-specific parameters if needed
     const strategyParams: VideoGenerationParams | ImageToVideoParams = {...body};
   
     console.log(`🎬 Using strategy pattern for ${generationType} generation`);
-    console.log("strategyParams", strategyParams);
+    
     // Use strategy pattern for generation
     const result = await generateVideoWithStrategy(generationType, strategyParams);
     
@@ -58,7 +79,8 @@ export async function POST(request: NextRequest) {
       fileId: result.fileId,
       projectId: result.projectId || chatId,
       url: result.url,
-      message: result.message
+      message: result.message,
+      usingUserToken: !!userId
     };
     
     return NextResponse.json(responseData);
@@ -88,6 +110,19 @@ export async function POST(request: NextRequest) {
           details: 'Failed to process the source image. Please try using a different image or check the file format (PNG, JPG, WEBP supported).'
         },
         { status: 500 }
+      );
+    }
+    
+    // Handle authorization errors (invalid user token)
+    if (errorMessage.includes('401') || errorMessage.includes('Unauthorized')) {
+      return NextResponse.json(
+        { 
+          success: false,
+          error: 'Authentication failed', 
+          details: 'Your SuperDuperAI connection may have expired. Please reconnect your account.',
+          needsReconnection: true
+        },
+        { status: 401 }
       );
     }
     

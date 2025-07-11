@@ -10,7 +10,7 @@ import { getStyles } from '../api/get-styles';
 import { createVideoMediaSettings } from '@/lib/config/media-settings-factory';
 import { SHOT_SIZES, VIDEO_FRAME_RATES, DEFAULT_VIDEO_DURATION, getModelCompatibleResolutions, getDefaultResolutionForModel } from '@/lib/config/video-constants';
 import { GenerationTypeEnum, GenerationSourceEnum } from '@/lib/api';
-import { findOption, selectResolution, selectStyle } from './options-utils';
+import { findOption, } from './options-utils';
 
 // AICODE-NOTE: Now using unified VideoModel type from superduperai.ts
 function convertToVideoModel(sdModel: VideoModel): VideoModel {

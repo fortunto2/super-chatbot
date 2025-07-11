@@ -1,4 +1,4 @@
-import { parseResolution } from "@/lib/utils/media-generation";
+
 import type { VideoGenerationParams, VideoGenerationStrategy } from "../strategy.interface";
 import { selectResolution } from "@/lib/ai/tools/options-utils";
 

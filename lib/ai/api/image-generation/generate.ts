@@ -67,7 +67,7 @@ export async function generateImageWithStrategy(
         tasks: result.tasks || []
       };
     } catch (error: any) {
-      let errorMessage = error.message || `Unknown ${strategy.type} generation error`;
+      const errorMessage = error.message || `Unknown ${strategy.type} generation error`;
       return {
         success: false,
         error: errorMessage,

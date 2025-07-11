@@ -3,7 +3,7 @@
 import { useEffect, useCallback, useRef } from 'react';
 import { useArtifact } from '@/hooks/use-artifact';
 import { imageWebsocketStore } from '@/lib/websocket/image-websocket-store';
-import { getSuperduperAIConfig } from '@/lib/config/superduperai';
+import { getClientConfig } from '@/lib/utils/client-websocket';
 import type { ImageEventHandler } from '@/lib/websocket/image-websocket-store';
 
 interface UseArtifactWebSocketOptions {
@@ -165,9 +165,8 @@ export const useArtifactWebSocket = ({ enabled = true }: UseArtifactWebSocketOpt
     currentRequestIdRef.current = requestId;
 
     // Connect to WebSocket
-    const config = getSuperduperAIConfig();
-    const baseUrl = config.wsURL.replace('wss://', 'https://').replace('ws://', 'http://');
-    const url = `${baseUrl.replace('https://', 'wss://')}/api/v1/ws/project.${projectId}`;
+    const config = getClientConfig();
+    const url = `${config.wsURL}/api/v1/ws/project.${projectId}`;
     
     console.log('🔌 Artifact WebSocket: Connecting to URL:', url);
     imageWebsocketStore.initConnection(url, [eventHandler]);

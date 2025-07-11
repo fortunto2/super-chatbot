@@ -1,5 +1,5 @@
 import { AzureOpenAI } from "openai";
-import readline from "readline/promises";
+import readline from "node:readline/promises";
 import { stdin as input, stdout as output, argv, exit } from "node:process";
 import dotenv from "dotenv";
 
@@ -81,8 +81,8 @@ async function askO3Pro(userInput) {
   if (outputText) {
     try {
       const parsed = JSON.parse(outputText);
-      console.log("\n--- CODE ---\n" + parsed.code);
-      console.log("\n--- EXPLANATION ---\n" + parsed.explanation + "\n");
+      console.log(`\n--- CODE ---\n${parsed.code}`);
+      console.log(`\n--- EXPLANATION ---\n${parsed.explanation}\n`);
     } catch (e) {
       console.log("\n[Raw output]:\n", outputText);
     }

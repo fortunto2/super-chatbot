@@ -1,7 +1,7 @@
 "use client";
 import React from "react";
 import { MarkdownEditor } from "@/components/markdown-editor";
-import { MDXEditorMethods } from "@mdxeditor/editor";
+import type { MDXEditorMethods } from "@mdxeditor/editor";
 import { jsPDF } from "jspdf";
 import { marked } from "marked";
 import { CopyIcon, DownloadIcon, TrashIcon, InfoIcon, FileIcon } from "@/components/icons";
@@ -46,8 +46,8 @@ export default function ScriptGenerationResult({ script, setScript, editorRef, l
           <div className="flex items-center justify-center py-8">
             <div className="text-center space-y-2">
               <svg className="size-8 text-gray-300 dark:text-gray-600 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
               </svg>
               <p className="text-sm text-gray-500 dark:text-gray-400">Enter a prompt and click &quot;Generate Script&quot; to get started.</p>
             </div>
@@ -62,8 +62,8 @@ export default function ScriptGenerationResult({ script, setScript, editorRef, l
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <svg className="size-5 text-blue-600 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
             </svg>
             Generating Script...
           </CardTitle>
@@ -75,8 +75,8 @@ export default function ScriptGenerationResult({ script, setScript, editorRef, l
           <div className="flex items-center justify-center py-8">
             <div className="text-center space-y-2">
               <svg className="size-8 text-blue-500 animate-pulse mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
               </svg>
               <p className="text-sm text-gray-500 dark:text-gray-400">Please wait while your script is being created...</p>
             </div>
@@ -212,9 +212,9 @@ const handleDownload = (script: string) => {
         const dialogueMatch = String(token.text ?? '').match(/^([A-Za-z0-9\- ]+):\s*"([^"]+)"$/);
         if (dialogueMatch) {
           doc.setFont("helvetica", "bold");
-          doc.text(String(dialogueMatch[1] ?? '') + ':', margin, y);
+          doc.text(`${String(dialogueMatch[1] ?? '')}:`, margin, y);
           doc.setFont("helvetica", "normal");
-          doc.text(' "' + String(dialogueMatch[2] ?? '') + '"', margin + doc.getTextWidth(String(dialogueMatch[1] ?? '') + ':'), y);
+          doc.text(` "${String(dialogueMatch[2] ?? '')}"`, margin + doc.getTextWidth(`${String(dialogueMatch[1] ?? '')}:`), y);
           y += 16;
         } else {
           // Жирный текст внутри параграфа
@@ -222,7 +222,7 @@ const handleDownload = (script: string) => {
           let lastIndex = 0;
           let match;
           let x = margin;
-          let localY = y;
+          const localY = y;
           const text = String(token.text ?? '');
           while ((match = strongRegex.exec(text)) !== null) {
             const before = text.slice(lastIndex, match.index);
@@ -252,12 +252,12 @@ const handleDownload = (script: string) => {
         const dialogueMatch = itemText.match(/^([A-Za-z0-9\- ]+):\s*"([^"]+)"$/);
         if (dialogueMatch) {  
           doc.setFont("helvetica", "bold");
-          doc.text(String(dialogueMatch[1] ?? '') + ':', margin + 18, y);
+          doc.text(`${String(dialogueMatch[1] ?? '')}:`, margin + 18, y);
           doc.setFont("helvetica", "normal");
-          doc.text(' "' + String(dialogueMatch[2] ?? '') + '"', margin + 18 + doc.getTextWidth(String(dialogueMatch[1] ?? '') + ':'), y);
+          doc.text(` "${String(dialogueMatch[2] ?? '')}"`, margin + 18 + doc.getTextWidth(`${String(dialogueMatch[1] ?? '')}:`), y);
           y += 16;
         } else {
-          doc.text('• ' + itemText, margin + 18, y);
+          doc.text(`• ${itemText}`, margin + 18, y);
           y += 16;
         }
       });

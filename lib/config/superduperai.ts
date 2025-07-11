@@ -10,6 +10,7 @@ import type { IGenerationConfigRead } from '@/lib/api/models/IGenerationConfigRe
 import { GenerationTypeEnum } from '@/lib/api/models/GenerationTypeEnum';
 import { ListOrderEnum } from '@/lib/api/models/ListOrderEnum';
 import { API_NEXT_ROUTES } from './next-api-routes';
+import { getUserSuperduperAIToken } from '@/lib/db/queries';
 
 // Type aliases for backward compatibility
 export type VideoModel = IGenerationConfigRead;
@@ -94,14 +95,51 @@ export async function getClientSuperduperAIConfig(): Promise<SuperduperAIConfig>
   }
 }
 
-export function configureSuperduperAI(): SuperduperAIConfig {
-  const config = getSuperduperAIConfig();
+/**
+ * Get SuperDuperAI config for specific user (with their personal token)
+ * Falls back to system token if user doesn't have one connected
+ */
+export async function getSuperduperAIConfigForUser(userId?: string): Promise<SuperduperAIConfig> {
+  const baseConfig = getSuperduperAIConfig();
+  
+  if (!userId) {
+    // No user ID - use system token
+    return baseConfig;
+  }
+  
+  try {
+    const userToken = await getUserSuperduperAIToken(userId);
+    if (userToken) {
+      // User has personal token - use it
+      return {
+        ...baseConfig,
+        token: userToken,
+      };
+    }
+  } catch (error) {
+    console.error('Failed to get user SuperDuperAI token:', error);
+  }
+  
+  // Fallback to system token
+  return baseConfig;
+}
+
+export function configureSuperduperAI(customConfig?: SuperduperAIConfig): SuperduperAIConfig {
+  const config = customConfig || getSuperduperAIConfig();
   
   // Configure the generated OpenAPI client
   OpenAPI.BASE = config.url;
   OpenAPI.TOKEN = config.token;
   
   return config;
+}
+
+/**
+ * Configure SuperDuperAI for specific user
+ */
+export async function configureSuperduperAIForUser(userId?: string): Promise<SuperduperAIConfig> {
+  const config = await getSuperduperAIConfigForUser(userId);
+  return configureSuperduperAI(config);
 }
 
 /**
@@ -405,6 +443,14 @@ export function createAuthHeaders(config?: SuperduperAIConfig): Record<string, s
     'X-Client-Version': '3.0.22',
     'X-Client-Platform': 'NextJS',
   };
+}
+
+/**
+ * Create authenticated headers for specific user
+ */
+export async function createAuthHeadersForUser(userId?: string): Promise<Record<string, string>> {
+  const config = await getSuperduperAIConfigForUser(userId);
+  return createAuthHeaders(config);
 }
 
 /**

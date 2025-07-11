@@ -778,7 +778,7 @@ export async function getDocuments({
     if (search && typeof search === 'string' && search.length > 0) {
       const searchCondition = or(
         ilike(document.title, `%${search}%`),
-        sql`${document.tags}::text LIKE ${'%' + search + '%'}` // <-- исправлено
+        sql`${document.tags}::text LIKE ${`%${search}%`}` // <-- исправлено
       );
       if (searchCondition) {
         conditions.push(searchCondition);
@@ -926,6 +926,131 @@ export async function updateDocumentMetadata({
       .where(and(eq(document.id, id), eq(document.userId, userId)));
   } catch (error) {
     console.error('Failed to update document metadata');
+    throw error;
+  }
+}
+
+// ===================================
+// SuperDuperAI Integration Queries
+// ===================================
+
+/**
+ * Сохраняет SuperDuperAI токен и данные пользователя
+ */
+export async function saveUserSuperduperAI({
+  userId,
+  token,
+  superduperaiUserId,
+  balance = 0,
+}: {
+  userId: string;
+  token: string;
+  superduperaiUserId: string;
+  balance?: number;
+}) {
+  try {
+    return await db
+      .update(user)
+      .set({
+        superduperai_token: token, // пока без шифрования для простоты
+        superduperai_user_id: superduperaiUserId,
+        superduperai_balance: balance,
+        superduperai_connected_at: new Date(),
+      })
+      .where(eq(user.id, userId));
+  } catch (error) {
+    console.error('Failed to save SuperDuperAI token:', error);
+    throw error;
+  }
+}
+
+/**
+ * Получает SuperDuperAI токен для пользователя
+ */
+export async function getUserSuperduperAIToken(userId: string): Promise<string | null> {
+  try {
+    const [result] = await db
+      .select({ token: user.superduperai_token })
+      .from(user)
+      .where(eq(user.id, userId))
+      .limit(1);
+
+    return result?.token || null;
+  } catch (error) {
+    console.error('Failed to get SuperDuperAI token:', error);
+    return null;
+  }
+}
+
+/**
+ * Получает статус подключения SuperDuperAI для пользователя
+ */
+export async function getUserSuperduperAIStatus(userId: string): Promise<{
+  isConnected: boolean;
+  balance: number;
+  superduperaiUserId: string | null;
+  connectedAt: Date | null;
+}> {
+  try {
+    const [result] = await db
+      .select({
+        token: user.superduperai_token,
+        balance: user.superduperai_balance,
+        superduperaiUserId: user.superduperai_user_id,
+        connectedAt: user.superduperai_connected_at,
+      })
+      .from(user)
+      .where(eq(user.id, userId))
+      .limit(1);
+
+    return {
+      isConnected: !!result?.token,
+      balance: result?.balance || 0,
+      superduperaiUserId: result?.superduperaiUserId || null,
+      connectedAt: result?.connectedAt || null,
+    };
+  } catch (error) {
+    console.error('Failed to get SuperDuperAI status:', error);
+    return {
+      isConnected: false,
+      balance: 0,
+      superduperaiUserId: null,
+      connectedAt: null,
+    };
+  }
+}
+
+/**
+ * Обновляет баланс пользователя SuperDuperAI
+ */
+export async function updateUserSuperduperAIBalance(userId: string, balance: number) {
+  try {
+    return await db
+      .update(user)
+      .set({ superduperai_balance: balance })
+      .where(eq(user.id, userId));
+  } catch (error) {
+    console.error('Failed to update SuperDuperAI balance:', error);
+    throw error;
+  }
+}
+
+/**
+ * Отключает SuperDuperAI для пользователя
+ */
+export async function disconnectUserSuperduperAI(userId: string) {
+  try {
+    return await db
+      .update(user)
+      .set({
+        superduperai_token: null,
+        superduperai_user_id: null,
+        superduperai_balance: 0,
+        superduperai_connected_at: null,
+      })
+      .where(eq(user.id, userId));
+  } catch (error) {
+    console.error('Failed to disconnect SuperDuperAI:', error);
     throw error;
   }
 }
