@@ -7,10 +7,10 @@ import type {
 } from '@/lib/types/media-settings';
 import type { VideoModel } from '@/lib/config/superduperai';
 import { getStyles } from '../api/get-styles';
-import { findStyle } from './configure-image-generation';
 import { createVideoMediaSettings } from '@/lib/config/media-settings-factory';
-import { VIDEO_RESOLUTIONS, SHOT_SIZES, VIDEO_FRAME_RATES, DEFAULT_VIDEO_RESOLUTION, DEFAULT_VIDEO_DURATION, getModelCompatibleResolutions, getDefaultResolutionForModel } from '@/lib/config/video-constants';
+import { SHOT_SIZES, VIDEO_FRAME_RATES, DEFAULT_VIDEO_DURATION, getModelCompatibleResolutions, getDefaultResolutionForModel } from '@/lib/config/video-constants';
 import { GenerationTypeEnum, GenerationSourceEnum } from '@/lib/api';
+import { findOption, selectResolution, selectStyle } from './options-utils';
 
 // AICODE-NOTE: Now using unified VideoModel type from superduperai.ts
 function convertToVideoModel(sdModel: VideoModel): VideoModel {
@@ -71,20 +71,14 @@ export const configureVideoGeneration = (params?: CreateVideoDocumentParams) => 
     generationType: z.enum(['text-to-video', 'image-to-video']).optional().describe('Generation mode: "text-to-video" for text prompts only, "image-to-video" when using source image'),
   }),
   execute: async ({ prompt, negativePrompt, style, resolution, shotSize, model, frameRate, duration, sourceImageId, sourceImageUrl, generationType }) => {
-    console.log('🔧 configureVideoGeneration called with:', { prompt, negativePrompt, style, resolution, shotSize, model, frameRate, duration });
-    console.log('🔧 createDocument available:', !!params?.createDocument);
     
     // AICODE-NOTE: Use economical defaults
-    const defaultResolution = DEFAULT_VIDEO_RESOLUTION;
     const defaultStyle: MediaOption = {id: "flux_steampunk", label: "Steampunk", description: "Steampunk style"};
     const defaultShotSize = SHOT_SIZES.find(s => s.id === 'long-shot') || SHOT_SIZES[0];
     
     // AICODE-NOTE: Load models using new factory pattern
-    console.log('🎬 Loading video models from SuperDuperAI API via factory...');
     const videoSettings = await createVideoMediaSettings();
     const availableModels = videoSettings.availableModels;
-    
-    console.log('🎬 ✅ Loaded video models:', availableModels.map(m => m.id));
     
     // AICODE-NOTE: Use smart model selection that prioritizes text_to_video models like Sora!
     const { getBestVideoModel } = await import('@/lib/ai/api/config-cache');
@@ -105,8 +99,6 @@ export const configureVideoGeneration = (params?: CreateVideoDocumentParams) => 
       source: convertSourceToEnum(bestModel.source as string)
     } : (availableModels.find(m => m.name === 'azure-openai/sora') || availableModels[0]) as AdaptedModel;
     
-    console.log('🎯 Smart default model selected:', defaultModel.label, '(type:', defaultModel.type, ')');
-
     let styles: MediaOption[] = [];
 
     try {
@@ -176,104 +168,11 @@ export const configureVideoGeneration = (params?: CreateVideoDocumentParams) => 
     }
 
     try {
-      // Find the selected model first (for resolution compatibility check)
-      const selectedModel = model ? 
-        availableModels.find(m => m.label === model || m.id === model || (m as any).apiName === model) || defaultModel : 
-        defaultModel;
-
-      // Get model-compatible resolutions
-      const compatibleResolutions = getModelCompatibleResolutions(selectedModel.name || selectedModel.id || '');
-      
-      // Find the selected resolution, but ensure it's compatible with the model
-      let selectedResolution = defaultResolution;
-      if (resolution) {
-        const requestedResolution = VIDEO_RESOLUTIONS.find(r => r.label === resolution);
-        if (requestedResolution) {
-          // Check if requested resolution is compatible with the model
-          const isCompatible = compatibleResolutions.some(r => r.label === requestedResolution.label);
-          if (isCompatible) {
-            selectedResolution = requestedResolution;
-          } else {
-            // Use model-compatible default instead
-            selectedResolution = getDefaultResolutionForModel(selectedModel.name || selectedModel.id || '');
-            console.log(`🔧 ⚠️ Resolution ${resolution} not compatible with model ${selectedModel.name}, using ${selectedResolution.label} instead`);
-          }
-        }
-      } else {
-        // No resolution specified, use model-compatible default
-        selectedResolution = getDefaultResolutionForModel(selectedModel.name || selectedModel.id || '');
-      }
-      
-      let selectedStyle: MediaOption = defaultStyle;
-      if (style) {
-        const foundStyle = findStyle(style, styles);
-        if (foundStyle) {
-          selectedStyle = foundStyle;
-          console.log('🔧 ✅ STYLE MATCHED:', style, '->', selectedStyle.label);
-        } else {
-          console.log('🔧 ⚠️ STYLE NOT FOUND:', style, 'using default:', defaultStyle.label);
-          console.log('🔧 📋 Available styles:', styles.map(s => s.label).slice(0, 5).join(', '), '...');
-          
-          // Additional fallback: try to find the most common style types
-          const commonStyleFallbacks = [
-            'flux_steampunk', 'steampunk', 'flux_realistic', 'realistic', 
-            'flux_cinematic', 'cinematic', 'flux_anime', 'anime',
-            'flux_fantasy', 'fantasy', 'default'
-          ];
-          
-          for (const fallbackId of commonStyleFallbacks) {
-            const fallbackStyle = styles.find(s => 
-              s.id.toLowerCase().includes(fallbackId.toLowerCase()) ||
-              s.label.toLowerCase().includes(fallbackId.toLowerCase())
-            );
-            if (fallbackStyle) {
-              selectedStyle = fallbackStyle;
-              console.log('🔧 🔄 FALLBACK STYLE FOUND:', fallbackId, '->', selectedStyle.label);
-              break;
-            }
-          }
-          
-          // If still no style found, use the first available one
-          if (selectedStyle === defaultStyle && styles.length > 0) {
-            selectedStyle = styles[0];
-            console.log('🔧 🔄 USING FIRST AVAILABLE STYLE:', selectedStyle.label);
-          }
-        }
-      } else {
-        // No style specified, try to find a good default from available styles
-        const preferredDefaults = ['flux_steampunk', 'steampunk', 'flux_realistic', 'realistic'];
-        for (const preferredId of preferredDefaults) {
-          const preferredStyle = styles.find(s => 
-            s.id.toLowerCase().includes(preferredId.toLowerCase()) ||
-            s.label.toLowerCase().includes(preferredId.toLowerCase())
-          );
-          if (preferredStyle) {
-            selectedStyle = preferredStyle;
-            console.log('🔧 🎯 USING PREFERRED DEFAULT STYLE:', selectedStyle.label);
-            break;
-          }
-        }
-        
-        // If no preferred default found, use first available
-        if (selectedStyle === defaultStyle && styles.length > 0) {
-          selectedStyle = styles[0];
-          console.log('🔧 🎯 USING FIRST AVAILABLE AS DEFAULT:', selectedStyle.label);
-        }
-      }
-      
-      const selectedShotSize = shotSize ? 
-        SHOT_SIZES.find(s => s.label === shotSize || s.id === shotSize) || defaultShotSize : 
-        defaultShotSize;
+      // AICODE-CHANGE: Refactored option selection to use helper functions
+      const selectedModel = findOption(model, availableModels, defaultModel);
 
       // AICODE-NOTE: Check if selected model is image-to-video based on actual type field from API
       const isImageToVideoModel = selectedModel.type === 'image_to_video';
-      
-      console.log('🔧 🎯 Model type check:', {
-        modelId: selectedModel.id,
-        modelName: selectedModel.label,
-        apiType: selectedModel.type,
-        isImageToVideo: isImageToVideoModel
-      });
       
       // AICODE-NOTE: Validate source image for image-to-video models
       if (isImageToVideoModel && !sourceImageId && !sourceImageUrl) {
@@ -289,22 +188,15 @@ export const configureVideoGeneration = (params?: CreateVideoDocumentParams) => 
       // AICODE-NOTE: Auto-determine generation type for dual-mode compatibility
       const autoGenerationType = (sourceImageId || sourceImageUrl) ? 'image-to-video' : 'text-to-video';
       const finalGenerationType = generationType || autoGenerationType;
-      
-      console.log('🔧 🎯 Generation type determination:', {
-        provided: generationType,
-        autoDetected: autoGenerationType,
-        final: finalGenerationType,
-        hasSourceImage: !!(sourceImageId || sourceImageUrl)
-      });
-
+   
       // Create the video document with all parameters
       const videoParams = {
         prompt,
         negativePrompt: negativePrompt || "",
-        style: selectedStyle,
-        resolution: selectedResolution,
-        shotSize: selectedShotSize,
-        model: selectedModel,
+        style,
+        resolution,
+        shotSize,
+        model: model || 'azure-openai/sora',
         frameRate: frameRate || 30,
         duration: duration || DEFAULT_VIDEO_DURATION, // Use economical default
         sourceImageId: sourceImageId || undefined,
@@ -328,7 +220,7 @@ export const configureVideoGeneration = (params?: CreateVideoDocumentParams) => 
           
           return {
             ...result,
-            message: `I'm creating a video with description: "${prompt}". Using economical HD settings (${selectedResolution.label}, ${duration || DEFAULT_VIDEO_DURATION}s) for cost efficiency. Artifact created and generation started.`
+            message: `I'm creating a video with description: "${prompt}". Using economical HD settings (${resolution}, ${duration || DEFAULT_VIDEO_DURATION}s) for cost efficiency. Artifact created and generation started.`
           };
         } catch (error) {
           console.error('🔧 ❌ CREATE DOCUMENT ERROR:', error);

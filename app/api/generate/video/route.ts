@@ -1,7 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import { configureSuperduperAI } from '@/lib/config/superduperai';
 import { generateVideoWithStrategy, type VideoGenerationParams, type ImageToVideoParams } from '@/lib/ai/api/video-generation';
-import { parseResolution } from '@/lib/utils/media-generation';
 
 export async function POST(request: NextRequest) {
   try {

@@ -1,5 +1,6 @@
 import { parseResolution } from "@/lib/utils/media-generation";
 import type { VideoGenerationParams, VideoGenerationStrategy } from "../strategy.interface";
+import { selectResolution } from "@/lib/ai/tools/options-utils";
 
 // Simple snake_case converter
 function snakeCase(str: string | undefined | null): string | undefined {
@@ -31,25 +32,23 @@ export class TextToVideoStrategy implements VideoGenerationStrategy {
     }
   
     generatePayload(params: VideoGenerationParams): any {
-      const { width, height, aspectRatio } = parseResolution(params.resolution);
+      console.log('🔧 🎯 TextToVideoStrategy generatePayload called with:', params);
+      // const { width, height, aspectRatio } = parseResolution(params.resolution);
+      const { width, height, aspectRatio } = selectResolution(params.resolution, params.model);
       
-      const modelName = typeof params.model === 'string' 
-        ? params.model 
-        : params.model?.name || 'azure-openai/sora';
-  
       const payload = {
         config: {
           prompt: params.prompt,
-          generation_config_name: modelName,
+          generation_config_name: params.model || 'azure-openai/sora',
           duration: params.duration,
           aspect_ratio: aspectRatio || "16:9",
           seed: params.seed || Math.floor(Math.random() * 1000000000000),
           negative_prompt: params.negativePrompt || '',
-          width: width,
-          height: height,
+          width,
+          height,
           frame_rate: params.frameRate,
-          shot_size: snakeCase(getStringValue(params.shotSize)), // Extract string from object/string
-          style_name: snakeCase(getStringValue(params.style)),     // Extract string from object/string
+          shot_size: params.shotSize,
+          style_name: params.style,
         }
       }
       

@@ -4,7 +4,7 @@ import { VideoModel } from "@/lib/config/superduperai";
 // Base interfaces for video generation
 export interface VideoGenerationParams {
     prompt: string;
-    model: string | VideoModel;
+    model: string ;
     style: string;
     resolution: string;
     shotSize: string;
