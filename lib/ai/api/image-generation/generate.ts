@@ -1,4 +1,4 @@
-import { API_ENDPOINTS, getSuperduperAIConfig } from "@/lib/config/superduperai";
+import { API_ENDPOINTS, getSuperduperAIConfig } from "@/lib/config/superduperai-client";
 import { ImageGenerationStrategyFactory } from "./strategy.factory";
 import type { ImageGenerationParams, ImageToImageParams, ImageGenerationResult } from "./strategy.interface";
 

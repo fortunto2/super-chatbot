@@ -2,8 +2,8 @@ import { createDocumentHandler } from '@/lib/artifacts/server';
 import { generateVideoWithStrategy } from '@/lib/ai/api/video-generation';
 import { getStyles } from '@/lib/ai/api/get-styles';
 import type { MediaOption } from '@/lib/types/media-settings';
-import type { VideoModel } from '@/lib/config/superduperai';
-import { getAvailableVideoModels } from '@/lib/config/superduperai';
+import type { VideoModel } from '@/lib/config/superduperai-client';
+import { getAvailableVideoModels } from '@/lib/config/superduperai-client';
 import { SHOT_SIZES, VIDEO_FRAME_RATES, getModelCompatibleResolutions, DEFAULT_VIDEO_PARAMS } from '@/lib/config/video-constants';
 import { GenerationSourceEnum, GenerationTypeEnum } from '@/lib/api';
 

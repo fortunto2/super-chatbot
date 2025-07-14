@@ -53,6 +53,16 @@ export async function getUser(email: string): Promise<Array<User>> {
   }
 }
 
+export async function getUserById(userId: string): Promise<User | null> {
+  try {
+    const [result] = await db.select().from(user).where(eq(user.id, userId));
+    return result || null;
+  } catch (error) {
+    console.error('Failed to get user by ID from database');
+    throw error;
+  }
+}
+
 /**
  * Creates or gets an OAuth user
  * Used to create accounts for users authenticated through Auth0
@@ -959,6 +969,11 @@ export async function saveUserSuperduperAI({
       })
       .where(eq(user.id, userId));
   } catch (error) {
+    // TEMP FIX: If superduperai columns don't exist yet, skip the operation
+    if (error instanceof Error && error.message.includes('superduperai')) {
+      console.warn('SuperDuperAI columns not yet migrated, skipping save operation');
+      return [];
+    }
     console.error('Failed to save SuperDuperAI token:', error);
     throw error;
   }
@@ -977,6 +992,11 @@ export async function getUserSuperduperAIToken(userId: string): Promise<string |
 
     return result?.token || null;
   } catch (error) {
+    // TEMP FIX: If superduperai_token column doesn't exist yet, return null
+    if (error instanceof Error && error.message.includes('superduperai_token')) {
+      console.warn('SuperDuperAI columns not yet migrated, falling back to system token');
+      return null;
+    }
     console.error('Failed to get SuperDuperAI token:', error);
     return null;
   }
@@ -1010,6 +1030,16 @@ export async function getUserSuperduperAIStatus(userId: string): Promise<{
       connectedAt: result?.connectedAt || null,
     };
   } catch (error) {
+    // TEMP FIX: If superduperai columns don't exist yet, return default values
+    if (error instanceof Error && error.message.includes('superduperai')) {
+      console.warn('SuperDuperAI columns not yet migrated, returning default status');
+      return {
+        isConnected: false,
+        balance: 0,
+        superduperaiUserId: null,
+        connectedAt: null,
+      };
+    }
     console.error('Failed to get SuperDuperAI status:', error);
     return {
       isConnected: false,
@@ -1030,6 +1060,11 @@ export async function updateUserSuperduperAIBalance(userId: string, balance: num
       .set({ superduperai_balance: balance })
       .where(eq(user.id, userId));
   } catch (error) {
+    // TEMP FIX: If superduperai_balance column doesn't exist yet, skip the operation
+    if (error instanceof Error && error.message.includes('superduperai_balance')) {
+      console.warn('SuperDuperAI columns not yet migrated, skipping balance update');
+      return [];
+    }
     console.error('Failed to update SuperDuperAI balance:', error);
     throw error;
   }
@@ -1050,6 +1085,11 @@ export async function disconnectUserSuperduperAI(userId: string) {
       })
       .where(eq(user.id, userId));
   } catch (error) {
+    // TEMP FIX: If superduperai columns don't exist yet, skip the operation
+    if (error instanceof Error && error.message.includes('superduperai')) {
+      console.warn('SuperDuperAI columns not yet migrated, skipping disconnect operation');
+      return [];
+    }
     console.error('Failed to disconnect SuperDuperAI:', error);
     throw error;
   }

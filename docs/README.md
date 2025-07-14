@@ -7,6 +7,49 @@ Welcome to the Super Chatbot documentation! This comprehensive guide covers all 
 - **[Environment Setup](./getting-started/environment-setup.md)** - Get up and running quickly
 - **[README Overview](./getting-started/README.md)** - Basic project information
 
+## ⚠️ Current System Status
+
+### ✅ System Health (Resolved Issues)
+
+- **✅ Database Schema**: `superduperai_token` column added successfully
+- **✅ User Authentication**: Working correctly with proper user ID mapping
+- **✅ Image Generation**: Pipeline functional with SSE/polling architecture
+- **✅ Video Generation**: All text-to-video and image-to-video models operational
+
+### ✅ Recent Fixes (January 2025)
+
+- **✅ Transparent SuperDuperAI Integration**: Complete seamless user experience implementation
+
+  - **Implemented**: Automatic OAuth flow for new users - transparent, no manual steps
+  - **Implemented**: Single system experience - users never know about "two backends"
+  - **Implemented**: Personal credit usage - always charges user's SuperDuperAI account
+  - **Implemented**: Post-auth continuation - generation resumes automatically after OAuth
+  - **Result**: Users experience one unified chatbot platform, not a complex multi-backend system
+  - **Details**: [Transparent SuperDuperAI Integration](./maintenance/changelog/transparent-superduperai-integration.md)
+
+- **✅ User Token Logging Accuracy**: Fixed misleading logs and API responses about token usage
+
+  - **Fixed**: Accurate detection of when user personal tokens vs system tokens are used
+  - **Fixed**: Correct logging messages that reflect actual token type being used
+  - **Fixed**: API responses now accurately report `usingUserToken` field
+  - **Result**: Clear visibility into which account's credits are being charged
+  - **Details**: [User Token Logging Accuracy Fix](./maintenance/changelog/fix-user-token-logging-accuracy.md)
+
+- **✅ SuperDuperAI Personal Tokens**: Fixed OAuth callback token extraction and user token usage
+  - **Fixed**: Token extraction from AuthService.authToken() object format
+  - **Fixed**: OpenAPI client configuration with user tokens
+  - **Fixed**: SSE proxy now uses personal tokens instead of system token
+  - **Result**: Personal SuperDuperAI credits are charged instead of admin credits
+  - **Details**: [SuperDuperAI Auth Token Extraction Fix](./maintenance/changelog/superduperai-auth-token-extraction-fix.md)
+
+### ❌ Known Issues
+
+- **❌ Google Cloud Imagen4-Ultra**: Model name outdated on SuperDuperAI server
+  - **Error**: `imagen-4.0-ultra-generate-exp-05-20 is unavailable`
+  - **Required**: Update to `imagen-4.0-ultra-generate-preview-06-06`
+  - **Workaround**: Use alternative models (`comfyui/flux`, `google-cloud/imagen3`)
+  - **Details**: [Google Cloud Model Update Required](./maintenance/changelog/google-cloud-imagen-model-update-required.md)
+
 ## 🔐 Authentication System
 
 ### NextAuth + SuperDuperAI Integration

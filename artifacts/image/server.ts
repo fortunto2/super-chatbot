@@ -2,8 +2,8 @@ import { createDocumentHandler } from '@/lib/artifacts/server';
 import { generateImageWithStrategy } from '@/lib/ai/api/image-generation';
 import { getStyles } from '@/lib/ai/api/get-styles';
 import type { MediaOption, MediaResolution } from '@/lib/types/media-settings';
-import type { ImageModel } from '@/lib/config/superduperai';
-import { getAvailableImageModels } from '@/lib/config/superduperai';
+import type { ImageModel } from '@/lib/config/superduperai-client';
+import { getAvailableImageModels } from '@/lib/config/superduperai-client';
 
 // Import the same constants as in configure-image-generation
 const RESOLUTIONS: MediaResolution[] = [

@@ -1,6 +1,6 @@
 import { auth } from '@/app/(auth)/auth';
 import { NextResponse } from 'next/server';
-import { configureSuperduperAI } from '@/lib/config/superduperai';
+import { configureSuperduperAI } from '@/lib/config/superduperai-client';
 import { AuthService, UserService } from '@/lib/api';
 import { saveUserSuperduperAI } from '@/lib/db/queries';
 
@@ -30,14 +30,31 @@ export async function GET(request: Request) {
 
     // Получаем информацию о токене
     const tokenResponse = await AuthService.authToken();
+    console.log('🔑 DEBUG: Raw tokenResponse from AuthService.authToken():', tokenResponse);
+    console.log('🔑 DEBUG: tokenResponse type:', typeof tokenResponse);
+    console.log('🔑 DEBUG: tokenResponse keys:', Object.keys(tokenResponse || {}));
     
     // Получаем информацию о пользователе
     const userInfo = await UserService.userMe();
+    console.log('👤 DEBUG: userInfo:', userInfo);
+
+    // Извлекаем токен из ответа - он может быть объектом
+    let actualToken: string;
+    if (typeof tokenResponse === 'string') {
+      actualToken = tokenResponse;
+    } else if (tokenResponse && typeof tokenResponse === 'object') {
+      // Попробуем найти токен в различных полях
+      actualToken = tokenResponse.token || tokenResponse.access_token || tokenResponse.auth_token || String(tokenResponse);
+    } else {
+      actualToken = String(tokenResponse);
+    }
+    
+    console.log('🔑 DEBUG: Extracted actualToken:', actualToken ? `${actualToken.substring(0, 10)}...` : 'null');
 
     // Сохраняем в нашей БД
     await saveUserSuperduperAI({
       userId: session.user.id,
-      token: tokenResponse, // Реальный токен из response
+      token: actualToken, // Правильно извлеченный токен
       superduperaiUserId: userInfo.id,
       balance: userInfo.balance || 0,
     });

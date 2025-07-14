@@ -1,4 +1,4 @@
-import { API_ENDPOINTS, getSuperduperAIConfig } from "@/lib/config/superduperai";
+import { API_ENDPOINTS, getSuperduperAIConfig } from "@/lib/config/superduperai-client";
 import { ImageToVideoStrategy } from "./strategies/image-to-video";
 import { VideoGenerationStrategyFactory } from "./strategy.factory";
 import type { ImageToVideoParams, VideoGenerationParams, VideoGenerationResult } from "./strategy.interface";

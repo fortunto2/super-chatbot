@@ -1,4 +1,4 @@
-import { getSuperduperAIConfig } from '@/lib/config/superduperai';
+import { getSuperduperAIConfig } from '@/lib/config/superduperai-client';
 
 export type INextCursor = {
   offset: number;

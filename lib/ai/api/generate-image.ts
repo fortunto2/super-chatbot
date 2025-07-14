@@ -1,8 +1,8 @@
 import type { MediaOption, MediaResolution } from "@/lib/types/media-settings";
-import type { ImageModel } from '@/lib/config/superduperai';
+import type { ImageModel } from '@/lib/config/superduperai-client';
 import { 
   configureSuperduperAI
-} from '@/lib/config/superduperai';
+} from '@/lib/config/superduperai-client';
 import { FileService } from '@/lib/api/services/FileService';
 
 export interface ImageGenerationResult {

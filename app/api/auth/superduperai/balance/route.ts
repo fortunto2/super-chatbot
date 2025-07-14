@@ -1,7 +1,7 @@
 import { auth } from '@/app/(auth)/auth';
 import { NextResponse } from 'next/server';
 import { getUserSuperduperAIToken, updateUserSuperduperAIBalance } from '@/lib/db/queries';
-import { configureSuperduperAI } from '@/lib/config/superduperai';
+import { configureSuperduperAI } from '@/lib/config/superduperai-client';
 import { UserService } from '@/lib/api';
 
 export async function GET(request: Request) {
@@ -21,11 +21,19 @@ export async function GET(request: Request) {
     }
 
     // Настраиваем SuperDuperAI client с пользовательским токеном
-    configureSuperduperAI({ 
-      url: process.env.SUPERDUPERAI_URL!,
+    const superduperAIUrl = process.env.SUPERDUPERAI_URL || process.env.NEXT_PUBLIC_SUPERDUPERAI_URL;
+    if (!superduperAIUrl) {
+      return NextResponse.json({ error: 'SuperDuperAI URL not configured' }, { status: 500 });
+    }
+    
+    const userConfig = {
+      url: superduperAIUrl,
       token: userToken,
-      wsURL: process.env.SUPERDUPERAI_URL?.replace('https://', 'wss://')
-    });
+      wsURL: superduperAIUrl.replace('https://', 'wss://')
+    };
+    
+    console.log(`🔑 Balance API: Using user token ${userToken.substring(0, 10)}... for user ${session.user.id}`);
+    configureSuperduperAI(userConfig);
 
     // Получаем актуальный баланс из SuperDuperAI
     const userInfo = await UserService.userMe();

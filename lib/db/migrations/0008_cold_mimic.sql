@@ -1,0 +1,4 @@
+ALTER TABLE "User" ADD COLUMN "superduperai_token" text;--> statement-breakpoint
+ALTER TABLE "User" ADD COLUMN "superduperai_user_id" varchar(255);--> statement-breakpoint
+ALTER TABLE "User" ADD COLUMN "superduperai_balance" integer DEFAULT 0;--> statement-breakpoint
+ALTER TABLE "User" ADD COLUMN "superduperai_connected_at" timestamp;

@@ -5,7 +5,7 @@ import type {
   VideoGenerationConfig,
   AdaptedModel
 } from '@/lib/types/media-settings';
-import type { VideoModel } from '@/lib/config/superduperai';
+import type { VideoModel } from '@/lib/config/superduperai-client';
 import { getStyles } from '../api/get-styles';
 import { createVideoMediaSettings } from '@/lib/config/media-settings-factory';
 import { SHOT_SIZES, VIDEO_FRAME_RATES, DEFAULT_VIDEO_DURATION, getModelCompatibleResolutions, getDefaultResolutionForModel } from '@/lib/config/video-constants';

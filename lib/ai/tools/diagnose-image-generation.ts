@@ -1,6 +1,6 @@
 import { tool } from 'ai';
 import { z } from 'zod';
-import { getAvailableImageModels, configureSuperduperAI } from '@/lib/config/superduperai';
+import { getAvailableImageModels, configureSuperduperAI } from '@/lib/config/superduperai-client';
 import { getStyles } from '@/lib/ai/api/get-styles';
 import { SHOT_SIZES } from '@/lib/config/video-constants';
 
