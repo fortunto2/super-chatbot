@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/app/(auth)/auth';
+import { auth0, getPersonalSuperduperAIToken } from '@/lib/auth0';
 import { configureSuperduperAIForUser } from '@/lib/config/superduperai-server';
-import { getUserSuperduperAIStatus } from '@/lib/db/queries';
+import { getUserSuperduperAIStatus, getUserSuperduperAIToken } from '@/lib/db/queries';
 import { generateImageWithStrategy, type ImageGenerationParams, type ImageToImageParams } from '@/lib/ai/api/image-generation';
 
 export async function POST(request: NextRequest) {
@@ -10,42 +10,42 @@ export async function POST(request: NextRequest) {
     
     console.log('🖼️ Image API: Processing image generation request');
     
-    // Получаем пользователя из сессии
-    const session = await auth();
-    const userId = session?.user?.id;
+    // AICODE-NOTE: Get Auth0 session instead of NextAuth
+    const session = await auth0.getSession();
+    const userId = session?.user?.sub;
     
-    // Прозрачная интеграция с SuperDuperAI
-    if (userId) {
-      const userStatus = await getUserSuperduperAIStatus(userId);
+    // AICODE-NOTE: Critical change - use personal token instead of admin token
+    try {
+      const personalToken = await getPersonalSuperduperAIToken();
       
-      // Если пользователь НЕ подключен - возвращаем ответ для автоматического OAuth  
-      if (!userStatus.isConnected) {
-        return NextResponse.json({
-          success: false,
-          error: 'Authentication required',
-          details: 'Automatic authentication with SuperDuperAI will start now. This is a one-time setup.',
-          needsAuth: true,
-          authAction: 'superduperai_oauth',
-                     continueAfterAuth: {
-             method: 'POST',
-             url: '/api/generate/image',
-             body: body
-           }
-        }, { status: 202 }); // Accepted - will be processed after auth
+      if (!personalToken) {
+        throw new Error('No personal SuperDuperAI token available');
       }
       
-      // Проверяем баланс ТОЛЬКО если пользователь подключен
-      if (userStatus.balance <= 0) {
-        return NextResponse.json({
-          success: false,
-          error: 'Insufficient credits',
-          details: 'You have 0 credits left. Please top up your balance to continue generating images.',
-          balance: 0,
-          requiresTopUp: true
-        }, { status: 402 }); // Payment Required
-      }
+      console.log('💳 Using personal SuperDuperAI token - user will be charged on their own account');
+      
+      // Configure SuperDuperAI with user's personal token
+      await configureSuperduperAIForUser(personalToken);
+      
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      console.log('❌ No personal token available:', errorMessage);
+      
+      // Return error requiring SuperDuperAI connection
+      return NextResponse.json({
+        success: false,
+        error: 'SuperDuperAI account required',
+        details: errorMessage,
+        needsAuth: true,
+        authAction: 'superduperai_connect',
+        continueAfterAuth: {
+          method: 'POST',
+          url: '/api/generate/image',
+          body: body
+        }
+      }, { status: 402 }); // Payment Required - need to connect account
     }
-    
+
     const {
       chatId,
       generationType = 'text-to-image',
@@ -53,6 +53,17 @@ export async function POST(request: NextRequest) {
     
     // Настраиваем SuperDuperAI с токеном пользователя (или системным)
     const config = await configureSuperduperAIForUser(userId);
+    
+    // ДЕТАЛЬНАЯ ДИАГНОСТИКА: проверяем, какой токен реально используется
+    console.log(`🔍 IMAGE DIAGNOSTICS for userId: ${userId}`);
+    if (userId) {
+      const userStatus = await getUserSuperduperAIStatus(userId);
+      const userToken = await getUserSuperduperAIToken(userId);
+      console.log(`📊 User status:`, userStatus);
+      console.log(`🔑 User token exists:`, !!userToken);
+      console.log(`🔑 User token preview:`, userToken ? `${userToken.substring(0, 10)}...` : 'NULL');
+      console.log(`⚡ System token preview:`, process.env.SUPERDUPERAI_TOKEN ? `${process.env.SUPERDUPERAI_TOKEN.substring(0, 10)}...` : 'NULL');
+    }
     
     // Проверяем реально ли используется пользовательский токен
     const isUsingUserToken = userId ? !!(await getUserSuperduperAIStatus(userId)).isConnected : false;

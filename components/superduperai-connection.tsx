@@ -1,263 +1,279 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { LoaderIcon, CheckCircleFillIcon, CrossIcon, BoxIcon } from '@/components/icons';
+import { CheckCircle, AlertCircle, ExternalLink, Loader2 } from 'lucide-react';
 
-interface SuperDuperAIStatus {
-  isConnected: boolean;
-  balance: number;
-  superduperaiUserId: string | null;
-  connectedAt: Date | null;
+interface SuperDuperAIConnectionProps {
+  className?: string;
 }
 
-interface SuperDuperAIBalance {
-  hasConnection: boolean;
-  balance: number;
-  vip?: boolean;
-  admin?: boolean;
-}
-
-// Simple Badge component
-const Badge = ({ children, variant = 'default' }: { children: React.ReactNode; variant?: 'default' | 'secondary' | 'destructive' }) => {
+// Simple Badge component since it doesn't exist in UI components
+const Badge = ({ children, variant = 'default', className = '' }: { 
+  children: React.ReactNode; 
+  variant?: 'default' | 'secondary'; 
+  className?: string;
+}) => {
   const baseClasses = 'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium';
   const variantClasses = {
     default: 'bg-green-500 text-white',
     secondary: 'bg-gray-100 text-gray-800',
-    destructive: 'bg-red-500 text-white',
   };
   
   return (
-    <span className={`${baseClasses} ${variantClasses[variant]}`}>
+    <span className={`${baseClasses} ${variantClasses[variant]} ${className}`}>
       {children}
     </span>
   );
 };
 
-export function SuperDuperAIConnection() {
-  const [status, setStatus] = useState<SuperDuperAIStatus | null>(null);
-  const [balance, setBalance] = useState<SuperDuperAIBalance | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [connecting, setConnecting] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
-  const router = useRouter();
+// AICODE-NOTE: Updated component to work with Auth0 user sessions
+// AICODE-NOTE: Focuses on personal token connection status instead of admin token usage
+export default function SuperDuperAIConnection({ className }: SuperDuperAIConnectionProps) {
+  const [user, setUser] = useState<any>(null);
+  const [userLoading, setUserLoading] = useState(true);
+  const [isConnecting, setIsConnecting] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState<{
+    connected: boolean;
+    loading: boolean;
+    error?: string;
+  }>({
+    connected: false,
+    loading: true
+  });
 
-  const fetchStatus = async () => {
-    try {
-      const response = await fetch('/api/auth/superduperai/status');
-      if (response.ok) {
-        const data = await response.json();
-        setStatus(data);
-      }
-    } catch (error) {
-      console.error('Failed to fetch SuperDuperAI status:', error);
-    }
-  };
-
-  const fetchBalance = async () => {
-    try {
-      const response = await fetch('/api/auth/superduperai/balance');
-      if (response.ok) {
-        const data = await response.json();
-        setBalance(data);
-      } else {
-        setBalance({ hasConnection: false, balance: 0 });
-      }
-    } catch (error) {
-      console.error('Failed to fetch SuperDuperAI balance:', error);
-      setBalance({ hasConnection: false, balance: 0 });
-    }
-  };
-
-  const loadData = async () => {
-    setLoading(true);
-    await Promise.all([fetchStatus(), fetchBalance()]);
-    setLoading(false);
-  };
-
-  const handleConnect = async () => {
-    setConnecting(true);
-    try {
-      const response = await fetch('/api/auth/superduperai/login', {
-        method: 'POST',
-      });
-      
-      if (response.ok) {
-        const { authUrl } = await response.json();
-        window.location.href = authUrl;
-      }
-    } catch (error) {
-      console.error('Failed to initiate SuperDuperAI connection:', error);
-      setConnecting(false);
-    }
-  };
-
-  const handleDisconnect = async () => {
-    try {
-      const response = await fetch('/api/auth/superduperai/disconnect', {
-        method: 'POST',
-      });
-      
-      if (response.ok) {
-        await loadData(); // Refresh data
-      }
-    } catch (error) {
-      console.error('Failed to disconnect SuperDuperAI:', error);
-    }
-  };
-
-  const handleRefreshBalance = async () => {
-    setRefreshing(true);
-    await fetchBalance();
-    setRefreshing(false);
-  };
-
+  // AICODE-NOTE: Fetch user data from Auth0 /auth/me endpoint
   useEffect(() => {
-    loadData();
+    fetch('/auth/me')
+      .then(res => res.ok ? res.json() : null)
+      .then(userData => {
+        setUser(userData);
+        setUserLoading(false);
+        
+        if (userData) {
+          const hasToken = userData.superduperai_token && userData.superduperai_connected;
+          setConnectionStatus({
+            connected: !!hasToken,
+            loading: false
+          });
+        } else {
+          setConnectionStatus({
+            connected: false,
+            loading: false
+          });
+        }
+      })
+      .catch(() => {
+        setUserLoading(false);
+        setConnectionStatus({
+          connected: false,
+          loading: false
+        });
+      });
   }, []);
 
-  // Check for connection status from URL params
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('connected') === 'true') {
-      loadData(); // Refresh data if just connected
-      // Clear URL params
-      router.replace(window.location.pathname);
+  // AICODE-NOTE: Handle SuperDuperAI account connection via OAuth
+  const handleConnect = async () => {
+    if (!user) {
+      console.log('❌ No Auth0 user session');
+      return;
     }
-  }, [router]);
 
-  if (loading) {
+    setIsConnecting(true);
+    
+    try {
+      console.log('🔗 Starting SuperDuperAI OAuth connection for user:', user.sub?.substring(0, 10) + '...');
+      
+      const response = await fetch('/api/auth/superduperai/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to start OAuth flow');
+      }
+
+      const { authUrl } = await response.json();
+      console.log('📱 Opening SuperDuperAI Auth0 popup...');
+
+      // AICODE-NOTE: Open Auth0 in popup window with clear instructions
+      const authWindow = window.open(
+        authUrl,
+        'superduperai-auth',
+        'width=600,height=700,scrollbars=yes,resizable=yes'
+      );
+
+      if (!authWindow) {
+        console.log('🚫 Popup blocked, falling back to redirect');
+        window.location.href = authUrl;
+        return;
+      }
+
+      // AICODE-NOTE: Monitor popup window and refresh status when closed
+      const checkClosed = setInterval(() => {
+        if (authWindow.closed) {
+          clearInterval(checkClosed);
+          console.log('🔄 Popup closed, refreshing connection status...');
+          
+          // Refresh page to get updated Auth0 session with personal token
+          setTimeout(() => {
+            window.location.reload();
+          }, 1000);
+        }
+      }, 1000);
+
+      // Auto-close after 5 minutes
+      setTimeout(() => {
+        if (!authWindow.closed) {
+          authWindow.close();
+          clearInterval(checkClosed);
+          setIsConnecting(false);
+          console.log('⏰ OAuth popup timed out after 5 minutes');
+        }
+      }, 5 * 60 * 1000);
+
+    } catch (error) {
+      console.error('❌ SuperDuperAI connection error:', error);
+      setConnectionStatus(prev => ({
+        ...prev,
+        error: 'Failed to connect SuperDuperAI account'
+      }));
+      setIsConnecting(false);
+    }
+  };
+
+  if (userLoading || connectionStatus.loading) {
     return (
-      <Card>
-        <CardContent className="flex items-center justify-center p-6">
-          <LoaderIcon size={24} />
-          <span className="ml-2">Loading...</span>
+      <Card className={className}>
+        <CardContent className="pt-6">
+          <div className="flex items-center justify-center py-4">
+            <Loader2 className="h-6 w-6 animate-spin" />
+            <span className="ml-2">Loading connection status...</span>
+          </div>
         </CardContent>
       </Card>
     );
   }
 
-  const isConnected = status?.isConnected || false;
-  const currentBalance = balance?.balance || 0;
+  if (!user) {
+    return (
+      <Card className={className}>
+        <CardContent className="pt-6">
+          <div className="text-center">
+            <p className="text-sm text-muted-foreground mb-4">
+              Please log in to connect your SuperDuperAI account
+            </p>
+            <a href="/auth/login" className="inline-flex items-center">
+              <Button variant="outline">
+                Login <ExternalLink className="ml-2 h-4 w-4" />
+              </Button>
+            </a>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
-    <Card>
+    <Card className={className}>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <BoxIcon size={20} />
           SuperDuperAI Account
-          {isConnected ? (
-            <Badge variant="default">
-              <CheckCircleFillIcon size={12} />
-              <span className="ml-1">Connected</span>
+          {connectionStatus.connected ? (
+            <Badge variant="default" className="bg-green-100 text-green-800">
+              <CheckCircle className="w-3 h-3 mr-1" />
+              Connected
             </Badge>
           ) : (
-            <Badge variant="secondary">
-              <CrossIcon size={12} />
-              <span className="ml-1">Not Connected</span>
+            <Badge variant="secondary" className="bg-orange-100 text-orange-800">
+              <AlertCircle className="w-3 h-3 mr-1" />
+              Not Connected
             </Badge>
           )}
         </CardTitle>
         <CardDescription>
-          Connect your SuperDuperAI account to use your personal credits for AI generation.
+          {connectionStatus.connected
+            ? 'Your personal SuperDuperAI account is connected. You will be charged on your own credits for image and video generation.'
+            : 'Connect your personal SuperDuperAI account to use your own credits instead of shared resources.'
+          }
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
-        {isConnected ? (
-          <>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="p-3 bg-muted rounded-lg">
-                <p className="text-sm font-medium text-muted-foreground">Balance</p>
-                <p className="text-2xl font-bold flex items-center gap-1">
-                  {currentBalance}
-                  <span className="text-sm font-normal text-muted-foreground">credits</span>
-                </p>
-              </div>
-              <div className="p-3 bg-muted rounded-lg">
-                <p className="text-sm font-medium text-muted-foreground">Status</p>
-                <div className="flex items-center gap-2 mt-1">
-                  {balance?.vip && <Badge variant="default">VIP</Badge>}
-                  {balance?.admin && <Badge variant="destructive">Admin</Badge>}
-                  {!balance?.vip && !balance?.admin && (
-                    <span className="text-sm text-muted-foreground">Regular</span>
-                  )}
+      <CardContent>
+        {connectionStatus.connected ? (
+          <div className="space-y-3">
+            <div className="p-3 bg-green-50 rounded-lg border border-green-200">
+              <div className="flex items-start">
+                <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 mr-2 flex-shrink-0" />
+                <div>
+                  <p className="text-sm font-medium text-green-800">
+                    Personal Credits Active
+                  </p>
+                  <p className="text-xs text-green-600 mt-1">
+                    All image and video generations will use your SuperDuperAI account balance.
+                  </p>
                 </div>
               </div>
             </div>
             
-            {status?.superduperaiUserId && (
-              <div className="text-xs text-muted-foreground">
-                User ID: {status.superduperaiUserId}
-              </div>
-            )}
-            
-            {currentBalance <= 0 && (
-              <div className="p-3 bg-orange-50 border border-orange-200 rounded-lg">
-                <p className="text-sm text-orange-800">
-                  ⚠️ You have no credits left. Generation will use the system fallback token.
-                </p>
-              </div>
-            )}
-            
-            <div className="flex gap-2">
-              <Button 
-                variant="outline" 
-                onClick={handleRefreshBalance}
-                disabled={refreshing}
-                size="sm"
-              >
-                {refreshing ? (
-                  <>
-                    <LoaderIcon size={16} />
-                    <span className="ml-2">Refreshing...</span>
-                  </>
-                ) : (
-                  'Refresh Balance'
-                )}
-              </Button>
-              <Button 
-                variant="destructive" 
-                onClick={handleDisconnect}
-                size="sm"
-              >
-                Disconnect
-              </Button>
+            <div className="flex items-center justify-between text-sm text-muted-foreground">
+              <span>User ID:</span>
+              <span className="font-mono">{user.sub?.substring(0, 8)}...</span>
             </div>
-          </>
+            
+            {user.superduperai_user_id && (
+              <div className="flex items-center justify-between text-sm text-muted-foreground">
+                <span>SuperDuperAI ID:</span>
+                <span className="font-mono">{user.superduperai_user_id.substring(0, 8)}...</span>
+              </div>
+            )}
+          </div>
         ) : (
           <div className="space-y-4">
-            <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-              <h4 className="font-medium text-blue-900 mb-2">Why connect SuperDuperAI?</h4>
-              <ul className="text-sm text-blue-800 space-y-1">
-                <li>• Use your personal credits instead of shared system credits</li>
-                <li>• Track your usage and generation costs</li>
-                <li>• Access premium features if you have VIP status</li>
-                <li>• Keep your generations tied to your account</li>
-              </ul>
+            <div className="p-3 bg-orange-50 rounded-lg border border-orange-200">
+              <div className="flex items-start">
+                <AlertCircle className="w-5 h-5 text-orange-600 mt-0.5 mr-2 flex-shrink-0" />
+                <div>
+                  <p className="text-sm font-medium text-orange-800">
+                    Connect Your Account
+                  </p>
+                  <p className="text-xs text-orange-600 mt-1">
+                    Without a personal account, you cannot generate images or videos.
+                  </p>
+                </div>
+              </div>
             </div>
-            
-            <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
-              <p className="text-sm text-gray-700">
-                <strong>Current:</strong> Using shared system token (limited resources)
-              </p>
-            </div>
-            
+
+            {connectionStatus.error && (
+              <div className="p-3 bg-red-50 rounded-lg border border-red-200">
+                <p className="text-sm text-red-800">{connectionStatus.error}</p>
+              </div>
+            )}
+
             <Button 
               onClick={handleConnect} 
-              disabled={connecting}
+              disabled={isConnecting}
               className="w-full"
             >
-              {connecting ? (
+              {isConnecting ? (
                 <>
-                  <LoaderIcon size={16} />
-                  <span className="ml-2">Redirecting to SuperDuperAI...</span>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Connecting...
                 </>
               ) : (
-                'Connect SuperDuperAI Account'
+                <>
+                  Connect SuperDuperAI Account
+                  <ExternalLink className="w-4 h-4 ml-2" />
+                </>
               )}
             </Button>
+            
+            <p className="text-xs text-muted-foreground text-center">
+              You&apos;ll be redirected to Auth0 to authenticate with your SuperDuperAI account.
+              Your personal token will be securely stored in your session.
+            </p>
           </div>
         )}
       </CardContent>

@@ -1,47 +1,57 @@
 'use client';
 
 import { Suspense, useEffect, useState } from 'react';
-import { signIn, useSession } from 'next-auth/react';
+import { signIn, useSession, signOut } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { LoaderIcon } from '@/components/icons';
 import { Button } from '@/components/ui/button';
+import { guestRegex } from '@/lib/constants';
 
 function AutoLoginContent() {
-  const { status } = useSession();
+  const { data: session, status } = useSession();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const fromRedirect = searchParams.has('from_redirect');
-  const [loginAttempted, setLoginAttempted] = useState(false);
+  const callbackUrl = searchParams.get('callbackUrl') || '/';
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Если пользователь уже аутентифицирован, перенаправляем на главную страницу
-    if (status === 'authenticated') {
-      router.push('/');
-      return;
-    }
+    const isGuest = session?.user?.email ? guestRegex.test(session.user.email) : false;
 
-    // Если пользователь не аутентифицирован и статус загрузки завершен,
-    // начинаем процесс входа через Auth0 только один раз
-    if (status === 'unauthenticated' && !loginAttempted) {
-      setLoginAttempted(true);
-      signIn('auth0', { callbackUrl: '/' });
-    }
-  }, [status, router, loginAttempted]);
+    // Based on session status, decide the action
+    switch (status) {
+      case 'loading':
+        // Still loading, do nothing
+        break;
 
-  // Если уже был редирект и пользователь всё ещё не авторизован,
-  // показываем ссылку на гостевой вход
-  if (fromRedirect && status === 'unauthenticated' && loginAttempted) {
-    return (
+      case 'authenticated':
+        if (isGuest) {
+          // If the user is a guest, we need to sign them out first
+          // and then immediately sign them in via Auth0.
+          signOut({ redirect: false }).then(() => {
+            signIn('auth0', { callbackUrl });
+          });
+        } else {
+          // If a regular user is somehow on this page, redirect them.
+          router.push(callbackUrl);
+        }
+        break;
+
+      case 'unauthenticated':
+        // If the user is not authenticated, start the Auth0 login flow.
+        signIn('auth0', { callbackUrl }).catch(() => {
+            setError('Failed to redirect to Auth0. Please try again.');
+        });
+        break;
+    }
+  }, [status, session, router, callbackUrl]);
+  
+  if (error) {
+     return (
       <div className="flex h-dvh w-screen items-center justify-center bg-background">
-        <div className="flex flex-col items-center gap-4">
-          <p className="text-lg text-zinc-600 dark:text-zinc-400">
-            Не удалось выполнить вход через Auth0.
-          </p>
-          <Button
-            onClick={() => router.push('/api/auth/guest?redirectUrl=/')}
-            className="mt-4"
-          >
-            Войти как гость
+        <div className="flex flex-col items-center gap-4 text-center">
+          <p className="text-lg text-destructive">{error}</p>
+          <Button onClick={() => signIn('auth0', { callbackUrl })}>
+            Retry Login
           </Button>
         </div>
       </div>
@@ -55,7 +65,7 @@ function AutoLoginContent() {
           <LoaderIcon size={48} />
         </div>
         <p className="text-lg text-zinc-600 dark:text-zinc-400">
-          Перенаправление на Auth0...
+          Preparing your login...
         </p>
       </div>
     </div>
@@ -72,7 +82,7 @@ export default function AutoLogin() {
               <LoaderIcon size={48} />
             </div>
             <p className="text-lg text-zinc-600 dark:text-zinc-400">
-              Загрузка...
+              Loading...
             </p>
           </div>
         </div>

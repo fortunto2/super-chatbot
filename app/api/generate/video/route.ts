@@ -1,41 +1,36 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/app/(auth)/auth';
 import { configureSuperduperAIForUser } from '@/lib/config/superduperai-server';
-import { getUserSuperduperAIStatus } from '@/lib/db/queries';
+import { getUserSuperduperAIStatus, getUserSuperduperAIToken } from '@/lib/db/queries';
 import { generateVideoWithStrategy, type VideoGenerationParams, type ImageToVideoParams } from '@/lib/ai/api/video-generation';
 
 export async function POST(request: NextRequest) {
   try {
-    let body: any;
-    // All requests now come as JSON (with Base64 data URL for image-to-video)
-    console.log('🎬 Video API: Processing JSON request');
-    const contentType = request.headers.get('content-type') || '';
-
-    // Получаем пользователя из сессии
+    // Получаем пользователя из сессии В ПЕРВУЮ ОЧЕРЕДЬ
     const session = await auth();
     const userId = session?.user?.id;
     
-    // Прозрачная интеграция с SuperDuperAI
+    // Сначала проверяем авторизацию, ПОТОМ парсим тело запроса
     if (userId) {
       const userStatus = await getUserSuperduperAIStatus(userId);
       
-      // Если пользователь НЕ подключен - возвращаем ответ для автоматического OAuth  
       if (!userStatus.isConnected) {
+        // Тело запроса здесь еще не нужно, поэтому мы не теряем данные
         return NextResponse.json({
           success: false,
           error: 'Authentication required',
           details: 'Automatic authentication with SuperDuperAI will start now. This is a one-time setup.',
           needsAuth: true,
           authAction: 'superduperai_oauth',
+          // Тело будет добавлено на клиенте при повторной попытке
           continueAfterAuth: {
             method: 'POST',
             url: '/api/generate/video',
-            body: body
+            body: {} // Placeholder, as body is not yet parsed
           }
-        }, { status: 202 }); // Accepted - will be processed after auth
+        }, { status: 202 });
       }
       
-      // Проверяем баланс ТОЛЬКО если пользователь подключен
       if (userStatus.balance <= 0) {
         return NextResponse.json({
           success: false,
@@ -43,16 +38,17 @@ export async function POST(request: NextRequest) {
           details: 'You have 0 credits left. Please top up your balance to continue generating videos.',
           balance: 0,
           requiresTopUp: true
-        }, { status: 402 }); // Payment Required
+        }, { status: 402 });
       }
     }
 
-    // Проверяем form-data или обычный JSON
+    // Теперь, когда мы уверены, что пользователь авторизован, парсим тело
+    let body: any;
+    const contentType = request.headers.get('content-type') || '';
     const isFormData = contentType.includes('multipart/form-data');
 
     if (isFormData) {
       const formData = await request.formData();
-      // Извлекаем значения
       body = {
         prompt: formData.get('prompt')?.toString() ?? '',
         model: formData.get('model')?.toString() ?? '',
@@ -66,27 +62,33 @@ export async function POST(request: NextRequest) {
         shotSize: formData.get('shotSize')?.toString() ?? '',
         seed: formData.get('seed')?.toString() ?? '',
         file: formData.get('file') as File | null
-      }
+      };
     } else {
       body = await request.json();
     }
-    const {chatId, generationType = 'text-to-video'} = body
+    const { chatId, generationType = 'text-to-video' } = body;
     
-    // Настраиваем SuperDuperAI с токеном пользователя (или системным)
+    // Настраиваем SuperDuperAI с токеном пользователя
     const config = await configureSuperduperAIForUser(userId);
     
-    // Проверяем реально ли используется пользовательский токен
-    const isUsingUserToken = userId ? !!(await getUserSuperduperAIStatus(userId)).isConnected : false;
+    // ДЕТАЛЬНАЯ ДИАГНОСТИКА: проверяем, какой токен реально используется
+    console.log(`🔍 DIAGNOSTICS for userId: ${userId}`);
+    if (userId) {
+      const userStatus = await getUserSuperduperAIStatus(userId);
+      const userToken = await getUserSuperduperAIToken(userId);
+      console.log(`📊 User status:`, userStatus);
+      console.log(`🔑 User token exists:`, !!userToken);
+      console.log(`🔑 User token preview:`, userToken ? `${userToken.substring(0, 10)}...` : 'NULL');
+      console.log(`⚡ System token preview:`, process.env.SUPERDUPERAI_TOKEN ? `${process.env.SUPERDUPERAI_TOKEN.substring(0, 10)}...` : 'NULL');
+    }
     
-    // ИСПРАВЛЕННОЕ логирование будет в configureSuperduperAIForUser()
-    // НЕ логируем здесь, чтобы избежать дублирования
+    // Проверяем, реально ли используется пользовательский токен
+    const isUsingUserToken = userId ? (await getUserSuperduperAIStatus(userId)).isConnected : false;
 
-    // Add image-specific parameters if needed
-    const strategyParams: VideoGenerationParams | ImageToVideoParams = {...body};
+    const strategyParams: VideoGenerationParams | ImageToVideoParams = { ...body };
   
     console.log(`🎬 Using strategy pattern for ${generationType} generation`);
     
-    // Use strategy pattern for generation
     const result = await generateVideoWithStrategy(generationType, strategyParams);
     
     if (!result.success) {
@@ -95,7 +97,6 @@ export async function POST(request: NextRequest) {
     
     console.log('✅ Video generation result:', result);
     
-    // Return standardized response
     const responseData = {
       success: true,
       fileId: result.fileId,
@@ -111,7 +112,6 @@ export async function POST(request: NextRequest) {
     
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     
-    // Specific handling for backend magic library error
     if (errorMessage.includes('magic') || errorMessage.includes('AttributeError')) {
       return NextResponse.json(
         { 
@@ -123,7 +123,6 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    // Handle image upload failures specifically
     if (errorMessage.includes('upload') || errorMessage.includes('image')) {
       return NextResponse.json(
         { 
@@ -135,7 +134,6 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    // Handle authorization errors (invalid user token)
     if (errorMessage.includes('401') || errorMessage.includes('Unauthorized')) {
       return NextResponse.json(
         { 

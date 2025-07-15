@@ -15,6 +15,12 @@ export async function POST(request: Request) {
     const superduperaiUrl = process.env.SUPERDUPERAI_URL || 'https://dev-editor.superduperai.co';
     const authUrl = `${superduperaiUrl}/api/v1/auth/login?redirect_url=${encodeURIComponent(callbackUrl)}`;
     
+    console.log('🔗 Creating OAuth URL:', {
+      superduperaiUrl,
+      callbackUrl,
+      authUrl
+    });
+    
     return NextResponse.json({ authUrl });
   } catch (error) {
     console.error('SuperDuperAI login error:', error);

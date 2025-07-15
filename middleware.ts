@@ -1,149 +1,82 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import { getToken } from 'next-auth/jwt';
-import { guestRegex, isDevelopmentEnvironment } from './lib/constants';
+import { auth0 } from './lib/auth0';
 import * as Sentry from '@sentry/nextjs';
 
 export async function middleware(request: NextRequest) {
   const { pathname, searchParams } = request.nextUrl;
 
-  // Устанавливаем контекст Sentry для трассировки запроса
+  // Sentry context setup
   Sentry.withScope((scope) => {
     scope.setTag('path', pathname);
     scope.setExtra('url', request.url);
     scope.setExtra('method', request.method);
   });
 
-  /*
-   * Playwright starts the dev server and requires a 200 status to
-   * begin the tests, so this ensures that the tests can start
-   */
-  if (pathname.startsWith('/ping')) {
-    return new Response('pong', { status: 200 });
+  // AICODE-NOTE: Auth0 middleware handles auth routes automatically
+  const authRes = await auth0.middleware(request);
+
+  // Handle Auth0 routes automatically (login, logout, callback, me)
+  if (pathname.startsWith('/auth')) {
+    return authRes;
   }
 
-  if (pathname.startsWith('/api/auth')) {
-    return NextResponse.next();
+  // Allow health check and static asset paths
+  const allowedPaths = [
+    '/ping',
+    '/api/config/',
+    '/api/generate/',
+    '/api/file/',
+    '/debug',
+    '/monitoring',
+  ];
+  if (allowedPaths.some(path => pathname.startsWith(path))) {
+    return authRes;
   }
 
-  // Allow access to config API endpoints without authentication
-  if (pathname.startsWith('/api/config/')) {
-    return NextResponse.next();
-  }
+  // AICODE-NOTE: Get Auth0 session instead of NextAuth token
+  const session = await auth0.getSession(request);
 
-  // Allow access to generation API endpoints without authentication
-  if (pathname.startsWith('/api/generate/')) {
-    return NextResponse.next();
-  }
-
-  // Allow access to file API endpoints without authentication
-  if (pathname.startsWith('/api/file/')) {
-    return NextResponse.next();
-  }
-
-  // Разрешаем доступ к отладочной странице без аутентификации
-  if (pathname.startsWith('/debug')) {
-    return NextResponse.next();
-  }
-
-  // Пропускаем запросы на туннелирование Sentry
-  if (pathname.startsWith('/monitoring')) {
-    return NextResponse.next();
-  }
-
-  // Проверка на наличие параметра, предотвращающего цикл
-  const hasRedirectParam = searchParams.has('from_redirect');
-
-  const token = await getToken({
-    req: request,
-    secret: process.env.AUTH_SECRET,
-    secureCookie: !isDevelopmentEnvironment,
-  });
-
-  // Если у нас есть токен пользователя, устанавливаем информацию о пользователе в Sentry
-  if (token) {
+  // Set user context for Sentry if authenticated
+  if (session) {
     Sentry.setUser({
-      id: token.id,
-      email: token.email || undefined,
-      username: token.name || undefined,
+      id: session.user.sub,
+      email: session.user.email || undefined,
+      username: session.user.name || undefined,
     });
+    Sentry.setTag('user_type', 'authenticated');
+    Sentry.setTag('superduperai_connected', session.user.superduperai_connected ? 'yes' : 'no');
+  } else {
+    Sentry.setUser(null);
   }
 
-  // Если пользователь переходит на страницу входа, перенаправляем на auto-login
-  if (pathname === '/login') {
-    const url = new URL('/auto-login', request.url);
-    return NextResponse.redirect(url);
-  }
+  // --- REDIRECTION LOGIC ---
 
-  if (!token) {
-    const redirectUrl = encodeURIComponent(request.url);
-
-    // Логируем события аутентификации
-    if (!pathname.startsWith('/_next') && !pathname.startsWith('/api/auth')) {
-      Sentry.addBreadcrumb({
-        category: 'auth',
-        message: `Unauthorized access: ${pathname}`,
-        level: 'info',
-      });
-    }
-
-    // Для API запросов используем гостевой вход
-    if (pathname.startsWith('/api/')) {
-      return NextResponse.redirect(
-        new URL(`/api/auth/guest?redirectUrl=${redirectUrl}`, request.url),
-      );
-    }
-
-    // Для страницы auto-login, если уже есть параметр from_redirect,
-    // не перенаправляем снова, чтобы избежать циклических редиректов
-    if (pathname === '/auto-login' && hasRedirectParam) {
-      return NextResponse.next();
-    }
-
-    // Для обычных запросов перенаправляем на auto-login с параметром
-    const url = new URL('/auto-login', request.url);
-    url.searchParams.set('from_redirect', 'true');
-    return NextResponse.redirect(url);
-  }
-
-  const isGuest = guestRegex.test(token?.email ?? '');
-
-  if (token && !isGuest && ['/auto-login', '/register'].includes(pathname)) {
+  // CASE 1: Authenticated user trying to access login pages
+  // ACTION: Redirect to home
+  const isAuthPage = ['/login', '/auto-login', '/register'].includes(pathname);
+  if (session && isAuthPage) {
     return NextResponse.redirect(new URL('/', request.url));
   }
-
-  // Для запросов к чатам, которые могут вызывать 404, добавляем мониторинг
-  if (pathname.startsWith('/chat/')) {
-    const chatId = pathname.split('/')[2];
-
-    if (chatId) {
-      Sentry.addBreadcrumb({
-        category: 'chat',
-        message: `Accessing chat: ${chatId}`,
-        level: 'info',
-        data: { chatId },
-      });
-    }
+  
+  // CASE 2: Unauthenticated user on protected pages
+  // ACTION: Redirect to Auth0 login
+  if (!session && !isAuthPage && !pathname.startsWith('/auth')) {
+    console.log('🔒 Redirecting unauthenticated user to Auth0 login');
+    return NextResponse.redirect(new URL('/auth/login', request.url));
   }
 
-  return NextResponse.next();
+  // AICODE-NOTE: Always return Auth0 middleware response to ensure proper session handling
+  return authRes;
 }
 
 export const config = {
   matcher: [
-    '/',
-    '/chat/:id',
-    '/api/:path*',
-    '/login',
-    '/auto-login',
-    '/register',
-    '/monitoring/:path*',
-
     /*
      * Match all request paths except for the ones starting with:
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico, sitemap.xml, robots.txt (metadata files)
      */
-    '/((?!_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt).*)',
-  ],
+    '/((?!_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt).*)'
+  ]
 };
