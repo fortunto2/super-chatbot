@@ -1,8 +1,8 @@
 import type { MediaOption, MediaResolution } from "@/lib/types/media-settings";
-import type { VideoModel } from '@/lib/config/superduperai';
+import type { VideoModel } from '@/lib/config/superduperai-client';
 import { 
   getSuperduperAIConfig, 
-} from '@/lib/config/superduperai';
+} from '@/lib/config/superduperai-client';
 
 export interface VideoGenerationResult {
   success: boolean;

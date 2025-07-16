@@ -29,7 +29,7 @@ function fileToBase64(file: File): Promise<string> {
 
 export async function generateImageApi(formData: ImageGenerationFormData): Promise<ImageGenerationApiResult> {
   try {
-    let payload: any = {
+    const payload: any = {
       prompt: formData.prompt,
       model: { name: formData.model || 'comfyui/flux' },
       resolution: {

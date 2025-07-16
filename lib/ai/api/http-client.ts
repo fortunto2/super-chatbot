@@ -2,7 +2,7 @@ import {
   getSuperduperAIConfig, 
   createAuthHeaders, 
   createAPIURL 
-} from '@/lib/config/superduperai';
+} from '@/lib/config/superduperai-client';
 
 // HTTP methods
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';

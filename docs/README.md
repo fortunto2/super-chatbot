@@ -1,238 +1,261 @@
-# Super Chatbot - Documentation Center
+# Super Chatbot Documentation
 
-Comprehensive documentation for the Super Chatbot project, featuring advanced AI capabilities, media generation, and unified architecture.
+Welcome to the Super Chatbot documentation! This comprehensive guide covers all aspects of our AI-powered chat application with advanced media generation capabilities.
 
-## 🏗️ Architecture Status
+## 🚀 Quick Start
 
-### ✅ Media Generation Framework (Production Ready)
+- **[Environment Setup](./getting-started/environment-setup.md)** - Get up and running quickly
+- **[README Overview](./getting-started/README.md)** - Basic project information
 
-**Major Achievement**: Successfully migrated to unified Media Generation Framework with **94% code reduction** and enhanced maintainability.
+## ⚠️ Current System Status
 
-**Current Status** (2025-01-27):
+### ✅ System Health (Resolved Issues)
 
-- 🎯 **Production Tools**: Now using framework architecture
-- 🛡️ **Chat Generation**: Legacy implementation (proven, safe) with optional framework integration
-- 🚀 **Performance**: Massive improvement in code maintainability and user experience
-- 📦 **Framework**: Complete with image/video generators, hooks, and components
+- **✅ Database Schema**: `superduperai_token` column added successfully
+- **✅ User Authentication**: Working correctly with proper user ID mapping
+- **✅ Image Generation**: Pipeline functional with SSE/polling architecture
+- **✅ Video Generation**: All text-to-video and image-to-video models operational
 
-**Key Benefits**:
+### ✅ Recent Fixes (January 2025)
 
-- From 1,150+ lines to 50 lines per tool (with adapter)
-- Unified patterns across all media types
-- Better error handling and timeout management
-- Easy addition of future media types (audio, text, 3D)
+- **✅ Transparent SuperDuperAI Integration**: Complete seamless user experience implementation
 
-See: [Migration Completion](./maintenance/changelog/production-migration-complete.md)
+  - **Implemented**: Automatic OAuth flow for new users - transparent, no manual steps
+  - **Implemented**: Single system experience - users never know about "two backends"
+  - **Implemented**: Personal credit usage - always charges user's SuperDuperAI account
+  - **Implemented**: Post-auth continuation - generation resumes automatically after OAuth
+  - **Result**: Users experience one unified chatbot platform, not a complex multi-backend system
+  - **Details**: [Transparent SuperDuperAI Integration](./maintenance/changelog/transparent-superduperai-integration.md)
 
-## 📂 Documentation Structure
+- **✅ User Token Logging Accuracy**: Fixed misleading logs and API responses about token usage
 
-### Getting Started
+  - **Fixed**: Accurate detection of when user personal tokens vs system tokens are used
+  - **Fixed**: Correct logging messages that reflect actual token type being used
+  - **Fixed**: API responses now accurately report `usingUserToken` field
+  - **Result**: Clear visibility into which account's credits are being charged
+  - **Details**: [User Token Logging Accuracy Fix](./maintenance/changelog/fix-user-token-logging-accuracy.md)
 
-- [Environment Setup](./getting-started/environment-setup.md) - Development environment configuration
-- [Quick Start Guide](./getting-started/README.md) - Get up and running quickly
+- **✅ SuperDuperAI Personal Tokens**: Fixed OAuth callback token extraction and user token usage
+  - **Fixed**: Token extraction from AuthService.authToken() object format
+  - **Fixed**: OpenAPI client configuration with user tokens
+  - **Fixed**: SSE proxy now uses personal tokens instead of system token
+  - **Result**: Personal SuperDuperAI credits are charged instead of admin credits
+  - **Details**: [SuperDuperAI Auth Token Extraction Fix](./maintenance/changelog/superduperai-auth-token-extraction-fix.md)
 
-### API Integration Tasks
+### ❌ Known Issues
 
-1. Review [SuperDuperAI Integration](./api-integration/superduperai/README.md)
-2. **NEW**: [Image Generation API Guide](./api-integration/superduperai/image-generation-api-guide.md) - Complete cURL examples and testing
-3. **NEW**: [Video Generation API Guide](./api-integration/superduperai/video-generation-api-guide.md) - Complete video API with model pricing
-4. Check [Environment Setup](./getting-started/environment-setup.md)
-5. Use [Dynamic API Integration](./api-integration/superduperai/dynamic-integration.md)
+- **❌ Google Cloud Imagen4-Ultra**: Model name outdated on SuperDuperAI server
+  - **Error**: `imagen-4.0-ultra-generate-exp-05-20 is unavailable`
+  - **Required**: Update to `imagen-4.0-ultra-generate-preview-06-06`
+  - **Workaround**: Use alternative models (`comfyui/flux`, `google-cloud/imagen3`)
+  - **Details**: [Google Cloud Model Update Required](./maintenance/changelog/google-cloud-imagen-model-update-required.md)
 
-### Architecture & Development
+## 🔐 Authentication System
 
-- [AI Development Methodology](./development/ai-development-methodology.md) - Two-phase development process
-- [Media Generation Framework](./architecture/media-generation-framework.md) - Unified media generation architecture
-- [Unified Tools Navigation System](./development/unified-tools-navigation-system.md) - Centralized tool configuration and navigation
-- [API Architecture](./architecture/api-architecture.md) - Backend API design and patterns
-- [Implementation Plans](./development/implementation-plans/) - Structured development planning
-- [DebugParameters Component](./maintenance/changelog/debug-parameters-component.md) - Reusable debug display
+### NextAuth + SuperDuperAI Integration
 
-### AI Capabilities
+Our application uses a hybrid authentication system:
 
-- [Overview](./ai-capabilities/overview.md) - AI features and capabilities
-- [Image Generation](./ai-capabilities/image-generation/) - Image generation system
-- [Video Generation](./ai-capabilities/video-generation/) - Video generation system with **Strategy Pattern + Fallback System** ⭐
-- [Prompt Enhancement](./ai-capabilities/prompt-enhancement/) - AI-powered prompt improvement system
+1. **Primary Authentication** - NextAuth with Auth0, Credentials, and Guest providers
+2. **SuperDuperAI Integration** - User-specific tokens for personalized media generation
+
+Key features:
+
+- **Personal Credits** - Each user can connect their SuperDuperAI account
+- **Fallback System** - System token for users who haven't connected
+- **Secure Storage** - Encrypted token storage with AES-256-GCM
+- **Usage Tracking** - Monitor credits and generation costs
+
+📋 **Read more:** [SuperDuperAI User Authentication Guide](./api-integration/superduperai/user-authentication-guide.md)
+📋 **Implementation:** [Auth Integration Plan](./development/implementation-plans/superduperai-auth-integration-plan.md)
+
+## 🎨 AI Capabilities
+
+### Media Generation
+
+Our app provides powerful AI-driven content creation:
+
+#### 🖼️ Image Generation
+
+- **FLUX Pro/Dev models** via SuperDuperAI API
+- **Text-to-image** and **image-to-image** workflows
+- **Real-time progress** with SSE + polling fallback
+- **Personal tokens** for cost tracking
+
+📋 **Read more:** [Image Generation Guide](./ai-capabilities/image-generation/README.md)
+
+#### 🎬 Video Generation
+
+- **Veo3, LTX, RunwayML** models via SuperDuperAI API
+- **Text-to-video** and **image-to-video** support
+- **Economical defaults** (HD quality, 5s duration)
+- **Cost optimization** with model selection
+
+📋 **Read more:** [Video Generation Guide](./ai-capabilities/video-generation/README.md)
+
+#### ✨ Prompt Enhancement
+
+- **Automatic AI integration** for better prompts
+- **Context-aware suggestions** based on generation type
+- **Style and quality improvements**
+
+📋 **Read more:** [Prompt Enhancement](./ai-capabilities/prompt-enhancement/README.md)
+
+### Available Tools
+
+AI agents have access to these specialized tools:
+
+- `configure-image-generation` - FLUX Pro/Dev image generation
+- `configure-video-generation` - Veo3/LTX video generation
+- `create-document` / `update-document` - Document management
+- `get-weather` - Real-time weather data
+- `request-suggestions` - Contextual suggestions
+- `diagnose-styles` - UI/UX analysis
+
+## 🏗️ Architecture
 
 ### API Integration
 
-- [SuperDuperAI Integration](./api-integration/superduperai/) - External API integration
-- [SSE Implementation](./websockets-implementation/) - Real-time communication
+#### SuperDuperAI Backend Integration
 
-### Maintenance & Changelog
+- **OpenAPI Client** - Auto-generated TypeScript client for type safety
+- **Proxy Architecture** - Secure server-side API calls via Next.js routes
+- **WebSocket Support** - Real-time updates for generation progress
+- **Dynamic Model Loading** - Real-time model discovery and configuration
 
-- [Changelog Directory](./maintenance/changelog/) - Detailed change history
-- [Maintenance Guide](./maintenance/README.md) - System maintenance procedures
+📋 **Read more:** [SuperDuperAI Integration](./api-integration/superduperai/README.md)
 
-### Reference
-
-- [FAQ](./reference/faq.md) - Frequently asked questions
-- [Glossary](./reference/glossary.md) - Technical terminology
-
-## 🚀 Recent Major Updates
-
-### Artifact Share Links (2025-01-15)
-
-- **Direct sharing capability** for all artifact types (image, text, video, spreadsheet)
-- **Standalone artifact viewer** at `/artifact/[id]` route for shared links
-- **Share button integration** in artifact action bars for easy link copying
-- **Secure access control** with authentication checks
-- **Consistent display** using existing artifact components
-- **Simple navigation** with "Back to Chat" functionality
-
-See: [Artifact Share Links Implementation](./maintenance/changelog/artifact-share-links.md)
-
-### Image Artifact Debug Parameters (2025-01-15)
-
-- **Debug parameters display** in collapsible section for image artifacts
-- **All generation parameters visible** including prompt, model, resolution, style, etc.
-- **Copy parameters as JSON** for easy debugging and sharing
-- **Clean UI design** with debug info hidden by default
-- **Improved Generate New Image button** - always visible at the bottom
-
-See: [Debug Parameters Display](./maintenance/changelog/image-artifact-debug-parameters.md)
-
-### Enhanced Textarea with Unlimited Prompts (2025-01-28)
-
-- **Removed all prompt length limitations** (was 2000 characters, now unlimited)
-- **Real-time character/token counting** with approximate token estimation
-- **Fullscreen editing mode** for complex prompt engineering
-- **Universal implementation** across all forms (video, image, chat, media settings)
-- **Professional workflow support** for AI-first development methodology
-- **Responsive design** with accessibility features and keyboard navigation
-
-### Video Model Selection Enhancement (2025-01-28)
-
-- **Fixed Sora prioritization** for text-to-video generation
-- **Smart model selection** prioritizes text_to_video over image_to_video models
-- **Enhanced default model priority** with Sora as top choice for VIP users
-- **Resolved ComfyUI errors** by selecting appropriate model types for text prompts
-- **Fixed LTX model fallback issue** that caused `'str' object has no attribute 'read'` errors
-- **Added `requireTextToVideo` parameter** to force text-to-video model selection
-- **Enhanced API route logic** with automatic generation type detection
-
-### Media Generation Framework (2025-01-27)
-
-- **Complete architecture implementation** with image and video generators
-- **Production migration** for tools with 94% code reduction
-- **Optional chat integration** with safety fallbacks
-- **Universal React hooks** and components for any media type
-- **Template Method pattern** for consistent workflows
-- **Factory pattern** for extensible generator creation
-
-### Key Technical Achievements
-
-- **BaseMediaGenerator** abstract class with unified workflow
-- **MediaGeneratorFactory** singleton with registration system
-- **Legacy compatibility layers** for seamless migration
-- **Smart polling integration** with 7-minute timeout protection
-- **Comprehensive TypeScript support** with type-safe interfaces
-
-## 🎯 Framework Architecture
-
-### Core Components
+#### Authentication Architecture
 
 ```
-lib/media-generation/
-├── core/base-generator.ts        # Abstract base class (400+ lines)
-├── factory/generator-factory.ts  # Factory pattern (200+ lines)
-├── generators/
-│   ├── image-generator.ts        # Image-specific implementation
-│   └── video-generator.ts        # Video-specific implementation
-├── hooks/
-│   ├── use-media-generator.ts    # Universal React hook
-│   └── use-*-convenience.ts      # Convenience hooks
-└── components/
-    └── media-generator-form.tsx  # Universal form component
+NextAuth (Primary Auth)
+    ├── Auth0 Provider (main authentication)
+    ├── Credentials Provider (local accounts)
+    ├── Guest Provider (guest sessions)
+    └── SuperDuperAI Integration (additional auth for personal tokens)
 ```
 
-### Usage Examples
+#### Token Resolution Strategy
 
 ```typescript
-// Get any generator from factory
-const generator = MediaGeneratorFactory.getInstance().create("image");
-
-// Generate with unified workflow
-const result = await generator.generate({
-  prompt: "A beautiful sunset",
-  settings: { model, resolution, style, shotSize },
-  chatId: "chat_123",
-});
-
-// Universal React hook
-const { generateImage, isGenerating, progress } = useMediaGenerator("image");
+// Priority for token resolution:
+// 1. User's personal SuperDuperAI token (if connected)
+// 2. System fallback token (for unconnected users)
+// 3. Guest limitations (for guest users)
 ```
 
-## 🔧 Migration Status
+### Media Generation Framework
 
-### Production Ready ✅
+- **Strategy Pattern** - Pluggable generation strategies (text-to-image, image-to-video, etc.)
+- **Factory Pattern** - Dynamic model and settings selection
+- **SSE + Polling** - Reliable real-time updates with fallback mechanisms
+- **Type Safety** - End-to-end TypeScript with OpenAPI generated types
 
-- **Image Generator Tool**: Using framework architecture
-- **Video Generator Tool**: Using framework architecture
-- **Legacy Compatibility**: 100% maintained with adapters
-- **Safety Mechanisms**: Comprehensive fallbacks implemented
+📋 **Read more:** [Media Generation Framework](./architecture/media-generation-framework.md)
 
-### Optional Integration 🔄
+## 🔧 Development
 
-- **Chat Image Generation**: Framework ready, legacy active
-- **Chat Video Generation**: Framework ready, legacy active
-- **Activation**: Controlled by feature flags for safe rollout
+### AI-First Development Methodology
 
-## 📈 Performance Impact
+All development follows our **AI-First Development Methodology**:
 
-### Tools Improvement
+- **Two-phase development** (Planning → Implementation)
+- **AICODE comment system** for persistent AI memory
+- **Implementation plan templates** with approval process
+- **Comprehensive documentation** for AI agent context
 
-- **Code Reduction**: 94% (1,150+ → 50 lines per tool)
-- **Development Speed**: Significantly faster feature addition
-- **Maintainability**: Single source of truth for media generation
-- **Error Handling**: Centralized and more robust
+📋 **Read more:** [AI Development Methodology](./development/ai-development-methodology.md)
 
-### User Experience
+### Current Implementation Plans
 
-- **Consistency**: Unified behavior across all media types
-- **Reliability**: Better timeout and error recovery
-- **Progress Tracking**: Enhanced real-time feedback
-- **Performance**: Optimized API calls and resource management
+#### 🔄 In Progress
 
-## 🛠️ Development Guidelines
+- **[SuperDuperAI Auth Integration](./development/implementation-plans/superduperai-auth-integration-plan.md)** - User-specific token system
+- **[Document Gallery](./development/implementation-plans/document-gallery-implementation-plan.md)** - Enhanced content management
 
-### AI-First Development
+#### ✅ Completed
 
-- **Two-Phase Process**: Planning → Implementation
-- **AICODE Comments**: Persistent memory for AI agents
-- **Implementation Plans**: Structured approach with templates
-- **Template Approval**: Review process for major changes
+- **[Image Generator Tool](./development/implementation-plans/image-generator-tool-implementation-plan.md)** - Standalone image generation
+- **[Video Generation Image-to-Video](./development/implementation-plans/fix-video-generation-image-to-video.md)** - Enhanced video workflows
 
-### Code Standards
+## 🌐 WebSocket & Real-time
 
-- **TypeScript**: Comprehensive type safety
-- **React Patterns**: Hooks and component composition
-- **Error Handling**: Graceful degradation and recovery
-- **Testing**: Component and integration testing
+### SSE Integration
 
-## 🔍 Quick Links
+- **Server-Sent Events** for real-time generation updates
+- **Proxy pattern** through Next.js for security and CORS handling
+- **Polling fallback** for maximum reliability
+- **Connection management** with automatic reconnection
 
-### For Developers
+📋 **Read more:** [SSE Integration Guide](./websockets-implementation/sse-integration-guide.md)
 
-- [AI Development Methodology](./development/ai-development-methodology.md)
-- [Media Generation Framework](./architecture/media-generation-framework.md)
-- [Implementation Plans](./development/implementation-plans/)
+## 🔍 Analysis & Maintenance
 
-### For Operations
+### Recent Improvements
 
-- [Environment Setup](./getting-started/environment-setup.md)
-- [Maintenance Guide](./maintenance/README.md)
-- [Migration Completion](./maintenance/changelog/production-migration-complete.md)
+- **Console Log Cleanup** - Production-ready logging levels
+- **SSE Connection Optimization** - On-demand connections only when needed
+- **Token Security Audit** - Fixed client-side token exposure issues
+- **API Endpoint Standardization** - Consistent error handling and responses
 
-### For Users
+### Documentation Structure
 
-- [AI Capabilities Overview](./ai-capabilities/overview.md)
-- [FAQ](./reference/faq.md)
-- [Troubleshooting](./ai-capabilities/image-generation/troubleshooting.md)
+- **Implementation Plans** - Detailed development roadmaps
+- **Changelog** - Comprehensive change tracking (99+ entries)
+- **Troubleshooting Guides** - Common issues and solutions
+- **API References** - Complete endpoint documentation
+
+📋 **Read more:** [Documentation Analysis](./analysis/documentation-analysis-and-tasks.md)
+
+## 🎯 For AI Agents
+
+### Getting Started
+
+1. **Read** [AI Development Methodology](./development/ai-development-methodology.md)
+2. **Follow** AICODE comment system for persistent memory
+3. **Use** implementation plan templates for new features
+4. **Update** documentation as you make changes
+
+### Key Resources
+
+- **[AGENTS.md](../AGENTS.md)** - AI agent guidelines and architecture overview
+- **[API Integration](./api-integration/README.md)** - External service integrations
+- **[Architecture](./architecture/README.md)** - System design and patterns
+- **[Development](./development/README.md)** - Development processes and tools
+
+### Common Tasks
+
+- **Media Generation** - Use `configure-image-generation` and `configure-video-generation` tools
+- **Document Creation** - Use `create-document` and `update-document` tools
+- **Code Changes** - Follow two-phase development (planning → implementation)
+- **Documentation** - Always update relevant docs when making changes
+
+## 📚 Reference
+
+### FAQ & Glossary
+
+- **[FAQ](./reference/faq.md)** - Frequently asked questions
+- **[Glossary](./reference/glossary.md)** - Technical terms and definitions
+
+### File Structure
+
+```
+docs/
+├── ai-capabilities/          # AI features and tools
+├── api-integration/          # External API integrations
+├── architecture/             # System design
+├── development/              # Development methodology
+├── getting-started/          # Setup and basics
+├── maintenance/              # Changes and maintenance
+├── reference/               # FAQ, glossary, etc.
+└── websockets-implementation/ # Real-time features
+```
+
+## 🔗 External Links
+
+- **SuperDuperAI API** - [https://dev-editor.superduperai.co](https://dev-editor.superduperai.co)
+- **OpenAPI Documentation** - [https://dev-editor.superduperai.co/docs](https://dev-editor.superduperai.co/docs)
 
 ---
 
-**Documentation maintained by AI agents following the [AI-First Development Methodology](./development/ai-development-methodology.md)**
-
-_Last Updated: 2025-01-27 - Production Migration Complete_
+_This documentation is continuously updated. For the latest changes, check the [changelog](./maintenance/changelog/)._

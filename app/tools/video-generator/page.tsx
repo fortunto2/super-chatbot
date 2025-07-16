@@ -7,7 +7,7 @@ import { VideoGallery } from './components/video-gallery';
 import { VideoGenerationProgress } from './components/video-generation-progress';
 import { useVideoGenerator } from './hooks/use-video-generator';
 import { useVideoEffects } from '@/hooks/use-video-effects';
-import { ImageIcon, VideoIcon } from 'lucide-react';
+import { VideoIcon } from 'lucide-react';
 
 export default function VideoGeneratorPage() {
   const [prompt, setPrompt] = useState('');

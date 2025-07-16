@@ -1,4 +1,4 @@
-import { getSuperduperAIConfig, createWSURL } from '@/lib/config/superduperai';
+import { getSuperduperAIConfig, createWSURL } from '@/lib/config/superduperai-client';
 
 export interface ImageWSMessage {
   type: string;

@@ -1,4 +1,4 @@
-import { API_ENDPOINTS, getSuperduperAIConfig } from "@/lib/config/superduperai";
+import { API_ENDPOINTS, getSuperduperAIConfig } from "@/lib/config/superduperai-client";
 import { ImageGenerationStrategyFactory } from "./strategy.factory";
 import type { ImageGenerationParams, ImageToImageParams, ImageGenerationResult } from "./strategy.interface";
 
@@ -67,7 +67,7 @@ export async function generateImageWithStrategy(
         tasks: result.tasks || []
       };
     } catch (error: any) {
-      let errorMessage = error.message || `Unknown ${strategy.type} generation error`;
+      const errorMessage = error.message || `Unknown ${strategy.type} generation error`;
       return {
         success: false,
         error: errorMessage,

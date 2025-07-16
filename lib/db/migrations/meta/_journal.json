@@ -57,6 +57,13 @@
       "when": 1751750551183,
       "tag": "0007_aspiring_puma",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1752494394792,
+      "tag": "0008_cold_mimic",
+      "breakpoints": true
     }
   ]
 }

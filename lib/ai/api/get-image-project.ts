@@ -1,5 +1,5 @@
 
-import { getSuperduperAIConfig, createAPIURL, createAuthHeaders } from '@/lib/config/superduperai';
+import { getSuperduperAIConfig, createAPIURL, createAuthHeaders } from '@/lib/config/superduperai-client';
 
 export interface ImageGenerationResult {
     success: boolean;

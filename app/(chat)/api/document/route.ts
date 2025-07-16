@@ -26,8 +26,8 @@ export async function GET(request: Request) {
     const dateFrom = searchParams.get('dateFrom') ? new Date(searchParams.get('dateFrom')!) : undefined;
     const dateTo = searchParams.get('dateTo') ? new Date(searchParams.get('dateTo')!) : undefined;
     const sortBy = searchParams.get('sort') as 'newest' | 'oldest' | 'popular' || 'newest';
-    const page = parseInt(searchParams.get('page') || '1', 10);
-    const limit = parseInt(searchParams.get('limit') || '20', 10);
+    const page = Number.parseInt(searchParams.get('page') || '1', 10);
+    const limit = Number.parseInt(searchParams.get('limit') || '20', 10);
 
     // For public-only documents, no auth required
     if (visibility === 'public') {

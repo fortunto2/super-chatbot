@@ -4,6 +4,7 @@ import type {
   MediaOption, 
 } from '@/lib/types/media-settings';
 import { getImageGenerationConfig } from '@/lib/config/media-settings-factory';
+import { findStyle } from './options-utils';
 
 interface CreateImageDocumentParams {
   createDocument: any;
@@ -21,25 +22,14 @@ export const configureImageGeneration = (params?: CreateImageDocumentParams) => 
     batchSize: z.number().min(1).max(3).optional().describe('Number of images to generate simultaneously (1-3). Higher batch sizes generate multiple variations at once.'),
   }),
   execute: async ({ prompt, style, resolution, shotSize, model, seed, batchSize }) => {
-    console.log('🔧 configureImageGeneration called with:', { prompt, style, resolution, shotSize, model, seed, batchSize });
     
-    // AICODE-NOTE: Use new factory to get configuration with OpenAPI models
-    console.log('🖼️ Loading image configuration from OpenAPI factory...');
     const config = await getImageGenerationConfig();
-    
-    console.log('🖼️ ✅ Loaded image config:', {
-      modelsCount: config.availableModels.length,
-      resolutionsCount: config.availableResolutions.length,
-      stylesCount: config.availableStyles.length
-    });
-
+   
     // If no prompt provided, return configuration panel
     if (!prompt) {
       console.log('🔧 No prompt provided, returning image configuration panel');
       return config;
     }
-
-    console.log('🔧 ✅ PROMPT PROVIDED, CREATING IMAGE DOCUMENT:', prompt);
 
     if (!params?.createDocument) {
       console.log('🔧 ❌ createDocument not available, returning basic config');
@@ -57,9 +47,9 @@ export const configureImageGeneration = (params?: CreateImageDocumentParams) => 
         const foundStyle = findStyle(style, config.availableStyles);
         if (foundStyle) {
           selectedStyle = foundStyle;
-          console.log('🔧 ✅ STYLE MATCHED:', style, '->', selectedStyle.label);
+          console.log('🔧 ✅ STYLE MATCHED:', style);
         } else {
-          console.log('🔧 ⚠️ STYLE NOT FOUND:', style, 'using default:', selectedStyle.label);
+          console.log('🔧 ⚠️ STYLE NOT FOUND:', style, selectedStyle.label);
         }
       }
       
@@ -111,27 +101,4 @@ export const configureImageGeneration = (params?: CreateImageDocumentParams) => 
       };
     }
   },
-});
-
-// Helper function to find style (kept for backward compatibility)
-export function findStyle(styleName: string, availableStyles: MediaOption[]): MediaOption | null {
-  const normalizedStyleName = styleName.toLowerCase().trim();
-  
-  // Direct match by label or id
-  let foundStyle = availableStyles.find(style => 
-    style.label.toLowerCase() === normalizedStyleName ||
-    style.id.toLowerCase() === normalizedStyleName
-  );
-  
-  if (foundStyle) return foundStyle;
-  
-  // Partial match
-  foundStyle = availableStyles.find(style => 
-    style.label.toLowerCase().includes(normalizedStyleName) ||
-    style.id.toLowerCase().includes(normalizedStyleName) ||
-    normalizedStyleName.includes(style.label.toLowerCase()) ||
-    normalizedStyleName.includes(style.id.toLowerCase())
-  );
-  
-  return foundStyle || null;
-} 
+}); 

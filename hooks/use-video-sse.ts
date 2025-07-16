@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import { videoSSEStore, type VideoEventHandler } from "@/lib/websocket/video-sse-store";
-import { getSuperduperAIConfig } from "@/lib/config/superduperai";
+import { createFileSSEURL } from "@/lib/utils/client-websocket";
 
 type Props = {
   projectId: string;
@@ -65,18 +65,8 @@ export const useVideoSSE = ({ projectId, eventHandlers, enabled = true, requestI
     connectionHandlerRef.current = connectionHandler;
     videoSSEStore.addConnectionHandler(connectionHandler);
     
-    // Force SuperDuperAI URL for SSE (avoid localhost issues)
-    const config = getSuperduperAIConfig();
-    let sseBaseUrl = config.url;
-    
-    // If config returns localhost, use SuperDuperAI directly
-    if (sseBaseUrl.includes('localhost')) {
-      sseBaseUrl = 'https://dev-editor.superduperai.co';
-      console.log('🔌 Using SuperDuperAI directly for SSE (localhost detected)');
-    }
-    
-    // Convert to SSE URL format - use file.{fileId} channel (projectId is actually fileId)
-    const sseUrl = `${sseBaseUrl}/api/v1/events/file.${projectId}`;
+    // Create SSE URL using Next.js proxy (projectId is actually fileId)
+    const sseUrl = createFileSSEURL(projectId);
     
     console.log('🔌 Initializing video SSE connection to:', sseUrl);
     console.log('🔌 Request ID for SSE:', requestId || 'no-request-id');

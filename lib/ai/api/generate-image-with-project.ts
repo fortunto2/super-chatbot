@@ -1,11 +1,11 @@
 import type { MediaOption, MediaResolution } from "@/lib/types/media-settings";
-import type { ImageModel } from '@/lib/config/superduperai';
+import type { ImageModel } from '@/lib/config/superduperai-client';
 import { 
   getSuperduperAIConfig, 
   createAuthHeaders, 
   createAPIURL, 
-  API_ENDPOINTS 
-} from '@/lib/config/superduperai';
+    API_ENDPOINTS
+} from '@/lib/config/superduperai-client';
 
 export interface ImageGenerationResult {
   success: boolean;

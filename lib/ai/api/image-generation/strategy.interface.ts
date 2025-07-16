@@ -1,4 +1,4 @@
-import { ITaskRead } from "@/lib/api";
+import type { ITaskRead } from "@/lib/api";
 import type { MediaOption, MediaResolution } from "@/lib/types/media-settings";
 
 // Base interfaces for image generation

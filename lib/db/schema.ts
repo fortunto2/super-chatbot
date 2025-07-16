@@ -16,6 +16,11 @@ export const user = pgTable('User', {
   id: uuid('id').primaryKey().notNull().defaultRandom(),
   email: varchar('email', { length: 64 }).notNull(),
   password: varchar('password', { length: 64 }),
+  // SuperDuperAI Integration - простая версия
+  superduperai_token: text('superduperai_token'), // храним токен (зашифруем позже)
+  superduperai_user_id: varchar('superduperai_user_id', { length: 255 }),
+  superduperai_balance: integer('superduperai_balance').default(0),
+  superduperai_connected_at: timestamp('superduperai_connected_at'),
 });
 
 export type User = InferSelectModel<typeof user>;

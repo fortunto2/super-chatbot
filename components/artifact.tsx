@@ -13,7 +13,7 @@ import {
 import useSWR, { useSWRConfig } from 'swr';
 import { useDebounceCallback, useWindowSize } from 'usehooks-ts';
 import type { Document, Vote } from '@/lib/db/schema';
-import { fetcher, generateUUID } from '@/lib/utils';
+import { fetcher, } from '@/lib/utils';
 import { MultimodalInput } from './multimodal-input';
 import { Toolbar } from './toolbar';
 import { VersionFooter } from './version-footer';

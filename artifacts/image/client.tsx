@@ -84,7 +84,7 @@ const saveArtifactToDatabase = async (id: string | undefined, title: string, con
       readableTitle = titleParams.prompt || 'AI Generated Image';
     }
     if (readableTitle.length > 255) {
-      readableTitle = readableTitle.substring(0, 252) + '...';
+      readableTitle = `${readableTitle.substring(0, 252)}...`;
     }
     await fetch(`/api/document?id=${encodeURIComponent(id)}`, {
       method: 'POST',

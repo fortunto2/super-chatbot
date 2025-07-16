@@ -1,5 +1,5 @@
 "use client";
-import { MDXEditorMethods } from "@mdxeditor/editor";
+import type { MDXEditorMethods } from "@mdxeditor/editor";
 import { useState, useCallback, useRef } from "react";
 
 export function useScriptGenerator() {

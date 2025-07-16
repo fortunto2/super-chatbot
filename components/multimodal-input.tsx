@@ -28,7 +28,6 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { ArrowDown } from 'lucide-react';
 import { useScrollToBottom } from '@/hooks/use-scroll-to-bottom';
 import type { VisibilityType } from './visibility-selector';
-import { generateUUID } from '@/lib/utils';
 
 function PureMultimodalInput({
   chatId,

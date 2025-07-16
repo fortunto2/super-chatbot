@@ -16,7 +16,6 @@ import {
   type ImageState
 } from '@/lib/utils/image-utils';
 import type { UseChatHelpers } from '@ai-sdk/react';
-import { toast } from 'sonner';
 import { DebugParameters } from '@/components/debug-parameters';
 
 interface ImageEditorProps {

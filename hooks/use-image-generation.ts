@@ -1,9 +1,10 @@
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { generateImage, type ImageGenerationResult } from '@/lib/ai/api/generate-image';
 import type { MediaOption, MediaResolution } from '@/lib/types/media-settings';
-import type { ImageModel } from '@/lib/config/superduperai';
+import type { ImageModel } from '@/lib/config/superduperai-client';
 import { useImageSSE } from './use-image-sse';
 import { useImageEventHandler, } from './use-image-event-handler';
+import { useRouter } from 'next/navigation';
 
 export enum TaskStatusEnum {
   IN_PROGRESS = 'in_progress',
@@ -76,6 +77,7 @@ const initialState: UseImageGenerationState = {
 };
 
 export function useImageGeneration(chatId?: string): UseImageGenerationReturn {
+  const router = useRouter();
   const [state, setState] = useState<UseImageGenerationState>(initialState);
   const stableChatIdRef = useRef<string | undefined>(chatId);
   const [chatIdState, setChatIdState] = useState(chatId);
@@ -169,6 +171,8 @@ export function useImageGeneration(chatId?: string): UseImageGenerationReturn {
   }, [chatIdState, eventHandlers, state.projectId, state.isGenerating]);
 
   // Improved cleanup for React Strict Mode
+
+
   useEffect(() => {
     return () => {
       console.log('🧹 Final cleanup useImageGeneration, chatId:', chatIdState);
@@ -265,6 +269,43 @@ export function useImageGeneration(chatId?: string): UseImageGenerationReturn {
         shotSize,
         chatId
       );
+
+      // Handle automatic OAuth for seamless SuperDuperAI integration
+      if (!result.success && (result as any).needsAuth && (result as any).authAction === 'superduperai_oauth') {
+        console.log('🔑 Authentication required, starting automatic OAuth...');
+        
+        // Save request for continuation after auth
+        const continueAfterAuth = (result as any).continueAfterAuth;
+        localStorage.setItem('pendingImageGeneration', JSON.stringify({
+          type: 'generateImageAsync',
+          params: { style, resolution, prompt, model, shotSize, chatId },
+          continueAfterAuth
+        }));
+        
+        // Start OAuth process
+        try {
+          const authResponse = await fetch('/api/auth/superduperai/login', {
+            method: 'POST',
+          });
+          
+          if (authResponse.ok) {
+            const { authUrl } = await authResponse.json();
+            console.log('🔑 Redirecting to OAuth...');
+            window.location.href = authUrl;
+          } else {
+            throw new Error('Failed to initiate authentication');
+          }
+        } catch (error) {
+          console.error('Auto-auth failed:', error);
+          setState(prev => ({
+            ...prev,
+            isGenerating: false,
+            status: 'failed',
+            error: 'Authentication failed. Please try again.',
+          }));
+        }
+        return;
+      }
 
       if (!result.success) {
         console.error('❌ Image generation failed:', result.error);
@@ -418,6 +459,25 @@ export function useImageGeneration(chatId?: string): UseImageGenerationReturn {
     }
   }, []);
 
+  // Check for pending requests after OAuth
+  useEffect(() => {
+    const pendingRequest = localStorage.getItem('pendingImageGeneration');
+    if (pendingRequest) {
+      const parsedRequest = JSON.parse(pendingRequest);
+      localStorage.removeItem('pendingImageGeneration');
+      
+      if (parsedRequest.type === 'generateImageAsync') {
+        console.log('🔑 Continuing image generation after OAuth...');
+        const { style, resolution, prompt, model, shotSize, chatId } = parsedRequest.params;
+        
+        // Continue generation with original parameters
+        setTimeout(() => {
+          generateImageAsync(style, resolution, prompt, model, shotSize, chatId);
+        }, 1000); // Small delay to ensure page is ready
+      }
+    }
+  }, [generateImageAsync]);
+
   // Force check for completed images manually
   const forceCheckResults = useCallback(async () => {
     const projectId = state.projectId;
@@ -521,6 +581,8 @@ export function useImageGeneration(chatId?: string): UseImageGenerationReturn {
       });
     }
   }, [state.projectId, handleStateUpdate]);
+
+  
 
   return {
     ...state,

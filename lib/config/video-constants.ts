@@ -86,3 +86,17 @@ export enum ShotSizeEnum {
 export const DEFAULT_VIDEO_RESOLUTION = VIDEO_RESOLUTIONS.find(r => r.width === 1344 && r.height === 768)!; // HD 16:9
 export const DEFAULT_VIDEO_QUALITY = "hd"; // Instead of full_hd
 export const DEFAULT_VIDEO_DURATION = 5; // Shorter duration for cost savings 
+export const DEFAULT_VIDEO_PARAMS = {
+  resolution: DEFAULT_VIDEO_RESOLUTION.label,
+  quality: DEFAULT_VIDEO_QUALITY,
+  duration: DEFAULT_VIDEO_DURATION,
+  model: 'comfyui/ltx',
+  shotSize: 'long-shot',
+  style: 'flux_steampunk',
+  frameRate: 30,
+  negativePrompt: '',
+  seed: Math.floor(Math.random() * 1000000000000),
+  sourceImageId: undefined,
+  sourceImageUrl: undefined,
+  generationType: 'text-to-video',
+}

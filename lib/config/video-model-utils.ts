@@ -1,7 +1,7 @@
 import { GenerationTypeEnum } from '../api';
-import { getAvailableVideoModels, } from './superduperai';
+import { getAvailableVideoModels, } from './superduperai-client';
 import videoModelsConfig from './video-models.json';
-import type { VideoModel } from '@/lib/config/superduperai';
+import type { VideoModel } from '@/lib/config/superduperai-client';
 
 /**
  * Enhanced video model with metadata

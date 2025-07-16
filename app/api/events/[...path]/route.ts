@@ -1,5 +1,6 @@
 import type { NextRequest } from 'next/server';
-import { getSuperduperAIConfig } from '../../../../lib/config/superduperai';
+import { auth } from '@/app/(auth)/auth';
+import { getSuperduperAIConfigForUser } from '@/lib/config/superduperai-server';
 
 export const runtime = 'nodejs';
 
@@ -8,11 +9,17 @@ export async function GET(
   { params }: { params: Promise<{ path: string[] }> }
 ) {
   try {
-    const config = getSuperduperAIConfig();
+    // Получаем пользователя из сессии для использования персонального токена
+    const session = await auth();
+    const userId = session?.user?.id;
+    
+    // Получаем конфигурацию с пользовательским токеном (или системным как fallback)
+    const config = await getSuperduperAIConfigForUser(userId);
     const resolvedParams = await params;
     const eventPath = resolvedParams.path.join('/');
     
-    console.log('🔌 SSE Proxy: Setting up for path:', eventPath);
+    const tokenPreview = config.token ? `${config.token.substring(0, 10)}...` : 'no-token';
+    console.log(`🔌 SSE Proxy: Setting up for path: ${eventPath} using ${userId ? 'user' : 'system'} token: ${tokenPreview}`);
     console.log('🔌 SSE Proxy: Backend URL:', config.url);
     
     // Construct the backend SSE URL

@@ -1,4 +1,4 @@
-import { getAvailableVideoModels, getAvailableImageModels, configureSuperduperAI, getDefaultImageModel, } from './superduperai';
+// Dynamic imports for server-only functions
 import type { ImageGenerationConfig, VideoGenerationConfig, MediaOption } from '../types/media-settings';
 import type { IGenerationConfigRead } from '../api/models/IGenerationConfigRead';
 import { ShotSizeEnum } from '@/lib/api/models/ShotSizeEnum';
@@ -49,7 +49,9 @@ export async function getImageGenerationConfig(): Promise<ImageGenerationConfig>
       const data = await response.json();
       imageModels = data?.data?.imageModels || [];
     } else {
-      // Server-side: direct function call   configureSuperduperAI();
+      // Server-side: dynamic import to avoid client bundling
+      const { getAvailableImageModels, configureSuperduperAI } = await import('./superduperai');
+      configureSuperduperAI();
       imageModels = await getAvailableImageModels();
     }
   } catch (error) {
@@ -70,7 +72,8 @@ export async function getImageGenerationConfig(): Promise<ImageGenerationConfig>
         if (defaultModel) break;
       }
     } else {
-      // Server-side: use function
+      // Server-side: dynamic import
+      const { getDefaultImageModel } = await import('./superduperai');
       defaultModel = await getDefaultImageModel();
     }
   } catch (error) {
@@ -109,7 +112,8 @@ export async function getImageGenerationConfig(): Promise<ImageGenerationConfig>
         { id: 'vintage', label: 'Vintage', description: 'Vintage/retro style' }
       ];
     } else {
-      // Server-side: direct API call
+      // Server-side: dynamic import and direct API call
+      const { configureSuperduperAI } = await import('./superduperai');
       configureSuperduperAI();
       const stylesResponse = await getStyles();
       if ('error' in stylesResponse) {
@@ -192,7 +196,8 @@ export async function getVideoGenerationConfig(): Promise<VideoGenerationConfig>
       const data = await response.json();
       videoModels = data?.data?.videoModels || [];
     } else {
-      // Server-side: direct function call
+      // Server-side: dynamic import
+      const { getAvailableVideoModels, configureSuperduperAI } = await import('./superduperai');
       configureSuperduperAI();
       videoModels = await getAvailableVideoModels();
     }
@@ -219,7 +224,8 @@ export async function getVideoGenerationConfig(): Promise<VideoGenerationConfig>
         { id: 'artistic', label: 'Artistic', description: 'Artistic interpretation' }
       ];
     } else {
-      // Server-side: direct API call
+      // Server-side: dynamic import and direct API call
+      const { configureSuperduperAI } = await import('./superduperai');
       configureSuperduperAI();
       const stylesResponse = await getStyles();
       if ('error' in stylesResponse) {

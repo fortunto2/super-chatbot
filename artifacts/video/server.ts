@@ -2,9 +2,9 @@ import { createDocumentHandler } from '@/lib/artifacts/server';
 import { generateVideoWithStrategy } from '@/lib/ai/api/video-generation';
 import { getStyles } from '@/lib/ai/api/get-styles';
 import type { MediaOption } from '@/lib/types/media-settings';
-import type { VideoModel } from '@/lib/config/superduperai';
-import { getAvailableVideoModels } from '@/lib/config/superduperai';
-import { SHOT_SIZES, VIDEO_FRAME_RATES, DEFAULT_VIDEO_RESOLUTION, DEFAULT_VIDEO_DURATION, getModelCompatibleResolutions } from '@/lib/config/video-constants';
+import type { VideoModel } from '@/lib/config/superduperai-client';
+import { getAvailableVideoModels } from '@/lib/config/superduperai-client';
+import { SHOT_SIZES, VIDEO_FRAME_RATES, getModelCompatibleResolutions, DEFAULT_VIDEO_PARAMS } from '@/lib/config/video-constants';
 import { GenerationSourceEnum, GenerationTypeEnum } from '@/lib/api';
 
 function convertToVideoModel(sdModel: VideoModel): VideoModel {
@@ -33,14 +33,14 @@ export const videoDocumentHandler = createDocumentHandler<'video'>({
      
       const {
         prompt,
-        negativePrompt = "",
-        style = { id: 'flux_steampunk', label: 'Steampunk' },
-        resolution = DEFAULT_VIDEO_RESOLUTION,
-        model = { id: 'comfyui/ltx', label: 'LTX Video' },
-        shotSize = { id: 'long-shot', label: 'Long Shot' },
-        frameRate = 30,
-        duration = DEFAULT_VIDEO_DURATION,
-        seed
+        negativePrompt = DEFAULT_VIDEO_PARAMS.negativePrompt,
+        style = DEFAULT_VIDEO_PARAMS.style,
+        resolution = DEFAULT_VIDEO_PARAMS.resolution,
+        model = DEFAULT_VIDEO_PARAMS.model,
+        shotSize = DEFAULT_VIDEO_PARAMS.shotSize,
+        frameRate = DEFAULT_VIDEO_PARAMS.frameRate,
+        duration = DEFAULT_VIDEO_PARAMS.duration,
+        seed = DEFAULT_VIDEO_PARAMS.seed
       } = params;
 
       // Load dynamic models from SuperDuperAI API
@@ -158,16 +158,16 @@ export const videoDocumentHandler = createDocumentHandler<'video'>({
       const params = JSON.parse(description);
       const {
         prompt,
-        negativePrompt = "",
-        style = { id: 'flux_steampunk', label: 'Steampunk' },
-        resolution = DEFAULT_VIDEO_RESOLUTION,
-        model = { id: 'comfyui/ltx', label: 'LTX Video' },
-        shotSize = { id: 'long-shot', label: 'Long Shot' },
-        frameRate = 30,
-        duration = DEFAULT_VIDEO_DURATION,
-        seed
+        negativePrompt = DEFAULT_VIDEO_PARAMS.negativePrompt,
+        style = DEFAULT_VIDEO_PARAMS.style,
+        resolution = DEFAULT_VIDEO_PARAMS.resolution,
+        model = DEFAULT_VIDEO_PARAMS.model,
+        shotSize = DEFAULT_VIDEO_PARAMS.shotSize,
+        frameRate = DEFAULT_VIDEO_PARAMS.frameRate,
+        duration = DEFAULT_VIDEO_PARAMS.duration,
+        seed = DEFAULT_VIDEO_PARAMS.seed
       } = params;
-      const result = await generateVideoWithStrategy('text-to-video', {
+      const result = await generateVideoWithStrategy(DEFAULT_VIDEO_PARAMS.generationType, {
         prompt,
         model,
         style,

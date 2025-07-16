@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from 'next/server';
-import { configureSuperduperAI, getAvailableImageModels, getAvailableVideoModels } from '@/lib/config/superduperai';
+import { configureSuperduperAI, getAvailableImageModels, getAvailableVideoModels } from '@/lib/config/superduperai-client';
 import { getStyles } from '@/lib/ai/api/get-styles';
 
 export async function GET(request: NextRequest) {
