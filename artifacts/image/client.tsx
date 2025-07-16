@@ -142,6 +142,24 @@ const ImageArtifactWrapper = memo(function ImageArtifactWrapper(props: any) {
     setArtifact((prev: any) => ({ ...prev, content: finalContent, status: 'idle' }));
     saveArtifactToDatabase(documentId, title, finalContent);
 
+    // AICODE-FIX: Update thumbnail in database when image completes
+    if (newContent.status === 'completed' && newContent.imageUrl && documentId && documentId !== 'undefined') {
+      const thumbnailUrl = newContent.imageUrl; // For images, use imageUrl as thumbnail
+      fetch(`/api/document?id=${encodeURIComponent(documentId)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          thumbnailUrl,
+          metadata: { 
+            imageUrl: newContent.imageUrl,
+            prompt: newContent.prompt,
+            model: newContent.model?.name || newContent.model?.id,
+            resolution: newContent.resolution 
+          }
+        }),
+      }).catch((err) => console.error('Failed to update thumbnail', err));
+    }
+
     // AICODE-FIX: Add generated image to chat history
     if (newContent.status === 'completed' && newContent.imageUrl && chatId && setMessages && newContent.prompt) {
       saveImageToChat(chatId, newContent.imageUrl, newContent.prompt, setMessages);
