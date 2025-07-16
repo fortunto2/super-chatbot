@@ -1,96 +1,73 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import { configureSuperduperAI } from '@/lib/config/superduperai';
-import { generateVideoWithStrategy, type VideoGenerationParams, type ImageToVideoParams } from '@/lib/ai/api/video-generation';
-import { parseResolution } from '@/lib/utils/media-generation';
+import { generateVideoHybrid } from '@/lib/ai/api/generate-video';
 
 export async function POST(request: NextRequest) {
   try {
-    let body: any;
-    // All requests now come as JSON (with Base64 data URL for image-to-video)
-    console.log('🎬 Video API: Processing JSON request');
-    const contentType = request.headers.get('content-type') || '';
+    // Configure OpenAPI client for server-side usage
+    const { getSuperduperAIConfig } = await import('@/lib/config/superduperai');
+    const config = getSuperduperAIConfig();
+    const { OpenAPI } = await import('@/lib/api');
+    OpenAPI.BASE = config.url;
+    OpenAPI.TOKEN = config.token;
 
-    // Проверяем form-data или обычный JSON
-    const isFormData = contentType.includes('multipart/form-data');
+    // Parse request body
+    const body = await request.json();
+    console.log('🎬 Video API: Processing request:', JSON.stringify(body, null, 2));
 
-    if (isFormData) {
-      const formData = await request.formData();
-      // Извлекаем значения
-      body = {
-        prompt: formData.get('prompt')?.toString() ?? '',
-        model: formData.get('model')?.toString() ?? '',
-        resolution: formData.get('resolution')?.toString() ?? '',
-        chatId: formData.get('chatId')?.toString() ?? '',
-        negativePrompt: formData.get('negativePrompt')?.toString() ?? '',
-        duration: Number(formData.get('duration') ?? 5),
-        generationType: formData.get('generationType')?.toString() ?? 'text-to-video',
-        frameRate: Number(formData.get('frameRate') ?? 30),
-        style: formData.get('style')?.toString() ?? '',
-        shotSize: formData.get('shotSize')?.toString() ?? '',
-        seed: formData.get('seed')?.toString() ?? '',
-        file: formData.get('file') as File | null
+    // Convert string parameters to proper objects
+    const modelObj = typeof body.model === 'string' 
+      ? { name: body.model, label: body.model } 
+      : { name: 'azure-openai/sora', label: 'Sora' };
+      
+    const styleObj = typeof body.style === 'string'
+      ? { id: body.style, label: body.style }
+      : { id: 'flux_watercolor', label: 'Watercolor' };
+      
+    const shotSizeObj = typeof body.shotSize === 'string'
+      ? { id: body.shotSize.toLowerCase().replace(' ', '_'), label: body.shotSize }
+      : { id: 'medium_shot', label: 'Medium Shot' };
+
+    // Parse resolution string like "1280x720 (HD)" 
+    let resolutionObj = { width: 1216, height: 704, label: '1216x704', aspectRatio: '16:9' };
+    if (body.resolution && typeof body.resolution === 'string') {
+      const match = body.resolution.match(/(\d+)x(\d+)/);
+      if (match) {
+        const width = parseInt(match[1]);
+        const height = parseInt(match[2]);
+        const ratio = width / height;
+        resolutionObj = {
+          width,
+          height,
+          label: `${width}x${height}`,
+          aspectRatio: ratio === 1 ? '1:1' : ratio > 1 ? '16:9' : '9:16'
+        };
       }
-    } else {
-      body = await request.json();
     }
-    const {chatId, generationType = 'text-to-video'} = body
-    
-    console.log('📦 Request parameters:', JSON.stringify(body, null, 2));
-        // Configure SuperDuperAI for server-side operations
-    configureSuperduperAI();
 
-    // Add image-specific parameters if needed
-    const strategyParams: VideoGenerationParams | ImageToVideoParams = {...body};
-  
-    console.log(`🎬 Using strategy pattern for ${generationType} generation`);
-    console.log("strategyParams", strategyParams);
-    // Use strategy pattern for generation
-    const result = await generateVideoWithStrategy(generationType, strategyParams);
-    
-    if (!result.success) {
-      throw new Error(result.error || 'Video generation failed');
-    }
+    // Generate video using hybrid approach
+    const result = await generateVideoHybrid(
+      body.prompt || '',
+      modelObj,
+      styleObj,
+      resolutionObj,
+      shotSizeObj,
+      body.duration || 5,
+      body.frameRate || 30,
+      body.negativePrompt || '',
+      body.sourceImageId,
+      body.sourceImageUrl,
+      body.generationType || 'text-to-video'
+    );
     
     console.log('✅ Video generation result:', result);
     
     // Return standardized response
-    const responseData = {
-      success: true,
-      fileId: result.fileId,
-      projectId: result.projectId || chatId,
-      url: result.url,
-      message: result.message
-    };
-    
-    return NextResponse.json(responseData);
+    return NextResponse.json(result);
   } catch (error) {
     console.error('💥 Video API error:', error);
     
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    
-    // Specific handling for backend magic library error
-    if (errorMessage.includes('magic') || errorMessage.includes('AttributeError')) {
-      return NextResponse.json(
-        { 
-          success: false,
-          error: 'Backend file processing error', 
-          details: 'The SuperDuperAI service is experiencing issues with file type detection. Please try using a different image format (PNG, JPG, WEBP) or try again later.'
-        },
-        { status: 500 }
-      );
-    }
-    
-    // Handle image upload failures specifically
-    if (errorMessage.includes('upload') || errorMessage.includes('image')) {
-      return NextResponse.json(
-        { 
-          success: false,
-          error: 'Image processing failed', 
-          details: 'Failed to process the source image. Please try using a different image or check the file format (PNG, JPG, WEBP supported).'
-        },
-        { status: 500 }
-      );
-    }
     
     return NextResponse.json(
       { 

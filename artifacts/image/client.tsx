@@ -84,7 +84,7 @@ const saveArtifactToDatabase = async (id: string | undefined, title: string, con
       readableTitle = titleParams.prompt || 'AI Generated Image';
     }
     if (readableTitle.length > 255) {
-      readableTitle = `${readableTitle.substring(0, 252)}...`;
+      readableTitle = readableTitle.substring(0, 252) + '...';
     }
     await fetch(`/api/document?id=${encodeURIComponent(id)}`, {
       method: 'POST',
@@ -156,47 +156,12 @@ const ImageArtifactWrapper = memo(function ImageArtifactWrapper(props: any) {
         const { pollFileCompletion } = await import('@/lib/utils/smart-polling-manager');
         const result = await pollFileCompletion(projectId, { maxDuration: 7 * 60 * 1000 });
         if (result.success && result.data?.url) {
-<<<<<<< HEAD
-          console.log('✅ Artifact smart polling completed:', result.data.url);
-          const thumbUrl = result.data.thumbnail_url || result.data.url;
-          
-          // Update artifact content
-          setArtifact((prev: any) => {
-            try {
-              const currentContent = JSON.parse(prev.content || '{}');
-              const updatedContent = {
-                ...currentContent,
-                status: 'completed',
-                imageUrl: result.data.url,
-                progress: 100
-              };
-              
-              saveArtifactToDatabase(prev.documentId || prev.id, prev.title, JSON.stringify(updatedContent));
-
-              if (prev.documentId) {
-                fetch(`/api/document?id=${prev.documentId}`, {
-                  method: 'PATCH',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ thumbnailUrl: thumbUrl }),
-                }).catch((err) => console.error('Failed to update thumbnail', err));
-              }
-              
-              return {
-                ...prev,
-                content: JSON.stringify(updatedContent)
-              };
-            } catch (error) {
-              console.error('Failed to update artifact via smart polling:', error);
-              return prev;
-            }
-=======
           updateContent({
             ...parsedContent,
             status: 'completed',
             imageUrl: result.data.url,
             prompt: result.data.image_generation?.prompt || parsedContent?.prompt, // Use prompt from polling result
             progress: 100,
->>>>>>> 3075a6e3c9c41e8ab7955759039ab53f2117ec75
           });
         }
       } catch (error) {
@@ -204,168 +169,6 @@ const ImageArtifactWrapper = memo(function ImageArtifactWrapper(props: any) {
       }
     }, 20000); // 20s delay
 
-<<<<<<< HEAD
-  // Connect to SSE for real-time updates using fileId directly
-  const artifactSSE = useImageSSE({
-    fileId: parsedContent?.projectId || '', // projectId is actually fileId from generate-image.ts
-    eventHandlers: parsedContent?.projectId ? [(message: any) => {
-      
-      // Handle file events for image completion
-      if (message.type === 'file' && message.object) {
-        const fileObject = message.object;
-        
-        // Handle direct URL in file object
-        if (fileObject.url && (fileObject.type === 'image' || fileObject.contentType?.startsWith('image/'))) {
-          // Update artifact content with completed image
-          setArtifact((prev: any) => {
-            try {
-              
-              const currentContent = JSON.parse(prev.content || '{}');
-              const updatedContent = {
-                ...currentContent,
-                status: 'completed',
-                imageUrl: fileObject.url,
-                progress: 100
-              };
-              
-              // Save updated content to database (use documentId which is the actual ID)
-              saveArtifactToDatabase(prev.documentId || prev.id, prev.title, JSON.stringify(updatedContent));
-
-              const thumbUrl = fileObject.thumbnail_url || fileObject.url;
-
-              if (prev.documentId) {
-                fetch(`/api/document?id=${prev.documentId}`, {
-                  method: 'PATCH',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ thumbnailUrl: thumbUrl }),
-                }).catch((err) => console.error('Failed to update thumbnail', err));
-              }
-              
-              return {
-                ...prev,
-                content: JSON.stringify(updatedContent)
-              };
-                          } catch (error) {
-                console.error('Failed to update artifact content:', error);
-                return prev;
-              }
-          });
-        }
-        // Handle file_id case - need to resolve to URL
-        else if (fileObject.file_id) {
-          
-          // Import FileService dynamically to resolve file_id to URL
-          import('@/lib/api').then(async ({ FileService, FileTypeEnum }) => {
-            try {
-              const fileResponse = await FileService.fileGetById({ id: fileObject.file_id });
-              
-              if (fileResponse?.url && fileResponse.type === FileTypeEnum.IMAGE) {
-                
-                // Update artifact content with completed image
-                setArtifact((prev: any) => {
-                  try {
-                    const currentContent = JSON.parse(prev.content || '{}');
-                    const updatedContent = {
-                      ...currentContent,
-                      status: 'completed',
-                      imageUrl: fileResponse.url,
-                      progress: 100
-                    };
-                    
-                    // Save updated content to database (use documentId which is the actual ID)
-                    saveArtifactToDatabase(prev.documentId || prev.id, prev.title, JSON.stringify(updatedContent));
-
-                    const thumbUrl = fileResponse.thumbnail_url || fileResponse.url;
-
-                    if (prev.documentId) {
-                      fetch(`/api/document?id=${prev.documentId}`, {
-                        method: 'PATCH',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ thumbnailUrl: thumbUrl }),
-                      }).catch((err) => console.error('Failed to update thumbnail', err));
-                    }
-                    
-                    return {
-                      ...prev,
-                      content: JSON.stringify(updatedContent)
-                    };
-                                      } catch (error) {
-                      console.error('Failed to update artifact content with file_id:', error);
-                      return prev;
-                    }
-                });
-              } else {
-                // File ID resolved but not an image
-              }
-            } catch (error) {
-              console.error('Failed to resolve file ID via SSE:', error);
-            }
-          });
-        }
-      }
-      
-      // Handle render_progress events
-      if (message.type === 'render_progress' && message.object?.progress !== undefined) {
-        
-        setArtifact((prev: any) => {
-          try {
-            const currentContent = JSON.parse(prev.content || '{}');
-            const updatedContent = {
-              ...currentContent,
-              status: 'processing',
-              progress: message.object.progress
-            };
-            return {
-              ...prev,
-              content: JSON.stringify(updatedContent)
-            };
-                      } catch (error) {
-              console.error('Failed to update progress:', error);
-              return prev;
-            }
-        });
-      }
-      
-      // Handle render_result events
-      if (message.type === 'render_result' && (message.object?.url || message.object?.file_url)) {
-        const imageUrl = message.object.url || message.object.file_url;
-        
-        setArtifact((prev: any) => {
-          try {
-            const currentContent = JSON.parse(prev.content || '{}');
-            const updatedContent = {
-              ...currentContent,
-              status: 'completed',
-              imageUrl,
-              progress: 100
-            };
-            
-            // Save updated content to database (use documentId which is the actual ID)
-            saveArtifactToDatabase(prev.documentId || prev.id, prev.title, JSON.stringify(updatedContent));
-
-            const thumbUrl = message.object.thumbnail_url || imageUrl;
-
-            if (prev.documentId) {
-              fetch(`/api/document?id=${prev.documentId}`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ thumbnailUrl: thumbUrl }),
-              }).catch((err) => console.error('Failed to update thumbnail', err));
-            }
-            
-            return {
-              ...prev,
-              content: JSON.stringify(updatedContent)
-            };
-          } catch (error) {
-            console.error('🎨 ❌ Failed to update render result:', error);
-            return prev;
-          }
-        });
-      }
-    }] : [],
-    enabled: !!parsedContent?.projectId && !!parsedContent?.requestId
-=======
     return () => clearTimeout(pollTimeout);
   }, [projectId, status, updateContent, parsedContent]);
   
@@ -383,7 +186,6 @@ const ImageArtifactWrapper = memo(function ImageArtifactWrapper(props: any) {
       }
     ], [updateContent, parsedContent]),
     enabled: !!projectId && status !== 'completed' && !!requestId
->>>>>>> 3075a6e3c9c41e8ab7955759039ab53f2117ec75
   });
 
   // Show skeleton while loading or if content cannot be parsed

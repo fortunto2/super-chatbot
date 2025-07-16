@@ -90,27 +90,18 @@ export function DocumentPreview({
     ? previewDocument
     : artifact.status === 'streaming'
       ? {
-          id: artifact.documentId,
-          createdAt: new Date(),
           title: artifact.title,
-          userId: 'noop',
-<<<<<<< HEAD
-          visibility: 'private',
           kind: artifact.kind,
           content: artifact.content,
-          model: '',
-          tags: [],
-          viewCount: 0,
-          thumbnailUrl: null,
-          metadata: {},
-=======
+          id: artifact.documentId,
+          createdAt: new Date(),
+          userId: 'noop',
           visibility: 'private' as const,
           model: null,
           tags: null,
           viewCount: 0,
           thumbnailUrl: null,
           metadata: null,
->>>>>>> 3075a6e3c9c41e8ab7955759039ab53f2117ec75
         }
       : null;
 

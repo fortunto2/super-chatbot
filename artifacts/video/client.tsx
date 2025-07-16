@@ -305,66 +305,7 @@ const VideoArtifactWrapper = memo(function VideoArtifactWrapper(props: any) {
   // Connect to SSE for real-time updates (using fileId)
   const artifactSSE = useArtifactSSE({
     channel: parsedContent?.fileId ? `file.${parsedContent.fileId}` : '',
-<<<<<<< HEAD
-    eventHandlers: parsedContent?.fileId ? [(message) => {
-      console.log('🎬 Artifact SSE message:', message);
-      
-      // Handle video completion events
-      if (message.type === 'file' && message.object?.url && message.object?.type === 'video') {
-        const videoUrl = message.object.url;
-        const thumbnailUrl = message.object.thumbnail_url || message.object.url;
-        
-        console.log('🎬 Video completed via SSE:', `${videoUrl.substring(0, 50)}...`);
-        
-        // Update artifact with completed video
-        if (setArtifact) {
-          setArtifact((current: any) => {
-            const currentContent = typeof current.content === 'string' ? 
-              JSON.parse(current.content || '{}') : current.content;
-            
-            const updatedContent = {
-              ...currentContent,
-              status: 'completed',
-              videoUrl: videoUrl,
-              thumbnailUrl: thumbnailUrl,
-              timestamp: Date.now(),
-              message: 'Video generation completed!'
-            };
-            
-            return {
-              ...current,
-              content: JSON.stringify(updatedContent),
-              status: 'idle' as const
-            };
-          });
-        }
-
-        if (otherProps.documentId) {
-          fetch(`/api/document?id=${otherProps.documentId}`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ thumbnailUrl, metadata: { videoUrl } }),
-          }).catch((err) => console.error('Failed to update thumbnail', err));
-        }
-
-        // Auto-save video to chat history if we have required data
-        if (otherProps.setMessages && otherProps.chatId && parsedContent?.prompt) {
-          console.log('🎬 Video completed via SSE, auto-saving to chat...');
-          setTimeout(() => {
-            saveVideoToChat(
-              otherProps.chatId,
-              videoUrl,
-              parsedContent.prompt,
-              otherProps.setMessages,
-              thumbnailUrl
-            );
-          }, 500);
-        }
-      }
-    }] : [],
-=======
     eventHandlers: useMemo(() => (parsedContent?.fileId ? [handleSSEMessage] : []), [parsedContent?.fileId, handleSSEMessage]),
->>>>>>> 3075a6e3c9c41e8ab7955759039ab53f2117ec75
     enabled: !!parsedContent?.fileId && !!parsedContent?.requestId
   });
 
