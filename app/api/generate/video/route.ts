@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import { configureSuperduperAI } from '@/lib/config/superduperai';
 import { generateVideoHybrid } from '@/lib/ai/api/generate-video';
+import { IGenerationConfigRead } from '@/lib/api';
 
 export async function POST(request: NextRequest) {
   try {
@@ -48,7 +49,7 @@ export async function POST(request: NextRequest) {
     // Generate video using hybrid approach
     const result = await generateVideoHybrid(
       body.prompt || '',
-      modelObj,
+      modelObj as IGenerationConfigRead,
       styleObj,
       resolutionObj,
       shotSizeObj,

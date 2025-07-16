@@ -118,7 +118,8 @@ export async function POST(request: Request) {
     content,
     title,
     kind,
-  }: { content: string; title: string; kind: ArtifactKind } =
+    thumbnailUrl,
+  }: { content: string; title: string; kind: ArtifactKind; thumbnailUrl?: string } =
     await request.json();
 
   const documents = await getDocumentsById({ id });
@@ -137,6 +138,7 @@ export async function POST(request: Request) {
     title,
     kind,
     userId: session.user.id,
+    thumbnailUrl,
   });
 
   return Response.json(document, { status: 200 });
