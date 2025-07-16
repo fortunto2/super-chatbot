@@ -39,7 +39,7 @@ export function DocumentGallery({
   const [totalPages, setTotalPages] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
+  
   useEffect(() => {
     const fetchDocuments = async () => {
       setIsLoading(true);
@@ -111,7 +111,7 @@ export function DocumentGallery({
       {/* Document grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         {documents.map((doc) => (
-          <DocumentCard key={doc.id} document={doc} />
+          <DocumentCard key={`${doc.id}-${doc.createdAt}`} document={doc} />
         ))}
       </div>
 

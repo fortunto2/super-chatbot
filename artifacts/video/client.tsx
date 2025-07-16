@@ -2,12 +2,64 @@ import { Artifact } from '@/components/create-artifact';
 import { CopyIcon, ShareIcon, UndoIcon, RedoIcon } from '@/components/icons';
 import { VideoEditor } from '@/components/video-editor';
 import { toast } from 'sonner';
-import { memo, useMemo, useEffect } from 'react';
+import { memo, useMemo, useEffect, useCallback } from 'react';
 import { useArtifactSSE } from '@/hooks/use-artifact-sse';
 import { generateUUID } from '@/lib/utils';
 
 // Import console helpers for debugging (auto-exposes in browser)
 import '@/lib/utils/console-helpers';
+
+// Function to save artifact updates to database
+const saveArtifactToDatabase = async (id: string | undefined, title: string, content: string) => {
+  // Skip saving if no valid ID
+  if (!id || id === 'undefined') {
+    console.log('💾 ⚠️ Skipping database save - no valid artifact ID');
+    return;
+  }
+  
+  try {
+    console.log('💾 Saving updated artifact to database:', id);
+    
+    // AICODE-FIX: Extract readable title from content if title is JSON
+    let readableTitle = title;
+    try {
+      // Check if title is JSON (starts with { and ends with })
+      if (title.startsWith('{') && title.endsWith('}')) {
+        const titleParams = JSON.parse(title);
+        // Use prompt as readable title
+        readableTitle = titleParams.prompt || 'AI Generated Video';
+      }
+    } catch (e) {
+      // If not JSON or parse fails, keep original title
+    }
+    
+    // AICODE-NOTE: Truncate title to 255 characters for database storage
+    if (readableTitle.length > 255) {
+      readableTitle = readableTitle.substring(0, 252) + '...';
+    }
+    
+    const response = await fetch(`/api/document?id=${encodeURIComponent(id)}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        title: readableTitle,
+        content,
+        kind: 'video'
+      }),
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => 'Unknown error');
+      throw new Error(`Failed to save artifact: ${response.status} - ${errorText}`);
+    }
+    
+    console.log('💾 ✅ Artifact saved to database successfully');
+  } catch (error) {
+    console.error('💾 ❌ Failed to save artifact to database:', error);
+  }
+};
 
 // Function to save video to chat history
 const saveVideoToChat = async (
@@ -123,9 +175,137 @@ const VideoArtifactWrapper = memo(function VideoArtifactWrapper(props: any) {
       };
     }, [parsedContent]);
 
+  // Set up smart polling fallback for artifacts in case SSE doesn't work
+  useEffect(() => {
+    const fileId = parsedContent?.fileId;
+    if (!fileId || parsedContent?.status === 'completed') return;
+
+    // Start smart polling after 30 seconds if video still not completed
+    const pollTimeout = setTimeout(async () => {
+      console.log('🔄 Starting artifact smart polling for video fileId:', fileId);
+      
+      try {
+        const { pollFileCompletion } = await import('@/lib/utils/smart-polling-manager');
+        
+        const result = await pollFileCompletion(fileId, {
+          maxDuration: 15 * 60 * 1000, // 15 minutes for video
+          initialInterval: 5000,
+          onProgress: (attempt, elapsed, nextInterval) => {
+            console.log(`🔄 Video poll attempt ${attempt} (${Math.round(elapsed / 1000)}s elapsed, next: ${nextInterval}ms)`);
+          },
+          onError: (error, attempt) => {
+            console.warn(`⚠️ Video polling non-critical error at attempt ${attempt}:`, error.message);
+          }
+        });
+        
+        if (result.success && result.data?.url) {
+          console.log('✅ Video smart polling completed:', result.data.url);
+          
+          const videoUrl = result.data.url;
+          const thumbnailUrl = result.data.thumbnail_url;
+
+          // Update artifact content
+          setArtifact((prev: any) => {
+            try {
+              const currentContent = JSON.parse(prev.content || '{}');
+              const updatedContent = {
+                ...currentContent,
+                status: 'completed',
+                videoUrl: videoUrl,
+                thumbnailUrl: thumbnailUrl,
+                progress: 100
+              };
+              
+              saveArtifactToDatabase(prev.documentId || prev.id, prev.title, JSON.stringify(updatedContent));
+              
+              return {
+                ...prev,
+                content: JSON.stringify(updatedContent)
+              };
+            } catch (error) {
+              console.error('Failed to update artifact via smart polling:', error);
+              return prev;
+            }
+          });
+
+          // Auto-save video to chat history if we have required data
+          if (props.setMessages && props.chatId && parsedContent?.prompt) {
+            console.log('🎬 Video completed via polling, auto-saving to chat...');
+            saveVideoToChat(
+              props.chatId,
+              videoUrl,
+              parsedContent.prompt,
+              props.setMessages,
+              thumbnailUrl
+            );
+          }
+        } else {
+          console.error('❌ Video smart polling failed:', result.error);
+        }
+        
+      } catch (error) {
+        console.error('❌ Video smart polling system error:', error);
+      }
+    }, 30000); // 30 second delay before starting polling
+    
+    return () => {
+      clearTimeout(pollTimeout);
+    };
+  }, [parsedContent?.fileId, parsedContent?.status, setArtifact, parsedContent?.prompt, props.chatId, props.setMessages]);
+
+  const handleSSEMessage = useCallback((message: any) => {
+    console.log('🎬 Artifact SSE message:', message);
+      
+    // Handle video completion events
+    if (message.type === 'file' && message.object?.url && message.object?.type === 'video') {
+      const videoUrl = message.object.url;
+      const thumbnailUrl = message.object.thumbnail_url;
+      
+      console.log('🎬 Video completed via SSE:', `${videoUrl.substring(0, 50)}...`);
+      
+      // Update artifact with completed video
+      if (setArtifact) {
+        setArtifact((current: any) => {
+          const currentContent = typeof current.content === 'string' ? 
+            JSON.parse(current.content || '{}') : current.content;
+          
+          const updatedContent = {
+            ...currentContent,
+            status: 'completed',
+            videoUrl: videoUrl,
+            thumbnailUrl: thumbnailUrl,
+            timestamp: Date.now(),
+            message: 'Video generation completed!'
+          };
+          
+          return {
+            ...current,
+            content: JSON.stringify(updatedContent),
+            status: 'idle' as const
+          };
+        });
+      }
+
+      // Auto-save video to chat history if we have required data
+      if (props.setMessages && props.chatId && parsedContent?.prompt) {
+        console.log('🎬 Video completed via SSE, auto-saving to chat...');
+        setTimeout(() => {
+          saveVideoToChat(
+            props.chatId,
+            videoUrl,
+            parsedContent.prompt,
+            props.setMessages,
+            thumbnailUrl
+          );
+        }, 500);
+      }
+    }
+  }, [setArtifact, props.setMessages, props.chatId, parsedContent?.prompt]);
+
   // Connect to SSE for real-time updates (using fileId)
   const artifactSSE = useArtifactSSE({
     channel: parsedContent?.fileId ? `file.${parsedContent.fileId}` : '',
+<<<<<<< HEAD
     eventHandlers: parsedContent?.fileId ? [(message) => {
       console.log('🎬 Artifact SSE message:', message);
       
@@ -182,6 +362,9 @@ const VideoArtifactWrapper = memo(function VideoArtifactWrapper(props: any) {
         }
       }
     }] : [],
+=======
+    eventHandlers: useMemo(() => (parsedContent?.fileId ? [handleSSEMessage] : []), [parsedContent?.fileId, handleSSEMessage]),
+>>>>>>> 3075a6e3c9c41e8ab7955759039ab53f2117ec75
     enabled: !!parsedContent?.fileId && !!parsedContent?.requestId
   });
 
@@ -191,17 +374,6 @@ const VideoArtifactWrapper = memo(function VideoArtifactWrapper(props: any) {
       console.log('🔌 SSE connected for video artifact file:', parsedContent.fileId);
     }
   }, [artifactSSE.isConnected, parsedContent?.fileId]);
-
-  // Auto-notify chat WebSocket about new fileId when artifact is created (fallback)
-  useEffect(() => {
-    if (parsedContent?.fileId) {
-      // Use the global notifyNewProject function exposed by console helpers
-      const globalWindow = window as any;
-      if (globalWindow.notifyNewProject) {
-        globalWindow.notifyNewProject(parsedContent.fileId);
-      }
-    }
-  }, [parsedContent?.fileId]);
 
   // Memoize settings to prevent recreating object on every render
   const defaultSettings = useMemo(() => {

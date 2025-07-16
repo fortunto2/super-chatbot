@@ -2,6 +2,7 @@ import { Artifact } from '@/components/create-artifact';
 import { DiffView } from '@/components/diffview';
 import { DocumentSkeleton } from '@/components/document-skeleton';
 import { Editor } from '@/components/text-editor';
+import { Markdown } from '@/components/markdown';
 import {
   ClockRewind,
   CopyIcon,
@@ -23,11 +24,12 @@ export const textArtifact = new Artifact<'text', TextArtifactMetadata>({
   kind: 'text',
   description: 'Useful for text content, like drafting essays and emails.',
   initialize: async ({ documentId, setMetadata }) => {
-    const suggestions = await getSuggestions({ documentId });
-
-    setMetadata({
-      suggestions,
-    });
+    if (documentId && documentId !== 'init') {
+      const suggestions = await getSuggestions({ documentId });
+      setMetadata({
+        suggestions,
+      });
+    }
   },
   onStreamPart: ({ streamPart, setMetadata, setArtifact }) => {
     if (streamPart.type === 'suggestion') {
@@ -190,3 +192,15 @@ export const textArtifact = new Artifact<'text', TextArtifactMetadata>({
     },
   ],
 });
+
+// Новый компонент для просмотра сценария (markdown)
+export function ScriptArtifactViewer({ title, content }: { title: string; content: string }) {
+  return (
+    <div className="p-8 md:p-20 max-w-3xl mx-auto">
+      <h2 className="text-2xl font-bold mb-4">{title}</h2>
+      <div className="prose dark:prose-invert">
+        <Markdown>{content}</Markdown>
+      </div>
+    </div>
+  );
+}

@@ -238,7 +238,7 @@ export const useChatImageSSE = ({
     
     // Expose global function for manual project notification
     if (typeof window !== 'undefined') {
-      (window as any).notifyNewProject = (newProjectId: string) => {
+      (window as any).notifyNewImageProject = (newProjectId: string) => {
         console.log('📢 Chat SSE: Manual project notification:', newProjectId);
         if (newProjectId && newProjectId !== projectId) {
           connectToProject(newProjectId);
@@ -274,84 +274,72 @@ export const useChatImageSSE = ({
 
   // Extract project IDs from messages
   const extractProjectIdsFromMessages = useCallback((messages: any[]): string[] => {
-    const projectIds = new Set<string>();
+    const ids = new Set<string>();
     
     for (const message of messages) {
       if (message.role === 'assistant' && message.parts) {
         for (const part of message.parts) {
           if (part.type === 'text' && 'text' in part && part.text) {
             try {
-              // Check for image artifacts
+              // Check for image artifacts before parsing
               if (part.text.includes('"kind":"image"') || 
                   part.text.includes("'kind':'image'") ||
                   part.text.includes('ImageArtifact')) {
                 
-                let artifactContent = null;
-                
-                // Try different parsing methods
+                let artifactContent: any = null;
                 if (part.text.includes('```json')) {
                   const jsonMatch = part.text.match(/```json\s*({[\s\S]*?})\s*```/);
-                  if (jsonMatch) {
-                    artifactContent = JSON.parse(jsonMatch[1]);
-                  }
+                  if (jsonMatch) artifactContent = JSON.parse(jsonMatch[1]);
                 } else if (part.text.startsWith('{') && part.text.endsWith('}')) {
                   artifactContent = JSON.parse(part.text);
                 }
                 
                 if (artifactContent?.projectId) {
-                  projectIds.add(artifactContent.projectId);
+                  ids.add(artifactContent.projectId);
+                }
+                if (artifactContent?.fileId) {
+                  ids.add(`file.${artifactContent.fileId}`);
                 }
               }
-            } catch (error) {
-              // Silent fail for parsing
-            }
+            } catch (e) { /* ignore parse errors */ }
           }
         }
       }
     }
-    
-    return Array.from(projectIds);
+    return Array.from(ids);
   }, []);
 
   // Monitor messages for project IDs and connect/disconnect as needed
   useEffect(() => {
     if (!enabled) return;
 
-    const projectIds = extractProjectIdsFromMessages(messages);
-    const currentProjects = connectedProjectsRef.current;
-    
+    const currentProjectIds = new Set(extractProjectIdsFromMessages(messages));
+    const previousProjectIds = connectedProjectsRef.current;
+
     // Connect to new projects
-    for (const projectId of projectIds) {
-      if (!currentProjects.has(projectId)) {
+    for (const projectId of currentProjectIds) {
+      if (!previousProjectIds.has(projectId)) {
         connectToProject(projectId);
       }
     }
-    
-    // Disconnect from projects that are no longer in messages
-    for (const projectId of Array.from(currentProjects)) {
-      if (!projectIds.includes(projectId)) {
+
+    // Disconnect from old projects
+    for (const projectId of previousProjectIds) {
+      if (!currentProjectIds.has(projectId)) {
         disconnectFromProject(projectId);
       }
     }
 
-    // Expose global functions for debugging
+    // Store instance for debugging
     if (typeof window !== 'undefined') {
       (window as any).chatSSEInstance = {
-        connectedProjects: Array.from(connectedProjectsRef.current),
-        lastImageUrl: (window as any).chatSSEInstance?.lastImageUrl || null,
+        connectedProjects: connectedProjectsRef.current,
+        lastImageUrl: null,
         chatId: chatId,
         manualConnect: connectToProject,
-        extractedProjects: projectIds
-      };
-      
-      (window as any).notifyNewProject = (newProjectId: string) => {
-        console.log('📢 Chat SSE: Manual image project notification:', newProjectId);
-        if (newProjectId) {
-          connectToProject(newProjectId);
-        }
       };
     }
-  }, [messages, enabled, connectToProject, disconnectFromProject, chatId, extractProjectIdsFromMessages]);
+  }, [messages, enabled, connectToProject, disconnectFromProject, extractProjectIdsFromMessages, chatId]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -373,9 +361,7 @@ export const useChatImageSSE = ({
   }, [disconnectFromProject]);
 
   return {
-    connectToProject,
-    disconnectFromProject,
-    connectedProjects: Array.from(connectedProjectsRef.current),
+    connectedProjects: connectedProjectsRef.current,
   };
 };
 

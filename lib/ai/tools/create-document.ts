@@ -19,11 +19,14 @@ export const createDocument = ({ session, dataStream }: CreateDocumentProps) =>
     parameters: z.object({
       title: z.string(),
       kind: z.enum(artifactKinds),
+      content: z.string().optional(),
     }),
-    execute: async ({ title, kind }) => {
+    execute: async ({ title, kind, content }) => {
       console.log('📄 ===== CREATE DOCUMENT TOOL CALLED =====');
       console.log('📄 KIND:', kind);
       console.log('📄 TITLE (first 100 chars):', title.substring(0, 100));
+      console.log('📄 CONTENT provided:', content ? 'Yes' : 'No');
+      console.log('📄 CONTENT length:', content?.length || 0);
       
       const id = generateUUID();
       console.log('📄 GENERATED ID:', id);
@@ -71,6 +74,7 @@ export const createDocument = ({ session, dataStream }: CreateDocumentProps) =>
         await documentHandler.onCreateDocument({
           id,
           title,
+          content,
           dataStream,
           session,
         });

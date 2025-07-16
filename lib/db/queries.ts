@@ -296,8 +296,14 @@ export async function saveMessages({
 }: {
   messages: Array<DBMessage>;
 }) {
+  if (messages.length === 0) {
+    return;
+  }
+  
   try {
-    return await db.insert(message).values(messages);
+    // Make the insert idempotent. If a message with the same ID already exists, do nothing.
+    // This resolves a race condition where both the client and server might try to save the same message.
+    return await db.insert(message).values(messages).onConflictDoNothing();
   } catch (error) {
     console.error('Failed to save messages in database', error);
     throw error;
@@ -364,14 +370,21 @@ export async function saveDocument({
   kind,
   content,
   userId,
+  thumbnailUrl,
+  visibility,
 }: {
   id: string;
   title: string;
   kind: ArtifactKind;
   content: string;
   userId: string;
+  thumbnailUrl?: string | null;
+  visibility?: 'public' | 'private';
 }) {
   try {
+    // Set default visibility based on kind
+    const defaultVisibility = visibility || (kind === 'script' ? 'public' : 'private');
+    
     return await db
       .insert(document)
       .values({
@@ -380,6 +393,8 @@ export async function saveDocument({
         kind,
         content,
         userId,
+        thumbnailUrl: thumbnailUrl ?? null,
+        visibility: defaultVisibility,
         createdAt: new Date(),
       })
       .returning();
@@ -760,10 +775,10 @@ export async function getDocuments({
     }
 
     // Search filter - search in title and tags
-    if (search) {
+    if (search && typeof search === 'string' && search.length > 0) {
       const searchCondition = or(
         ilike(document.title, `%${search}%`),
-        sql`${document.tags}::text LIKE '%${search}%'`
+        sql`${document.tags}::text LIKE ${'%' + search + '%'}` // <-- исправлено
       );
       if (searchCondition) {
         conditions.push(searchCondition);

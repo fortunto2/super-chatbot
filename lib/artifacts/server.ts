@@ -1,4 +1,21 @@
 import { imageDocumentHandler } from '@/artifacts/image/server';
+// Utility: extract thumbnail URL from JSON content string
+function getThumbnailUrl(content: string): string | null {
+  try {
+    const data = JSON.parse(content);
+    if (!data) return null;
+    // Common fields
+    if (typeof data.thumbnailUrl === 'string') return data.thumbnailUrl;
+    if (typeof data.thumbnail_url === 'string') return data.thumbnail_url;
+    // Fallbacks for image/video specific
+    if (typeof data.imageUrl === 'string') return data.imageUrl;
+    if (typeof data.videoUrl === 'string') return data.videoUrl;
+  } catch (_) {
+    // ignore parse errors
+  }
+  return null;
+}
+
 import { sheetDocumentHandler } from '@/artifacts/sheet/server';
 import { textDocumentHandler } from '@/artifacts/text/server';
 import { videoDocumentHandler } from '@/artifacts/video/server';
@@ -7,6 +24,7 @@ import type { DataStreamWriter } from 'ai';
 import type { Document } from '../db/schema';
 import { saveDocument } from '../db/queries';
 import type { Session } from 'next-auth';
+import { scriptDocumentHandler } from '@/artifacts/script/server';
 
 export interface SaveDocumentProps {
   id: string;
@@ -14,11 +32,13 @@ export interface SaveDocumentProps {
   kind: ArtifactKind;
   content: string;
   userId: string;
+  visibility?: 'public' | 'private';
 }
 
 export interface CreateDocumentCallbackProps {
   id: string;
   title: string;
+  content?: string; // Optional content for artifacts that generate their own content
   dataStream: DataStreamWriter;
   session: Session;
 }
@@ -49,6 +69,7 @@ export function createDocumentHandler<T extends ArtifactKind>(config: {
       const draftContent = await config.onCreateDocument({
         id: args.id,
         title: args.title,
+        content: args.content, // Now properly typed
         dataStream: args.dataStream,
         session: args.session,
       });
@@ -84,11 +105,13 @@ export function createDocumentHandler<T extends ArtifactKind>(config: {
           console.log('📄 Could not parse title, using as-is');
         }
         
-        // AICODE-NOTE: Truncate title to 255 characters for database storage
+        // AICODE-NOTE: Truncate title to 255 characters for database storage - this is not a database requirement, text column has no limit
+        /*
         if (readableTitle.length > 255) {
           readableTitle = readableTitle.substring(0, 252) + '...';
           console.log('📄 Title truncated to 255 characters');
         }
+        */
         
         await saveDocument({
           id: args.id,
@@ -96,6 +119,7 @@ export function createDocumentHandler<T extends ArtifactKind>(config: {
           content: draftContent,
           kind: config.kind,
           userId: args.session.user.id,
+          thumbnailUrl: getThumbnailUrl(draftContent),
         });
         
         console.log('📄 Document saved to database with title:', readableTitle);
@@ -130,6 +154,7 @@ export function createDocumentHandler<T extends ArtifactKind>(config: {
           content: draftContent,
           kind: config.kind,
           userId: args.session.user.id,
+          thumbnailUrl: getThumbnailUrl(draftContent),
         });
         
         console.log('📄 Document updated in database');
@@ -148,6 +173,7 @@ export const documentHandlersByArtifactKind: Array<DocumentHandler> = [
   imageDocumentHandler,
   sheetDocumentHandler,
   videoDocumentHandler,
+  scriptDocumentHandler,
 ];
 
-export const artifactKinds = ['text', 'image', 'sheet', 'video'] as const;
+export const artifactKinds = ['text', 'image', 'sheet', 'video', 'script'] as const;

@@ -52,7 +52,18 @@ export function DocumentCard({ document }: DocumentCardProps) {
         </div>
       );
     }
-
+    // Если нет thumbnail, но есть imageUrl
+    if (document.metadata?.imageUrl) {
+      return (
+        <div className="relative h-48 overflow-hidden bg-muted">
+          <img
+            src={document.metadata.imageUrl}
+            alt={document.title}
+            className="w-full h-full object-cover"
+          />
+        </div>
+      );
+    }
     // Fallback thumbnail for different types
     return (
       <div className="h-48 bg-muted flex items-center justify-center">

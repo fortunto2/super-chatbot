@@ -13,6 +13,7 @@ interface UseImageEffectsProps {
   setPrompt: (prompt: string) => void;
   initialPrompt?: string;
   setMessages?: UseChatHelpers['setMessages'];
+  isArtifactMode?: boolean;
 }
 
 // AICODE-NOTE: Function to generate a valid UUID v4
@@ -154,6 +155,7 @@ export function useImageEffects({
   setPrompt,
   initialPrompt,
   setMessages,
+  isArtifactMode,
 }: UseImageEffectsProps) {
   const savedImageUrlRef = useRef<string>('none');
 
@@ -171,7 +173,6 @@ export function useImageEffects({
       allConditionsMet: !!(
         imageUrl &&
         status === 'completed' &&
-        hasInitialized &&
         chatId &&
         setMessages &&
         prompt &&
@@ -183,7 +184,6 @@ export function useImageEffects({
     if (
       imageUrl &&
       status === 'completed' &&
-      hasInitialized &&
       chatId &&
       setMessages &&
       prompt &&
@@ -203,11 +203,12 @@ export function useImageEffects({
 
   // Handle prompt reset
   useEffect(() => {
-    if (status === 'completed' && initialPrompt) {
+    // AICODE-FIX: Only reset state if not in artifact mode
+    if (status === 'completed' && initialPrompt && !isArtifactMode) {
       resetState();
       setPrompt('');
     }
-  }, [status, initialPrompt, resetState, setPrompt]);
+  }, [status, initialPrompt, resetState, setPrompt, isArtifactMode]);
 
   // Handle artifact update
   useEffect(() => {

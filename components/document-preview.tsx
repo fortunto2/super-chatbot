@@ -8,10 +8,12 @@ import {
   useMemo,
   useRef,
 } from 'react';
-import type { ArtifactKind, UIArtifact } from './artifact';
+import type { UIArtifact, ArtifactKind as BaseArtifactKind } from './artifact';
 import { FileIcon, FullscreenIcon, ImageIcon, LoaderIcon } from './icons';
 import { cn, fetcher } from '@/lib/utils';
-import type { Document } from '@/lib/db/schema';
+import type { Document as BaseDocument } from '@/lib/db/schema';
+type ArtifactKind = BaseArtifactKind | 'script';
+type Document = Omit<BaseDocument, 'kind'> & { kind: ArtifactKind };
 import { InlineDocumentSkeleton } from './document-skeleton';
 import useSWR from 'swr';
 import { Editor } from './text-editor';
@@ -20,6 +22,7 @@ import { DocumentToolCall, DocumentToolResult } from './document';
 import { useArtifact } from '@/hooks/use-artifact';
 import equal from 'fast-deep-equal';
 import { SpreadsheetEditor } from './sheet-editor';
+import { Markdown } from '@/components/markdown';
 
 interface DocumentPreviewProps {
   isReadonly: boolean;
@@ -91,6 +94,7 @@ export function DocumentPreview({
           createdAt: new Date(),
           title: artifact.title,
           userId: 'noop',
+<<<<<<< HEAD
           visibility: 'private',
           kind: artifact.kind,
           content: artifact.content,
@@ -99,6 +103,14 @@ export function DocumentPreview({
           viewCount: 0,
           thumbnailUrl: null,
           metadata: {},
+=======
+          visibility: 'private' as const,
+          model: null,
+          tags: null,
+          viewCount: 0,
+          thumbnailUrl: null,
+          metadata: null,
+>>>>>>> 3075a6e3c9c41e8ab7955759039ab53f2117ec75
         }
       : null;
 
@@ -245,7 +257,7 @@ const DocumentContent = ({ document }: { document: Document }) => {
   const containerClassName = cn(
     'h-[257px] overflow-y-scroll border rounded-b-2xl dark:bg-muted border-t-0 dark:border-zinc-700',
     {
-      'p-4 sm:px-14 sm:py-16': document.kind === 'text',
+      'p-4 sm:px-14 sm:py-16': document.kind === 'text' || document.kind === 'script',
     },
   );
 
@@ -262,15 +274,17 @@ const DocumentContent = ({ document }: { document: Document }) => {
     <div className={containerClassName}>
       {document.kind === 'text' ? (
         <Editor {...commonProps} onSaveContent={() => {}} />
+      ) : document.kind === 'script' ? (
+        <div className="prose dark:prose-invert p-4">
+          <Markdown>{document.content ?? ''}</Markdown>
+        </div>
       ) : document.kind === 'sheet' ? (
         <div className="flex flex-1 relative size-full p-4">
-          <div className="absolute inset-0">
-            <SpreadsheetEditor {...commonProps} />
-          </div>
+          <SpreadsheetEditor {...commonProps} />
         </div>
       ) : document.kind === 'image' ? (
         <div className="p-4">
-        {/*eslint-disable-next-line @next/next/no-img-element */}
+          {/*eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={document.content || ''}
             alt={document.title}

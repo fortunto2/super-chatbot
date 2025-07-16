@@ -1,138 +1,162 @@
 import { Artifact } from '@/components/create-artifact';
 import { CopyIcon, RedoIcon, UndoIcon, ShareIcon } from '@/components/icons';
-import { ImageEditor } from '@/components/image-editor';
 import { toast } from 'sonner';
-import { memo, useMemo, useEffect } from 'react';
+import { memo, useMemo, useEffect, useState, useCallback } from 'react';
 import { useImageSSE } from '@/hooks/use-image-sse';
+import { Skeleton } from '@/components/ui/skeleton';
+import { generateUUID } from '@/lib/utils';
 
 // Import console helpers for debugging (auto-exposes in browser)
 import '@/lib/utils/console-helpers';
 
-// Function to save artifact updates to database
-const saveArtifactToDatabase = async (id: string | undefined, title: string, content: string) => {
-  // Skip saving if no valid ID
-  if (!id || id === 'undefined') {
-    console.log('💾 ⚠️ Skipping database save - no valid artifact ID');
+// Function to save image to chat history
+const saveImageToChat = async (
+  chatId: string,
+  imageUrl: string,
+  prompt: string,
+  setMessages: (updater: (prevMessages: any[]) => any[]) => void,
+) => {
+  if (!setMessages || !chatId) return;
+
+  // Prevent duplicate saves by checking if the message already exists
+  let imageExists = false;
+  setMessages(prevMessages => {
+    imageExists = prevMessages.some(msg =>
+      msg.experimental_attachments?.some((att: any) => att.url === imageUrl)
+    );
+    return prevMessages; // No state change, just checking
+  });
+
+  if (imageExists) {
+    console.log('💾 ⏭️ Image already in chat, skipping duplicate save.');
     return;
   }
-  
+
+  const imageAttachment = {
+    name: prompt.length > 50 ? `${prompt.substring(0, 50)}...` : prompt,
+    url: imageUrl,
+    contentType: 'image/webp',
+  };
+
+  const imageMessage = {
+    id: generateUUID(),
+    role: 'assistant' as const,
+    content: ``,
+    parts: [{ type: 'text' as const, text: `` }],
+    experimental_attachments: [imageAttachment],
+    createdAt: new Date(),
+  };
+
+  // Add locally first for instant UI update
+  setMessages(prevMessages => [...prevMessages, imageMessage]);
+
+  // Then save to database
   try {
-    console.log('💾 Saving updated artifact to database:', id);
-    
-    // AICODE-FIX: Extract readable title from content if title is JSON
+    await fetch('/api/save-message', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chatId,
+        message: {
+          id: imageMessage.id,
+          role: imageMessage.role,
+          parts: imageMessage.parts,
+          attachments: imageMessage.experimental_attachments,
+          createdAt: imageMessage.createdAt,
+        },
+      }),
+    });
+  } catch (dbError) {
+    console.warn('💾 ⚠️ Failed to save image message to DB, but it will remain in local chat.', dbError);
+  }
+};
+
+
+// Function to save artifact updates to database
+const saveArtifactToDatabase = async (id: string | undefined, title: string, content: string) => {
+  if (!id || id === 'undefined') {
+    return;
+  }
+  try {
     let readableTitle = title;
-    try {
-      // Check if title is JSON (starts with { and ends with })
-      if (title.startsWith('{') && title.endsWith('}')) {
-        const titleParams = JSON.parse(title);
-        // Use prompt as readable title
-        readableTitle = titleParams.prompt || 'AI Generated Image';
-      }
-    } catch (e) {
-      // If not JSON or parse fails, keep original title
+    if (title.startsWith('{') && title.endsWith('}')) {
+      const titleParams = JSON.parse(title);
+      readableTitle = titleParams.prompt || 'AI Generated Image';
     }
-    
-    // AICODE-NOTE: Truncate title to 255 characters for database storage
     if (readableTitle.length > 255) {
       readableTitle = `${readableTitle.substring(0, 252)}...`;
     }
-    
-    const response = await fetch(`/api/document?id=${encodeURIComponent(id)}`, {
+    await fetch(`/api/document?id=${encodeURIComponent(id)}`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        title: readableTitle,
-        content,
-        kind: 'image'
-      }),
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title: readableTitle, content, kind: 'image' }),
     });
-    
-    if (!response.ok) {
-      const errorText = await response.text().catch(() => 'Unknown error');
-      throw new Error(`Failed to save artifact: ${response.status} - ${errorText}`);
-    }
-    
-    console.log('💾 ✅ Artifact saved to database successfully');
   } catch (error) {
     console.error('💾 ❌ Failed to save artifact to database:', error);
   }
 };
 
-// Wrapper component that handles the artifact content for ImageEditor
+const ImageDisplay = ({ imageUrl, prompt }: { imageUrl: string; prompt: string }) => (
+  <div className="space-y-2">
+    <div className="rounded-lg overflow-hidden border">
+      <img
+        src={imageUrl}
+        alt={prompt || 'AI-generated artwork'}
+        className="w-full h-auto object-contain"
+        style={{ maxHeight: '70vh' }}
+      />
+    </div>
+    <p className="text-sm text-gray-500 px-1">{prompt}</p>
+  </div>
+);
+
 const ImageArtifactWrapper = memo(function ImageArtifactWrapper(props: any) {
-  const { content, setArtifact, ...otherProps } = props;
-  
-  // Memoize parsed content to avoid re-parsing on every render
-  const parsedContent = useMemo(() => {
-    if (!content) {
-      return null; // Don't log for empty content, it's normal during streaming
-    }
-    
-    if (typeof content !== 'string') {
-      return null;
-    }
-    
-    try {
-      const parsed = JSON.parse(content);
-      // Parsed content updated
-      return parsed;
-    } catch (error) {
-      // Only log if content looks like it should be JSON (starts with { or [)
-      // Failed to parse content as JSON
-      return null;
-    }
+  const { content, setArtifact, documentId, title, chatId, setMessages } = props;
+  const [localContent, setLocalContent] = useState(content);
+
+  useEffect(() => {
+    setLocalContent(content);
   }, [content]);
 
-  // Memoize initial state to prevent recreating object on every render
-  const initialState = useMemo(() => {
-    if (!parsedContent) return undefined;
-    
-    const state = {
-      status: parsedContent.status,
-      prompt: parsedContent.prompt,
-      projectId: parsedContent.projectId,
-      requestId: parsedContent.requestId,
-      timestamp: parsedContent.timestamp,
-      message: parsedContent.message,
-      imageUrl: parsedContent.imageUrl, // Pass imageUrl from completed state
-    };
-    
-    // Debug initial state creation
-    console.log('🔧 ImageArtifactWrapper: initial state updated', {
-      projectId: state.projectId || 'none',
-      status: state.status || 'none',
-      imageUrl: state.imageUrl ? `${state.imageUrl.substring(0, 50)}...` : 'none'
-    });
-    
-    return state;
-  }, [parsedContent]);
+  const parsedContent = useMemo(() => {
+    try {
+      const parsed = JSON.parse(localContent);
+      return parsed;
+    } catch (error) {
+      // Only log parsing errors for debugging if needed
+      if (localContent?.trim()) {
+        console.log('🖼️ ❌ Failed to parse image content:', { 
+          contentPreview: localContent?.substring(0, 100), 
+          error: error instanceof Error ? error.message : String(error)
+        });
+      }
+      return null;
+    }
+  }, [localContent]);
 
-  // Set up smart polling fallback for artifacts in case SSE doesn't work
+  const { status, imageUrl, prompt, projectId, requestId } = parsedContent || {};
+
+  const updateContent = useCallback((newContent: any) => {
+    const finalContent = JSON.stringify(newContent);
+    setLocalContent(finalContent);
+    setArtifact((prev: any) => ({ ...prev, content: finalContent, status: 'idle' }));
+    saveArtifactToDatabase(documentId, title, finalContent);
+
+    // AICODE-FIX: Add generated image to chat history
+    if (newContent.status === 'completed' && newContent.imageUrl && chatId && setMessages && newContent.prompt) {
+      saveImageToChat(chatId, newContent.imageUrl, newContent.prompt, setMessages);
+    }
+  }, [setArtifact, documentId, title, chatId, setMessages]);
+
   useEffect(() => {
-    const fileId = parsedContent?.projectId;
-    if (!fileId || parsedContent?.status === 'completed') return;
-    
-    // Start smart polling after 30 seconds if image still not completed
+    if (!projectId || status === 'completed') return;
+
     const pollTimeout = setTimeout(async () => {
-      console.log('🔄 Starting artifact smart polling for fileId:', fileId);
-      
       try {
         const { pollFileCompletion } = await import('@/lib/utils/smart-polling-manager');
-        
-        const result = await pollFileCompletion(fileId, {
-          maxDuration: 7 * 60 * 1000, // 7 minutes
-          initialInterval: 5000, // Start slower for artifacts (5s)
-          onProgress: (attempt, elapsed, nextInterval) => {
-            console.log(`🔄 Artifact poll attempt ${attempt} (${Math.round(elapsed / 1000)}s elapsed, next: ${nextInterval}ms)`);
-          },
-          onError: (error, attempt) => {
-            console.warn(`⚠️ Artifact polling non-critical error at attempt ${attempt}:`, error.message);
-          }
-        });
-        
+        const result = await pollFileCompletion(projectId, { maxDuration: 7 * 60 * 1000 });
         if (result.success && result.data?.url) {
+<<<<<<< HEAD
           console.log('✅ Artifact smart polling completed:', result.data.url);
           const thumbUrl = result.data.thumbnail_url || result.data.url;
           
@@ -165,21 +189,22 @@ const ImageArtifactWrapper = memo(function ImageArtifactWrapper(props: any) {
               console.error('Failed to update artifact via smart polling:', error);
               return prev;
             }
+=======
+          updateContent({
+            ...parsedContent,
+            status: 'completed',
+            imageUrl: result.data.url,
+            prompt: result.data.image_generation?.prompt || parsedContent?.prompt, // Use prompt from polling result
+            progress: 100,
+>>>>>>> 3075a6e3c9c41e8ab7955759039ab53f2117ec75
           });
-        } else {
-          console.error('❌ Artifact smart polling failed:', result.error);
         }
-        
       } catch (error) {
         console.error('❌ Artifact smart polling system error:', error);
       }
-    }, 30000); // 30 second delay before starting polling
-    
-    return () => {
-      clearTimeout(pollTimeout);
-    };
-  }, [parsedContent?.projectId, parsedContent?.status, setArtifact]);
+    }, 20000); // 20s delay
 
+<<<<<<< HEAD
   // Connect to SSE for real-time updates using fileId directly
   const artifactSSE = useImageSSE({
     fileId: parsedContent?.projectId || '', // projectId is actually fileId from generate-image.ts
@@ -340,215 +365,49 @@ const ImageArtifactWrapper = memo(function ImageArtifactWrapper(props: any) {
       }
     }] : [],
     enabled: !!parsedContent?.projectId && !!parsedContent?.requestId
+=======
+    return () => clearTimeout(pollTimeout);
+  }, [projectId, status, updateContent, parsedContent]);
+  
+  useImageSSE({
+    fileId: projectId,
+    eventHandlers: useMemo(() => [
+      (message: any) => {
+        if (message.type === 'file' && message.object?.url && message.object?.contentType?.startsWith('image/')) {
+          updateContent({ ...parsedContent, status: 'completed', imageUrl: message.object.url, prompt: message.object.image_generation?.prompt || parsedContent?.prompt, progress: 100 });
+        } else if (message.type === 'render_progress' && message.object?.progress !== undefined) {
+          setLocalContent(JSON.stringify({ ...parsedContent, status: 'processing', progress: message.object.progress }));
+        } else if (message.type === 'render_result' && (message.object?.url || message.object?.file_url)) {
+          updateContent({ ...parsedContent, status: 'completed', imageUrl: message.object.url || message.object.file_url, prompt: parsedContent?.prompt, progress: 100 });
+        }
+      }
+    ], [updateContent, parsedContent]),
+    enabled: !!projectId && status !== 'completed' && !!requestId
+>>>>>>> 3075a6e3c9c41e8ab7955759039ab53f2117ec75
   });
 
-  // Debug SSE connection status and expose globally
-  useEffect(() => {
-    // Only log connection once, not on every reconnect
-    if (parsedContent?.projectId && artifactSSE.isConnected) {
-      const key = `sse_logged_${parsedContent.projectId}`;
-      if (typeof window !== 'undefined' && !(window as any)[key]) {
-        console.log('🔌 SSE connected for artifact project:', parsedContent.projectId);
-        (window as any)[key] = true;
-      }
-    }
-    
-    // Expose SSE connection status globally for ImageEditor
-    if (typeof window !== 'undefined') {
-      const globalWindow = window as any;
-      if (!globalWindow.artifactSSEStatus) {
-        globalWindow.artifactSSEStatus = {};
-      }
-      if (parsedContent?.projectId) {
-        globalWindow.artifactSSEStatus[parsedContent.projectId] = artifactSSE.isConnected;
-      }
-    }
-  }, [artifactSSE.isConnected, parsedContent?.projectId, parsedContent?.status]);
-
-  // Auto-notify chat WebSocket about new projectId when artifact is created (fallback)
-  useEffect(() => {
-    if (parsedContent?.projectId) {
-      // Notifying chat WebSocket about projectId
-      
-      // Use the global notifyNewProject function exposed by console helpers
-      const globalWindow = window as any;
-      if (globalWindow.notifyNewProject) {
-        globalWindow.notifyNewProject(parsedContent.projectId);
-      } else {
-        // notifyNewProject not available
-      }
-    }
-  }, [parsedContent?.projectId]);
-
-  // Memoize settings to prevent recreating object on every render
-  const defaultSettings = useMemo(() => {
-    // Use flat structure directly from parsedContent
-    if (parsedContent?.style || parsedContent?.resolution) {
-      return {
-        resolution: parsedContent.resolution,
-        style: parsedContent.style,
-        shotSize: parsedContent.shotSize,
-        model: parsedContent.model,
-        seed: parsedContent.seed,
-      };
-    }
-    
-    return undefined;
-  }, [parsedContent?.style, parsedContent?.resolution]);
-
-  // Memoize ImageEditor props to prevent unnecessary rerenders
-  const imageEditorProps = useMemo(() => ({
-    chatId: parsedContent?.projectId || otherProps.chatId,
-    availableResolutions: otherProps.availableResolutions || [],
-    availableStyles: otherProps.availableStyles || [],
-    availableShotSizes: otherProps.availableShotSizes || [],
-    availableModels: otherProps.availableModels || [],
-    defaultSettings,
-    append: otherProps.append,
-    setMessages: otherProps.setMessages,
-    initialState,
-    setArtifact,
-    parsedContent,
-  }), [
-    parsedContent?.projectId,
-    otherProps.availableResolutions,
-    otherProps.availableStyles,
-    otherProps.availableShotSizes,
-    otherProps.availableModels,
-    otherProps.append,
-    otherProps.setMessages,
-    defaultSettings,
-    initialState,
-    setArtifact,
-    parsedContent,
-  ]);
-
-  // Handle different content types
-  if (!content) {
-    return <div>No image content available</div>;
+  // Show skeleton while loading or if content cannot be parsed
+  if (!parsedContent) {
+    return (
+      <div className="space-y-2">
+        <Skeleton className="w-full h-[400px] rounded-lg" />
+        <Skeleton className="w-3/4 h-4 rounded-lg" />
+      </div>
+    );
   }
 
-    // If we have valid parsed content, render ImageEditor
-  if (parsedContent) {
-    return <ImageEditor {...imageEditorProps} />;
+  if (status === 'completed' && imageUrl) {
+    return <ImageDisplay imageUrl={imageUrl} prompt={prompt} />;
   }
 
-  // Handle legacy base64 image format
-  let imageUrl: string;
-  if (content.startsWith('data:image/')) {
-    imageUrl = content;
-  } else if (content.startsWith('/9j/') || content.startsWith('iVBORw0KGgo') || content.startsWith('UklGR')) {
-    imageUrl = `data:image/png;base64,${content}`;
-  } else {
-    try {
-      // Try to extract base64 from various formats
-      const base64Match = content.match(/data:image\/[^;]+;base64,([^"]+)/);
-      if (base64Match) {
-        imageUrl = content;
-      } else {
-        imageUrl = `data:image/png;base64,${content}`;
-      }
-    } catch (error) {
-      console.error('🎨 Error processing image content:', error);
-      return <div>Error loading image</div>;
-    }
-  }
-
+  // Show skeleton for pending/processing states
   return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-2">
-        <h3 className="text-lg font-semibold">Generated Image</h3>
-        <button
-          type="button"
-          onClick={async () => {
-            try {
-              await navigator.clipboard.writeText(imageUrl);
-              toast.success('Image URL copied to clipboard');
-            } catch (error) {
-              toast.error('Failed to copy image URL');
-            }
-          }}
-          className="p-1 hover:bg-gray-100 rounded"
-          title="Copy image URL"
-        >
-          <CopyIcon size={16} />
-        </button>
-      </div>
-      <div className="relative">
-        <img
-          src={imageUrl}
-          alt="AI-generated artwork"
-          className="w-full h-auto rounded-lg border"
-          style={{ maxHeight: '70vh' }}
-          onError={(e) => {
-            console.error('🎨 Image load error:', imageUrl.substring(0, 100));
-          }}
-        />
-      </div>
+    <div className="space-y-2">
+      <Skeleton className="w-full h-[400px] rounded-lg" />
+      <Skeleton className="w-3/4 h-4 rounded-lg" />
     </div>
   );
-}, (prevProps, nextProps) => {
-  // Comprehensive comparison function for memo to prevent image mix-ups
-  const changes = {
-    content: prevProps.content !== nextProps.content,
-    setArtifact: prevProps.setArtifact !== nextProps.setArtifact,
-    append: prevProps.append !== nextProps.append,
-    setMessages: prevProps.setMessages !== nextProps.setMessages,
-    // Check other props that might affect rendering
-    chatId: prevProps.chatId !== nextProps.chatId,
-    availableResolutions: JSON.stringify(prevProps.availableResolutions) !== JSON.stringify(nextProps.availableResolutions),
-    availableStyles: JSON.stringify(prevProps.availableStyles) !== JSON.stringify(nextProps.availableStyles),
-    availableShotSizes: JSON.stringify(prevProps.availableShotSizes) !== JSON.stringify(nextProps.availableShotSizes),
-    availableModels: JSON.stringify(prevProps.availableModels) !== JSON.stringify(nextProps.availableModels),
-  };
-  
-  // Check if content contains different projectId or requestId
-  let contentChanged = changes.content;
-  if (!contentChanged && prevProps.content && nextProps.content) {
-    try {
-      const prevParsed = JSON.parse(prevProps.content);
-      const nextParsed = JSON.parse(nextProps.content);
-      
-      // Check for critical fields that should trigger re-render
-      contentChanged = 
-        prevParsed.projectId !== nextParsed.projectId ||
-        prevParsed.requestId !== nextParsed.requestId ||
-        prevParsed.imageUrl !== nextParsed.imageUrl ||
-        prevParsed.status !== nextParsed.status;
-    } catch {
-      // If content is not JSON, compare as strings
-      contentChanged = prevProps.content !== nextProps.content;
-    }
-  }
-  
-  const shouldRerender = contentChanged || 
-    changes.setArtifact || 
-    changes.append || 
-    changes.setMessages ||
-    changes.chatId ||
-    changes.availableResolutions ||
-    changes.availableStyles ||
-    changes.availableShotSizes ||
-    changes.availableModels;
-  
-  // Debug memo comparison
-  if (contentChanged) {
-    try {
-      const prevParsed = JSON.parse(prevProps.content || '{}');
-      const nextParsed = JSON.parse(nextProps.content || '{}');
-      console.log('🔄 ImageArtifactWrapper memo: content changed, triggering re-render', {
-        prevImageUrl: prevParsed.imageUrl ? `${prevParsed.imageUrl.substring(0, 50)}...` : 'none',
-        nextImageUrl: nextParsed.imageUrl ? `${nextParsed.imageUrl.substring(0, 50)}...` : 'none',
-        prevStatus: prevParsed.status || 'none',
-        nextStatus: nextParsed.status || 'none'
-      });
-    } catch (e) {
-      console.log('🔄 ImageArtifactWrapper memo: content changed (not JSON)');
-    }
-  }
-  
-  return !shouldRerender; // Return false to re-render, true to skip
-});
+}, (prevProps, nextProps) => prevProps.content === nextProps.content);
 
 export default function ArtifactContentImage(props: any) {
   return <ImageArtifactWrapper {...props} />;
@@ -558,62 +417,19 @@ export const imageArtifact = new Artifact({
   kind: 'image',
   description: 'Useful for image generation with real-time progress tracking',
   onStreamPart: ({ streamPart, setArtifact }) => {
-   
-    // Handle text-delta with JSON content from server
     if (streamPart.type === 'text-delta') {
-      setArtifact((draftArtifact) => ({
-        ...draftArtifact,
-        content: streamPart.content as string,
-        isVisible: true,
-        status: 'streaming',
-      }));
+      // AICODE-FIX: Validate JSON content before overwriting to prevent skeleton disappearing
+      const newContent = streamPart.content as string;
+      try {
+        JSON.parse(newContent);
+        setArtifact((draft) => ({ ...draft, content: newContent, isVisible: true }));
+      } catch {
+        // Invalid JSON - don't overwrite existing content
+        console.log('🖼️ ⚠️ Skipping invalid JSON content in stream part');
+      }
     }
-    
-    // Handle legacy image-delta for backward compatibility
-    if (streamPart.type === 'image-delta') {
-      setArtifact((draftArtifact) => ({
-        ...draftArtifact,
-        content: streamPart.content as string,
-        isVisible: true,
-        status: 'streaming',
-      }));
-    }
-
-    // Handle finish event to complete generation
     if (streamPart.type === 'finish') {
-      setArtifact((draftArtifact) => {
-        try {
-          // Try to parse content and add completion status
-          const parsedContent = JSON.parse(draftArtifact.content || '{}');
-          
-          // If the parsed content has imageUrl, mark as completed with imageUrl
-          if (parsedContent.imageUrl || parsedContent.status === 'completed') {
-            const updatedContent = {
-              ...parsedContent,
-              status: 'completed'
-            };
-            
-            return {
-              ...draftArtifact,
-              content: JSON.stringify(updatedContent),
-              status: 'idle',
-            };
-          }
-          
-          // Fallback: keep current content but mark as completed
-          return {
-            ...draftArtifact,
-            status: 'idle',
-          };
-        } catch (error) {
-          console.error('📡 Error parsing content on finish:', error);
-          // For legacy base64 content, just mark as completed
-          return {
-            ...draftArtifact,
-            status: 'idle',
-          };
-        }
-      });
+      setArtifact((draft) => ({ ...draft, status: 'idle' }));
     }
   },
   content: ImageArtifactWrapper,
@@ -621,92 +437,38 @@ export const imageArtifact = new Artifact({
     {
       icon: <UndoIcon size={18} />,
       description: 'View Previous version',
-      onClick: ({ handleVersionChange }) => {
-        handleVersionChange('prev');
-      },
-      isDisabled: ({ currentVersionIndex }) => {
-        if (currentVersionIndex === 0) {
-          return true;
-        }
-
-        return false;
-      },
+      onClick: ({ handleVersionChange }) => handleVersionChange('prev'),
+      isDisabled: ({ currentVersionIndex }) => currentVersionIndex === 0,
     },
     {
       icon: <RedoIcon size={18} />,
       description: 'View Next version',
-      onClick: ({ handleVersionChange }) => {
-        handleVersionChange('next');
-      },
-      isDisabled: ({ isCurrentVersion }) => {
-        if (isCurrentVersion) {
-          return true;
-        }
-
-        return false;
-      },
+      onClick: ({ handleVersionChange }) => handleVersionChange('next'),
+      isDisabled: ({ isCurrentVersion }) => isCurrentVersion,
     },
     {
       icon: <CopyIcon size={18} />,
       description: 'Copy image to clipboard',
       onClick: ({ content }) => {
         try {
-          // Try to parse content as JSON for new format
-          const parsedContent = JSON.parse(content);
-          
-          if (parsedContent.status === 'completed' && parsedContent.imageUrl) {
-            // Handle new format with imageUrl
-            fetch(parsedContent.imageUrl)
-              .then(response => response.blob())
-              .then(blob => {
-                navigator.clipboard.write([
-                  new ClipboardItem({ [blob.type]: blob }),
-                ]);
-                toast.success('Copied image to clipboard!');
-              })
-              .catch(() => {
-                toast.error('Failed to copy image to clipboard');
-              });
-            return;
-          }
-          
-          if (parsedContent.status !== 'completed') {
+          const parsed = JSON.parse(content);
+          if (parsed.status === 'completed' && parsed.imageUrl) {
+            fetch(parsed.imageUrl)
+              .then(res => res.blob())
+              .then(blob => navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })]))
+              .then(() => toast.success('Image copied to clipboard!'));
+          } else {
             toast.error('Image is not ready yet');
-            return;
           }
         } catch {
-          // Fallback to legacy base64 format
-          const img = new Image();
-          img.src = `data:image/png;base64,${content}`;
-
-          img.onload = () => {
-            const canvas = document.createElement('canvas');
-            canvas.width = img.width;
-            canvas.height = img.height;
-            const ctx = canvas.getContext('2d');
-            ctx?.drawImage(img, 0, 0);
-            canvas.toBlob((blob) => {
-              if (blob) {
-                navigator.clipboard.write([
-                  new ClipboardItem({ 'image/png': blob }),
-                ]);
-                toast.success('Copied image to clipboard!');
-              }
-            }, 'image/png');
-          };
-
-          img.onerror = () => {
-            toast.error('Failed to copy image to clipboard');
-          };
+          toast.error('Failed to copy image');
         }
       },
       isDisabled: ({ content }) => {
         try {
-          const parsedContent = JSON.parse(content);
-          return parsedContent.status !== 'completed';
+          return JSON.parse(content).status !== 'completed';
         } catch {
-          // For legacy base64 content, always allow copy
-          return false;
+          return true;
         }
       },
     },
@@ -714,14 +476,12 @@ export const imageArtifact = new Artifact({
       icon: <ShareIcon size={18} />,
       description: 'Copy artifact link',
       onClick: (context) => {
-        // Get documentId from props passed to content
-        const documentId = (context as any).documentId;
-        if (documentId && documentId !== 'init') {
-          const shareUrl = `${window.location.origin}/artifact/${documentId}`;
-          navigator.clipboard.writeText(shareUrl);
-          toast.success('Artifact link copied to clipboard!');
+        const docId = (context as any).documentId;
+        if (docId && docId !== 'init') {
+          navigator.clipboard.writeText(`${window.location.origin}/artifact/${docId}`);
+          toast.success('Artifact link copied!');
         } else {
-          toast.error('Unable to generate share link - artifact not saved yet');
+          toast.error('Artifact not saved yet');
         }
       },
     },

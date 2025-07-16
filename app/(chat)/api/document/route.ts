@@ -73,10 +73,6 @@ export async function GET(request: Request) {
     return new Response('Missing id', { status: 400 });
   }
 
-  if (!session?.user?.id) {
-    return new Response('Unauthorized', { status: 401 });
-  }
-
   const documents = await getDocumentsById({ id });
 
   const [document] = documents;
@@ -89,11 +85,19 @@ export async function GET(request: Request) {
   if (document.visibility === 'public') {
     // Increment view count for public documents
     await incrementDocumentViewCount({ id });
-  } else if (document.userId !== session.user.id) {
-    return new Response('Forbidden', { status: 403 });
+    return Response.json(documents, { status: 200 });
+  } else {
+    // For private documents, require authentication
+    if (!session?.user?.id) {
+      return new Response('Unauthorized', { status: 401 });
+    }
+    
+    if (document.userId !== session.user.id) {
+      return new Response('Forbidden', { status: 403 });
+    }
+    
+    return Response.json(documents, { status: 200 });
   }
-
-  return Response.json(documents, { status: 200 });
 }
 
 export async function POST(request: Request) {

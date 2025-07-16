@@ -268,7 +268,6 @@ export const useChatVideoSSE = ({
     };
   }, [setMessages, chatId]);
 
-  // Connect to a specific project's SSE channel
   const connectToProject = useCallback((projectId: string) => {
     if (!projectId || connectedProjectsRef.current.has(projectId)) {
       return;
@@ -299,34 +298,16 @@ export const useChatVideoSSE = ({
     videoSSEStore.initConnection(sseUrl, [eventHandler]);
     
     connectedProjectsRef.current.add(projectId);
-    
-    // Expose global function for manual project notification
-    if (typeof window !== 'undefined') {
-      (window as any).notifyNewProject = (newProjectId: string) => {
-        console.log('📢 Chat Video SSE: Manual project notification:', newProjectId);
-        if (newProjectId && newProjectId !== projectId) {
-          connectToProject(newProjectId);
-        }
-      };
-      
-      // Store instance for debugging
-      (window as any).chatVideoSSEInstance = {
-        connectedProjects: connectedProjectsRef.current,
-        lastVideoUrl: null,
-        chatId: chatId,
-        manualConnect: connectToProject
-      };
-    }
-  }, [createEventHandler]);
+  }, [createEventHandler, chatId]);
 
   // Cleanup project connection
   const disconnectFromProject = useCallback((projectId: string) => {
     if (!projectId || !connectedProjectsRef.current.has(projectId)) {
       return;
     }
-
-    console.log('🔌 Chat Video SSE: Disconnecting from project:', projectId);
     
+    console.log('🔌 Chat Video SSE: Disconnecting from project:', projectId);
+
     const handler = handlersMapRef.current.get(projectId);
     if (handler) {
       videoSSEStore.removeProjectHandlers(projectId, [handler]);
@@ -338,7 +319,7 @@ export const useChatVideoSSE = ({
 
   // Extract project IDs from messages
   const extractProjectIdsFromMessages = useCallback((messages: any[]): string[] => {
-    const projectIds = new Set<string>();
+    const ids = new Set<string>();
     
     for (const message of messages) {
       if (message.role === 'assistant' && message.parts) {
@@ -363,11 +344,11 @@ export const useChatVideoSSE = ({
                 }
                 
                 if (artifactContent?.projectId) {
-                  projectIds.add(artifactContent.projectId);
+                  ids.add(artifactContent.projectId);
                 }
                 // AICODE-NOTE: Also connect to fileId for file-based SSE (like video generator tool)
                 if (artifactContent?.fileId) {
-                  projectIds.add(`file.${artifactContent.fileId}`);
+                  ids.add(`file.${artifactContent.fileId}`);
                 }
               }
             } catch (error) {
@@ -378,48 +359,41 @@ export const useChatVideoSSE = ({
       }
     }
     
-    return Array.from(projectIds);
+    return Array.from(ids);
   }, []);
 
-  // Monitor messages for project IDs and connect/disconnect as needed
   useEffect(() => {
-    if (!enabled) return;
+    if (!enabled) {
+      return;
+    }
 
-    const projectIds = extractProjectIdsFromMessages(messages);
-    const currentProjects = connectedProjectsRef.current;
-    
+    const currentProjectIds = new Set(extractProjectIdsFromMessages(messages));
+    const previousProjectIds = connectedProjectsRef.current;
+
     // Connect to new projects
-    for (const projectId of projectIds) {
-      if (!currentProjects.has(projectId)) {
+    for (const projectId of currentProjectIds) {
+      if (!previousProjectIds.has(projectId)) {
         connectToProject(projectId);
       }
     }
-    
-    // Disconnect from projects that are no longer in messages
-    for (const projectId of Array.from(currentProjects)) {
-      if (!projectIds.includes(projectId)) {
+
+    // Disconnect from old projects
+    for (const projectId of previousProjectIds) {
+      if (!currentProjectIds.has(projectId)) {
         disconnectFromProject(projectId);
       }
     }
-
-    // Expose global functions for debugging
+    
+    // Store instance for debugging
     if (typeof window !== 'undefined') {
       (window as any).chatVideoSSEInstance = {
-        connectedProjects: Array.from(connectedProjectsRef.current),
-        lastVideoUrl: (window as any).chatVideoSSEInstance?.lastVideoUrl || null,
+        connectedProjects: connectedProjectsRef.current,
+        lastVideoUrl: null,
         chatId: chatId,
-        manualConnect: connectToProject,
-        extractedProjects: projectIds
-      };
-      
-      (window as any).notifyNewVideoProject = (newProjectId: string) => {
-        console.log('📢 Chat SSE: Manual video project notification:', newProjectId);
-        if (newProjectId) {
-          connectToProject(newProjectId);
-        }
+        manualConnect: connectToProject
       };
     }
-  }, [messages, enabled, connectToProject, disconnectFromProject, chatId, extractProjectIdsFromMessages]);
+  }, [messages, enabled, connectToProject, disconnectFromProject, extractProjectIdsFromMessages, chatId]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -441,13 +415,11 @@ export const useChatVideoSSE = ({
   }, [disconnectFromProject]);
 
   return {
-    connectToProject,
-    disconnectFromProject,
-    connectedProjects: Array.from(connectedProjectsRef.current),
+    connectedProjects: connectedProjectsRef.current,
   };
 };
 
-type VideoEventHandler = (eventData: VideoSSEMessage) => void;
+export type VideoEventHandler = (eventData: VideoSSEMessage) => void;
 
 interface VideoSSEMessage {
   type: string;
