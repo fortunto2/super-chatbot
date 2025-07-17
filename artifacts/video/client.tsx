@@ -217,6 +217,27 @@ const VideoArtifactWrapper = memo(function VideoArtifactWrapper(props: any) {
               };
               
               saveArtifactToDatabase(prev.documentId || prev.id, prev.title, JSON.stringify(updatedContent));
+
+              // AICODE-FIX: Update thumbnail in database when video completes via polling
+              if ((prev.documentId || prev.id) && thumbnailUrl) {
+                const docId = prev.documentId || prev.id;
+                if (docId !== 'undefined') {
+                  fetch(`/api/document?id=${encodeURIComponent(docId)}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                      thumbnailUrl,
+                      metadata: { 
+                        videoUrl: videoUrl,
+                        thumbnailUrl: thumbnailUrl,
+                        prompt: currentContent.prompt,
+                        model: currentContent.model?.name || currentContent.model?.id,
+                        resolution: currentContent.resolution 
+                      }
+                    }),
+                  }).catch((err) => console.error('Failed to update video thumbnail via polling', err));
+                }
+              }
               
               return {
                 ...prev,
@@ -277,6 +298,24 @@ const VideoArtifactWrapper = memo(function VideoArtifactWrapper(props: any) {
             timestamp: Date.now(),
             message: 'Video generation completed!'
           };
+
+          // AICODE-FIX: Update thumbnail in database when video completes
+          if (current.documentId && current.documentId !== 'undefined' && thumbnailUrl) {
+            fetch(`/api/document?id=${encodeURIComponent(current.documentId)}`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ 
+                thumbnailUrl,
+                metadata: { 
+                  videoUrl: videoUrl,
+                  thumbnailUrl: thumbnailUrl,
+                  prompt: currentContent.prompt,
+                  model: currentContent.model?.name || currentContent.model?.id,
+                  resolution: currentContent.resolution 
+                }
+              }),
+            }).catch((err) => console.error('Failed to update video thumbnail', err));
+          }
           
           return {
             ...current,

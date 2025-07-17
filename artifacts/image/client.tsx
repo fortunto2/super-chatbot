@@ -73,7 +73,7 @@ const saveImageToChat = async (
 
 
 // Function to save artifact updates to database
-const saveArtifactToDatabase = async (id: string | undefined, title: string, content: string) => {
+const saveArtifactToDatabase = async (id: string | undefined, title: string, content: string, thumbnailUrl?: string) => {
   if (!id || id === 'undefined') {
     return;
   }
@@ -86,10 +86,14 @@ const saveArtifactToDatabase = async (id: string | undefined, title: string, con
     if (readableTitle.length > 255) {
       readableTitle = readableTitle.substring(0, 252) + '...';
     }
+    const payload: any = { title: readableTitle, content, kind: 'image' };
+    if (thumbnailUrl) {
+      payload.thumbnailUrl = thumbnailUrl;
+    }
     await fetch(`/api/document?id=${encodeURIComponent(id)}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title: readableTitle, content, kind: 'image' }),
+      body: JSON.stringify(payload),
     });
   } catch (error) {
     console.error('💾 ❌ Failed to save artifact to database:', error);
@@ -140,7 +144,21 @@ const ImageArtifactWrapper = memo(function ImageArtifactWrapper(props: any) {
     const finalContent = JSON.stringify(newContent);
     setLocalContent(finalContent);
     setArtifact((prev: any) => ({ ...prev, content: finalContent, status: 'idle' }));
-    saveArtifactToDatabase(documentId, title, finalContent);
+    
+    // AICODE-FIX: Include thumbnail in main save to avoid duplication
+    const thumbnailUrl = newContent.thumbnailUrl || (newContent.status === 'completed' ? newContent.imageUrl : undefined);
+    saveArtifactToDatabase(documentId, title, finalContent, thumbnailUrl);
+
+    // AICODE-FIX: Debug thumbnail save conditions
+    console.log('🖼️ 🔍 updateContent called:', {
+      status: newContent.status,
+      hasImageUrl: !!newContent.imageUrl,
+      hasThumbnailUrl: !!newContent.thumbnailUrl,
+      documentId,
+      documentIdValid: documentId && documentId !== 'undefined',
+      thumbnailUrl: newContent.thumbnailUrl,
+      finalThumbnailUrl: thumbnailUrl
+    });
 
     // AICODE-FIX: Add generated image to chat history
     if (newContent.status === 'completed' && newContent.imageUrl && chatId && setMessages && newContent.prompt) {
@@ -149,20 +167,39 @@ const ImageArtifactWrapper = memo(function ImageArtifactWrapper(props: any) {
   }, [setArtifact, documentId, title, chatId, setMessages]);
 
   useEffect(() => {
-    if (!projectId || status === 'completed') return;
+    if (!projectId) return;
+    
+    // AICODE-FIX: Also poll if completed but missing thumbnail
+    const needsThumbnail = status === 'completed' && imageUrl && !parsedContent?.thumbnailUrl;
+    if (status === 'completed' && !needsThumbnail) return;
 
     const pollTimeout = setTimeout(async () => {
       try {
         const { pollFileCompletion } = await import('@/lib/utils/smart-polling-manager');
         const result = await pollFileCompletion(projectId, { maxDuration: 7 * 60 * 1000 });
+        console.log('🖼️ 🔄 Polling result:', { 
+          success: result.success, 
+          hasUrl: !!result.data?.url, 
+          hasThumbnail: !!result.data?.thumbnail_url,
+          url: result.data?.url,
+          thumbnail_url: result.data?.thumbnail_url
+        });
         if (result.success && result.data?.url) {
-          updateContent({
+          // AICODE-FIX: Always force thumbnail update from polling, even if image already completed
+          const newContent = {
             ...parsedContent,
             status: 'completed',
             imageUrl: result.data.url,
+            thumbnailUrl: result.data.thumbnail_url, // AICODE-FIX: Include thumbnail from polling
             prompt: result.data.image_generation?.prompt || parsedContent?.prompt, // Use prompt from polling result
             progress: 100,
+          };
+          console.log('🖼️ 🔄 Forcing thumbnail update from polling:', { 
+            imageUrl: result.data.url, 
+            thumbnailUrl: result.data.thumbnail_url,
+            currentStatus: parsedContent?.status 
           });
+          updateContent(newContent);
         }
       } catch (error) {
         console.error('❌ Artifact smart polling system error:', error);
@@ -176,12 +213,35 @@ const ImageArtifactWrapper = memo(function ImageArtifactWrapper(props: any) {
     fileId: projectId,
     eventHandlers: useMemo(() => [
       (message: any) => {
+        console.log('🖼️ 📡 SSE message received:', { type: message.type, hasUrl: !!message.object?.url, hasThumbnail: !!message.object?.thumbnail_url });
         if (message.type === 'file' && message.object?.url && message.object?.contentType?.startsWith('image/')) {
-          updateContent({ ...parsedContent, status: 'completed', imageUrl: message.object.url, prompt: message.object.image_generation?.prompt || parsedContent?.prompt, progress: 100 });
+          console.log('🖼️ 📡 Processing file completion from SSE:', { 
+            url: message.object.url, 
+            thumbnail_url: message.object.thumbnail_url 
+          });
+          updateContent({ 
+            ...parsedContent, 
+            status: 'completed', 
+            imageUrl: message.object.url, 
+            thumbnailUrl: message.object.thumbnail_url, // AICODE-FIX: Include thumbnail from SSE
+            prompt: message.object.image_generation?.prompt || parsedContent?.prompt, 
+            progress: 100 
+          });
         } else if (message.type === 'render_progress' && message.object?.progress !== undefined) {
           setLocalContent(JSON.stringify({ ...parsedContent, status: 'processing', progress: message.object.progress }));
         } else if (message.type === 'render_result' && (message.object?.url || message.object?.file_url)) {
-          updateContent({ ...parsedContent, status: 'completed', imageUrl: message.object.url || message.object.file_url, prompt: parsedContent?.prompt, progress: 100 });
+          console.log('🖼️ 📡 Processing render_result from SSE:', { 
+            url: message.object.url || message.object.file_url, 
+            thumbnail_url: message.object.thumbnail_url 
+          });
+          updateContent({ 
+            ...parsedContent, 
+            status: 'completed', 
+            imageUrl: message.object.url || message.object.file_url, 
+            thumbnailUrl: message.object.thumbnail_url, // AICODE-FIX: Include thumbnail from SSE
+            prompt: parsedContent?.prompt, 
+            progress: 100 
+          });
         }
       }
     ], [updateContent, parsedContent]),
