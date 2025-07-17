@@ -128,15 +128,9 @@ export function VideoGeneratorForm({
         console.log('🎬 Loading video generation configuration...');
         const videoConfig = await getVideoGenerationConfig();
         
-        // AICODE-NOTE: Use existing OpenAPI model filtering from superduperai.ts
-        const allVideoModels = videoConfig.availableModels;
-        const textToVideoModels = allVideoModels.filter(model => 
-          model.type === GenerationTypeEnum.TEXT_TO_VIDEO
-        );
-        const imageToVideoModels = allVideoModels.filter(model => 
-          model.type === GenerationTypeEnum.IMAGE_TO_VIDEO
-        );
-        
+        const textToVideoModels = videoConfig.availableModels.filter(m => m.type === GenerationTypeEnum.TEXT_TO_VIDEO);
+        const imageToVideoModels = videoConfig.availableModels.filter(m => m.type === GenerationTypeEnum.IMAGE_TO_VIDEO);
+
         console.log('🎬 ✅ Configuration loaded:', {
           totalModels: videoConfig.availableModels.length,
           textToVideoModels: textToVideoModels.length,
@@ -152,44 +146,13 @@ export function VideoGeneratorForm({
         });
         
         // Set default values from configuration
-        const defaultTextModel = textToVideoModels.find(m => 
-          m.name.includes('sora') || m.name.includes('azure-openai/sora')
-        ) || textToVideoModels[0];
-        
-        const defaultImageModel = imageToVideoModels.find(m => 
-          m.name.includes('veo2') || 
-          m.name.includes('veo-2') || 
-          m.name.includes('google-cloud/veo2') ||
-          m.label?.toLowerCase().includes('veo2') ||
-          m.label?.toLowerCase().includes('veo 2')
-        ) || imageToVideoModels[0];
-        
-        // Debug logging for model selection
-        console.log('🎯 Default models selected:', {
-          textModel: defaultTextModel?.name,
-          imageModel: defaultImageModel?.name,
-          imageModelsAvailable: imageToVideoModels.map(m => ({ name: m.name, label: m.label }))
-        });
-        
-        // Set default style from available styles
-        const defaultStyle = videoConfig.availableStyles.find(s => 
-          s.id === 'flux_watercolor' || 
-          s.id === 'watercolor' || 
-          s.id === 'realistic'
-        ) || videoConfig.availableStyles[0];
-
-        console.log('🎨 Default style selected:', {
-          selectedStyle: defaultStyle?.id,
-          availableStyles: videoConfig.availableStyles.map(s => s.id)
-        });
-
         setFormData(prev => ({
           ...prev,
-          style: defaultStyle?.id || 'flux_watercolor',
-          resolution: '1280x720 (HD)',
+          style: videoConfig.defaultSettings.style?.id || 'base',
+          resolution: videoConfig.defaultSettings.resolution?.label || '1024x1024',
           shotSize: videoConfig.defaultSettings.shotSize?.id || 'medium_shot',
-          model: defaultTextModel?.name || '',
-          generationType: 'text-to-video',
+          model: videoConfig.defaultSettings.model?.id || videoConfig.defaultSettings.model?.name || '',
+          seed: prev.seed ?? Math.floor(Math.random() * 1000000000000),
         }));
         
       } catch (error) {
@@ -206,43 +169,16 @@ export function VideoGeneratorForm({
 
   // AICODE-NOTE: Ensure correct default model is selected when generation type or config changes
   useEffect(() => {
-    if (!config) return;
+    if (!config || !config.textToVideoModels || !config.imageToVideoModels) return;
 
-    const defaultTextModel = config.textToVideoModels.find(m => 
-      m.name.includes('sora') || m.name.includes('azure-openai/sora')
-    ) || config.textToVideoModels[0];
-    
-    const defaultImageModel = config.imageToVideoModels.find(m => 
-      m.name.includes('veo2') || 
-      m.name.includes('veo-2') || 
-      m.name.includes('google-cloud/veo2') ||
-      m.label?.toLowerCase().includes('veo2') ||
-      m.label?.toLowerCase().includes('veo 2')
-    ) || config.imageToVideoModels[0];
+    const currentModelName = formData.generationType === 'text-to-video' 
+      ? config.textToVideoModels[0]?.name
+      : config.imageToVideoModels[0]?.name;
 
-    console.log('🎯 Setting default model for', formData.generationType, {
-      textModel: defaultTextModel?.name,
-      imageModel: defaultImageModel?.name,
-      currentModel: formData.model
-    });
-
-    // Only update if no model is currently selected or if it's incompatible with current mode
-    const currentModelInTextMode = config.textToVideoModels.find(m => m.name === formData.model);
-    const currentModelInImageMode = config.imageToVideoModels.find(m => m.name === formData.model);
-    
-    const shouldUpdateModel = !formData.model || 
-      (formData.generationType === 'text-to-video' && !currentModelInTextMode) ||
-      (formData.generationType === 'image-to-video' && !currentModelInImageMode);
-
-    if (shouldUpdateModel) {
-      const targetModel = formData.generationType === 'text-to-video' 
-        ? defaultTextModel?.name || ''
-        : defaultImageModel?.name || '';
-        
-      console.log('🔄 Updating model to:', targetModel);
+    if (currentModelName && formData.model !== currentModelName) {
       setFormData(prev => ({
         ...prev,
-        model: targetModel
+        model: currentModelName || ''
       }));
     }
   }, [config, formData.generationType]);

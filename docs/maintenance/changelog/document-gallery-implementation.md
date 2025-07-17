@@ -379,7 +379,7 @@ GET /api/document?list=true&kind=video&sort=popular
 
 ## Known Issues
 
-1. **Thumbnails**: Currently using placeholder icons, actual thumbnail generation pending
+1. **Thumbnails**: API-provided `thumbnail_url` is used when available
 2. **Search**: Basic text search, full-text search planned
 3. **Mobile**: Responsive design works but could be optimized
 
@@ -394,5 +394,5 @@ GET /api/document?list=true&kind=video&sort=popular
 
 ---
 
-**Status:** Phase 1-3 Complete (Schema, API, UI)
-**Next Steps:** Phase 4-6 (Thumbnails, Performance, Testing) 
+**Status:** Phase 1-4 Complete (Schema, API, UI, Thumbnails)
+**Next Steps:** Phase 5-6 (Performance, Testing)

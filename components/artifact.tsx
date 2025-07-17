@@ -543,6 +543,7 @@ function PureArtifact({
                     setMessages={setMessages}
                     setArtifact={setArtifact}
                     chatId={chatId}
+                    documentId={artifact.documentId}
                   />
                 );
               })()}

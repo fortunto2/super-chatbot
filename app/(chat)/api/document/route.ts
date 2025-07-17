@@ -7,6 +7,7 @@ import {
   getDocuments,
   getPublicDocuments,
   incrementDocumentViewCount,
+  updateDocumentThumbnail,
 } from '@/lib/db/queries';
 
 export async function GET(request: Request) {
@@ -23,11 +24,13 @@ export async function GET(request: Request) {
     const model = searchParams.get('model') || undefined;
     const visibility = searchParams.get('visibility') as 'mine' | 'public' | 'all' || 'all';
     const search = searchParams.get('search') || undefined;
-    const dateFrom = searchParams.get('dateFrom') ? new Date(searchParams.get('dateFrom')!) : undefined;
-    const dateTo = searchParams.get('dateTo') ? new Date(searchParams.get('dateTo')!) : undefined;
+    const dateFromParam = searchParams.get('dateFrom');
+    const dateToParam = searchParams.get('dateTo');
+    const dateFrom = dateFromParam ? new Date(dateFromParam) : undefined;
+    const dateTo = dateToParam ? new Date(dateToParam) : undefined;
     const sortBy = searchParams.get('sort') as 'newest' | 'oldest' | 'popular' || 'newest';
-    const page = parseInt(searchParams.get('page') || '1', 10);
-    const limit = parseInt(searchParams.get('limit') || '20', 10);
+    const page = Number.parseInt(searchParams.get('page') || '1', 10);
+    const limit = Number.parseInt(searchParams.get('limit') || '20', 10);
 
     // For public-only documents, no auth required
     if (visibility === 'public') {
@@ -115,7 +118,8 @@ export async function POST(request: Request) {
     content,
     title,
     kind,
-  }: { content: string; title: string; kind: ArtifactKind } =
+    thumbnailUrl,
+  }: { content: string; title: string; kind: ArtifactKind; thumbnailUrl?: string } =
     await request.json();
 
   const documents = await getDocumentsById({ id });
@@ -134,9 +138,38 @@ export async function POST(request: Request) {
     title,
     kind,
     userId: session.user.id,
+    thumbnailUrl,
   });
 
   return Response.json(document, { status: 200 });
+}
+
+export async function PATCH(request: Request) {
+  const { searchParams } = new URL(request.url)
+  const id = searchParams.get('id')
+
+  if (!id) {
+    return new Response('Missing id', { status: 400 })
+  }
+
+  const session = await auth()
+
+  if (!session?.user?.id) {
+    return new Response('Unauthorized', { status: 401 })
+  }
+
+  const body = await request.json()
+
+  await updateDocumentThumbnail({
+    id,
+    userId: session.user.id,
+    thumbnailUrl: body.thumbnailUrl,
+    model: body.model,
+    metadata: body.metadata,
+    tags: body.tags,
+  })
+
+  return new Response(null, { status: 204 })
 }
 
 export async function DELETE(request: Request) {

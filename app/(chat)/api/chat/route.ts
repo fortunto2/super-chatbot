@@ -18,8 +18,6 @@ import {
   saveMessages,
   getOrCreateOAuthUser,
   getUser,
-  saveDocument,
-  getDocumentsById,
 } from '@/lib/db/queries';
 import { generateUUID, getTrailingMessageId } from '@/lib/utils';
 import { generateTitleFromUserMessage } from '../../actions';
@@ -452,32 +450,6 @@ export async function POST(request: Request) {
       // Continue execution, as we can still try to get a response without saving the message
     }
 
-    // --- SPECIAL CASE: assistant message with only attachment (image/video/script artifact) ---
-    if (
-      String(message.role) === 'assistant' &&
-      Array.isArray(message.experimental_attachments) &&
-      message.experimental_attachments.length > 0
-    ) {
-      console.log('✅ Saving assistant message with attachments:', {
-        messageId: message.id,
-        chatId: id,
-        attachmentCount: message.experimental_attachments.length,
-      });
-      await saveMessages({
-        messages: [
-          {
-            chatId: id,
-            id: message.id,
-            role: 'assistant',
-            parts: message.parts || [],
-            attachments: message.experimental_attachments,
-            createdAt: new Date(),
-          },
-        ],
-      });
-      return new Response(JSON.stringify({ ok: true }), { status: 200 });
-    }
-
     const streamId = generateUUID();
     try {
       await createStreamId({ streamId, chatId: id });
@@ -566,9 +538,15 @@ export async function POST(request: Request) {
           experimental_generateMessageId: generateUUID,
           tools: {
             ...tools,
-            configureImageGeneration: configureImageGeneration({ createDocument: tools.createDocument }),
-            configureVideoGeneration: configureVideoGeneration({ createDocument: tools.createDocument }),
-            configureScriptGeneration: configureScriptGeneration({ createDocument: tools.createDocument }),
+            configureImageGeneration: configureImageGeneration({
+              createDocument: tools.createDocument,
+            }),
+            configureVideoGeneration: configureVideoGeneration({
+              createDocument: tools.createDocument,
+            }),
+            configureScriptGeneration: configureScriptGeneration({
+              createDocument: tools.createDocument,
+            }),
             listVideoModels,
             findBestVideoModel,
             enhancePrompt,
@@ -576,46 +554,47 @@ export async function POST(request: Request) {
           onFinish: async ({ response }) => {
             if (session.user?.id) {
               try {
-                // Сохраняем только ассистентские сообщения с experimental_attachments
-                let assistantMessages = response.messages.filter(
-                  (message) =>
-                    message.role === 'assistant' &&
-                    Array.isArray((message as any).experimental_attachments) &&
-                    (message as any).experimental_attachments.length > 0
+                const assistantMessages = response.messages.filter(
+                  (message) => message.role === 'assistant'
                 );
 
-                // Если таких сообщений нет, ищем toolResults с experimental_attachments
-                if (assistantMessages.length === 0 && Array.isArray((response as any).toolResults)) {
-                  assistantMessages = (response as any).toolResults.filter(
-                    (toolResult: any) =>
-                      Array.isArray(toolResult.experimental_attachments) &&
-                      toolResult.experimental_attachments.length > 0
-                  ).map((toolResult: any) => ({
-                    ...toolResult,
-                    role: toolResult.role || 'assistant',
-                    parts: Array.isArray(toolResult.parts) ? toolResult.parts : [],
-                  }));
-                }
-
                 if (assistantMessages.length === 0) {
-                  console.warn('No assistant messages with attachments found in response or toolResults');
+                  console.warn('No assistant messages found in response');
                   return;
                 }
 
-                for (const assistantMessage of assistantMessages) {
-                  await saveMessages({
-                    messages: [
-                      {
-                        id: assistantMessage.id,
-                        chatId: id,
-                        role: assistantMessage.role,
-                        parts: Array.isArray((assistantMessage as any).parts) ? (assistantMessage as any).parts : [],
-                        attachments: (assistantMessage as any).experimental_attachments,
-                        createdAt: new Date(),
-                      },
-                    ],
-                  });
+                const assistantId = getTrailingMessageId({
+                  messages: assistantMessages,
+                });
+
+                if (!assistantId) {
+                  console.warn('No assistant message ID found');
+                  return;
                 }
+
+                const [, assistantMessage] = appendResponseMessages({
+                  messages: [message],
+                  responseMessages: response.messages,
+                });
+
+                if (!assistantMessage) {
+                  console.warn('Failed to append response messages');
+                  return;
+                }
+
+                await saveMessages({
+                  messages: [
+                    {
+                      id: assistantId,
+                      chatId: id,
+                      role: assistantMessage.role,
+                      parts: assistantMessage.parts,
+                      attachments:
+                        assistantMessage.experimental_attachments ?? [],
+                      createdAt: new Date(),
+                    },
+                  ],
+                });
               } catch (error) {
                 console.error('Failed to save assistant message:', error);
                 if (error instanceof Error) {
@@ -786,7 +765,6 @@ export async function DELETE(request: Request) {
     return formatErrorResponse(error);
   }
 }
-
 
 
 

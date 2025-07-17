@@ -304,6 +304,47 @@ const chatWebSocket = {
     } else {
       console.warn('⚠️ notifyNewProject not available on window object');
     }
+  },
+  
+  notifyNewImageProject: (projectId: string) => {
+    console.log('📢 Manually notifying new image project:', projectId);
+    const chatInstance = (window as any).chatSSEInstance;
+    if (chatInstance?.manualConnect) {
+      chatInstance.manualConnect(projectId);
+    } else if ((window as any).notifyNewImageProject) {
+      (window as any).notifyNewImageProject(projectId);
+    } else {
+      console.warn('⚠️ No available function to notify new image project.');
+    }
+  },
+
+  notifyNewVideoProject: (projectId: string) => {
+    console.log('📢 Manually notifying new video project:', projectId);
+    const chatVideoInstance = (window as any).chatVideoSSEInstance;
+    if (chatVideoInstance?.manualConnect) {
+      chatVideoInstance.manualConnect(projectId);
+    } else if ((window as any).notifyNewVideoProject) {
+      (window as any).notifyNewVideoProject(projectId);
+    } else {
+      console.warn('⚠️ No available function to notify new video project.');
+    }
+  },
+  
+  // Expose chat instance for direct manipulation
+  getChatInstance: () => {
+    return (window as any).chatWebSocketInstance;
+  },
+  
+  getArtifactInstance: () => {
+    return (window as any).artifactInstance;
+  },
+  
+  getSSEStore: () => {
+    return (window as any).chatSSEInstance;
+  },
+  
+  getVideoSSEStore: () => {
+    return (window as any).videoSSEInstance;
   }
 };
 
@@ -813,4 +854,17 @@ if (typeof window !== 'undefined') {
        console.error('❌ Error adding video to chat:', error);
      }
    };
- } 
+
+   const globalWindow = window as any;
+   globalWindow.dev = {
+     ...globalWindow.dev,
+     forceUpdateArtifact: globalWindow.forceUpdateArtifact,
+     applyLastImageUrl: globalWindow.applyLastImageUrl,
+     quickImageFix: globalWindow.quickImageFix,
+     addImageToChat: globalWindow.addImageToChat,
+     getChatInstance: () => (window as any).chatWebSocketInstance,
+     getArtifactInstance: () => (window as any).artifactInstance,
+     getSSEStore: () => (window as any).imageSSEStore,
+     getVideoSSEStore: () => (window as any).videoSSEStore,
+   };
+} 

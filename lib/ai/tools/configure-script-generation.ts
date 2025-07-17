@@ -1,7 +1,6 @@
 import { API_NEXT_ROUTES } from '@/lib/config/next-api-routes';
 import { tool } from 'ai';
 import { z } from 'zod';
-import { saveMessages } from '@/lib/db/queries';
 
 interface CreateScriptDocumentParams {
   createDocument: any;
@@ -14,47 +13,43 @@ export const configureScriptGeneration = (params?: CreateScriptDocumentParams) =
   }),
   execute: async ({ prompt }) => {
     if (!params?.createDocument) {
-      return { error: 'createDocument not available' };
+      return { error: 'createDocument function is not available.' };
     }
-    // 1. Generate script via API
-    const scriptRes = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}${API_NEXT_ROUTES.GENERATE_SCRIPT}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt }),
-    });
-    const data = await scriptRes.json();
-    const script = data?.script || '';
-    if (!script) {
-      return { error: 'Script generation failed' };
-    }
-    // 2. Create document artifact
-    const result = await params.createDocument.execute({
-      title: prompt,
-      kind: 'script',
-      content: script,
-    });
+    
+    try {
+      // 1. Generate script content via API
+      const scriptRes = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}${API_NEXT_ROUTES.GENERATE_SCRIPT}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt }),
+      });
 
-    // 3. Return assistant message with attachment (for image/video/script)
-    return {
-      id: result.id,
-      role: 'assistant',
-      parts: [
-        {
-          content: script,
-          contentType: 'text/markdown',
-        }
-      ],
-      experimental_attachments: [
-        {
-          url: `/api/document?id=${result.id}`,
-          name: result.title || 'Scenario.md',
-          contentType: 'text/markdown',
-          documentId: result.id,
-          kind: 'script',
-        }
-      ],
-      createdAt: new Date().toISOString(),
-      message: 'Script generated and artifact created.'
-    };
+      if (!scriptRes.ok) {
+        throw new Error(`Script generation API failed with status ${scriptRes.status}`);
+      }
+      
+      const data = await scriptRes.json();
+      const script = data?.script || '';
+      if (!script) {
+        throw new Error('Script generation failed: Empty script returned.');
+      }
+
+      // 2. Create document artifact using the provided function
+      const result = await params.createDocument.execute({
+        title: prompt,
+        kind: 'script',
+        content: script,
+      });
+
+      // 3. Return the result which will be sent to the client
+      return {
+        id: result.id,
+        title: '📝 Script created!',
+        kind: 'script',
+      };
+    } catch (error) {
+      console.error('Error during script generation tool execution:', error);
+      return { error: error instanceof Error ? error.message : 'An unknown error occurred.' };
+    }
   },
 }); 
