@@ -23,8 +23,9 @@ function extractDomainFromIssuer(issuer: string): string {
 
 // AICODE: Determine base URL - support for development and production
 function getAppBaseUrl(): string {
-  // For development, you might want to use a production callback URL if localhost is not configured
-  // This is a temporary workaround until localhost callback is added to Auth0 Dashboard
+  // For development: http://localhost:3000 must be added to Auth0 Dashboard
+  // For production: Use your production domain
+  // See docs/auth0-localhost-fix.md for setup instructions
   const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
   
   console.log('🔧 Using Auth0 base URL:', baseUrl);

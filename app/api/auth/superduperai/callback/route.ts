@@ -108,7 +108,7 @@ export async function GET(request: Request) {
     console.log('💾 Saving personal SuperDuperAI token to Auth0 session...');
     
     try {
-      await savePersonalSuperduperAIToken(personalToken, userId || undefined);
+      await savePersonalSuperduperAIToken(personalToken);
       console.log('✅ Personal token saved to Auth0 session - user will use their own credits');
       
       // Optional: Also save to database for reference

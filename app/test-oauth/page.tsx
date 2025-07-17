@@ -1,12 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
 
 export default function TestOAuthPage(): React.ReactElement {
   const [urlInfo, setUrlInfo] = useState<any>(null);
   const [oauthHistory, setOauthHistory] = useState<string[]>([]);
-  const searchParams = useSearchParams();
 
   useEffect(() => {
     // Capture all URL information

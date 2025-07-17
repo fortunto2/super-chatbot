@@ -71,7 +71,7 @@ export class ImageToVideoStrategy implements VideoGenerationStrategy {
 
       const modelName = typeof params.model === 'string' 
         ? params.model 
-        : params.model?.name || 'azure-openai/sora';
+        : 'azure-openai/sora';
 
       const payload: any = {
         config: {

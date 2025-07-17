@@ -1,5 +1,5 @@
 import { auth } from '@/app/(auth)/auth';
-import { SuperDuperAIConnection } from '@/components/superduperai-connection';
+import SuperDuperAIConnection from '@/components/superduperai-connection';
 import { redirect } from 'next/navigation';
 
 export default async function ProfilePage() {
