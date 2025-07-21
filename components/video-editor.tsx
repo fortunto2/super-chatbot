@@ -107,13 +107,11 @@ function VideoDisplay({
   videoUrl, 
   prompt, 
   onCopyUrl, 
-  onGenerateNew,
   apiPayload
 }: {
   videoUrl: string;
   prompt?: string;
   onCopyUrl: () => void;
-  onGenerateNew: () => void;
   apiPayload?: any;
 }) {
   return (
@@ -243,7 +241,6 @@ export function VideoEditor({
         videoUrl={videoUrl}
         prompt={prompt}
         onCopyUrl={handleCopyUrl}
-        onGenerateNew={handleGenerateNew}
         apiPayload={parsedContent}
       />
     );

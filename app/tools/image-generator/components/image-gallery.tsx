@@ -4,16 +4,12 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { 
-  Download, 
-  Copy, 
   Trash2, 
-  ZoomIn, 
-  Clock,
   Settings,
-  X
 } from 'lucide-react';
 import type { GeneratedImage } from '../hooks/use-image-generator';
-import NextImage from 'next/image';
+import { ImageCard } from './image-card';
+import { ImagePreviewModal } from './image-preview-modal';
 
 interface ImageGalleryProps {
   images: GeneratedImage[];
@@ -35,151 +31,8 @@ export function ImageGallery({
   const [selectedImage, setSelectedImage] = useState<GeneratedImage | null>(null);
   const [imageErrors, setImageErrors] = useState<Set<string>>(new Set());
 
-  // AICODE-NOTE: Handle image load errors
   const handleImageError = (imageId: string) => {
     setImageErrors(prev => new Set(prev).add(imageId));
-  };
-
-  // AICODE-NOTE: Format timestamp for display
-  const formatTimestamp = (timestamp: number): string => {
-    const date = new Date(timestamp);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-    
-    if (diffMins < 1) return 'Just now';
-    if (diffMins < 60) return `${diffMins}m ago`;
-    if (diffMins < 1440) return `${Math.floor(diffMins / 60)}h ago`;
-    
-    return date.toLocaleDateString();
-  };
-
-  // AICODE-NOTE: Image preview modal
-  const ImagePreviewModal = ({ image }: { image: GeneratedImage }) => (
-    <div className="fixed inset-0 bg-black/75 flex items-center justify-center z-50 p-4">
-      <div className="relative max-w-4xl h-full">
-        <Button
-          variant="outline"
-          size="sm"
-          className="absolute top-2 right-2 z-10 "
-          onClick={() => setSelectedImage(null)}
-        >
-          <X className="size-4" />
-        </Button>
-        
-        <NextImage
-          src={image.url}
-          alt={image.prompt}
-          width={800}
-          height={600}
-          className="size-full object-contain rounded-lg"
-          onError={() => handleImageError(image.id)}
-        />
-        
-        <div className="absolute bottom-0 inset-x-0 bg-black/50 text-white p-4 rounded-b-lg">
-          <p className="text-sm font-medium line-clamp-2">{image.prompt}</p>
-          <p className="text-xs text-gray-300 mt-1">
-            {formatTimestamp(image.timestamp)}
-          </p>
-        </div>
-      </div>
-    </div>
-  );
-
-  // AICODE-NOTE: Individual image card component
-  const ImageCard = ({ image, isCurrent = false }: { image: GeneratedImage; isCurrent?: boolean }) => {
-    const hasError = imageErrors.has(image.id);
-    
-    return (
-      <Card className={`group relative overflow-hidden ${isCurrent ? 'ring-2 ring-blue-500' : ''}`}>
-        <div className="aspect-square relative">
-          {hasError ? (
-            <div className="size-full bg-gray-50 flex items-center justify-center border-2 border-dashed border-gray-300">
-              <div className="text-center text-gray-500">
-                <div className="bg-red-100 rounded-full p-3 size-14 mx-auto mb-2 flex items-center justify-center">
-                  <Settings className="size-6 text-red-400" />
-                </div>
-                <p className="text-sm font-medium">Failed to load</p>
-              </div>
-            </div>
-          ) : (
-            <NextImage
-              src={image.url}
-              alt={image.prompt}
-              width={300}
-              height={300}
-              className="size-full object-cover transition-transform group-hover:scale-105 cursor-pointer"
-              onClick={() => setSelectedImage(image)}
-              onError={() => handleImageError(image.id)}
-            />
-          )}
-          
-          {/* Overlay with actions */}
-          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/60 transition-all duration-200 flex items-center justify-center">
-            <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center space-x-2">
-              <Button
-                size="sm"
-                variant="secondary"
-                className="bg-gray-800/90 hover:bg-gray-700 text-white border-gray-600 shadow-lg"
-                onClick={() => setSelectedImage(image)}
-              >
-                <ZoomIn className="size-4" />
-              </Button>
-              <Button
-                size="sm"
-                variant="secondary"
-                className="bg-gray-800/90 hover:bg-gray-700 text-white border-gray-600 shadow-lg"
-                onClick={() => onDownloadImage(image)}
-              >
-                <Download className="size-4" />
-              </Button>
-              <Button
-                size="sm"
-                variant="secondary"
-                className="bg-gray-800/90 hover:bg-gray-700 text-white border-gray-600 shadow-lg"
-                onClick={() => onCopyImageUrl(image)}
-              >
-                <Copy className="size-4" />
-              </Button>
-              <Button
-                size="sm"
-                variant="secondary"
-                className="bg-red-600/90 hover:bg-red-700 text-white border-red-500 shadow-lg"
-                onClick={() => onDeleteImage(image.id)}
-              >
-                <Trash2 className="size-4" />
-              </Button>
-            </div>
-          </div>
-          
-          {isCurrent && (
-            <div className="absolute top-2 left-2">
-              <span className="bg-blue-500 text-white text-xs px-2 py-1 rounded-full">
-                Latest
-              </span>
-            </div>
-          )}
-        </div>
-        
-        <CardContent className="p-3">
-          <p className="text-sm font-medium line-clamp-2 mb-2">
-            {image.prompt}
-          </p>
-          
-          <div className="flex items-center justify-between text-xs text-gray-500">
-            <div className="flex items-center">
-              <Clock className="size-3 mr-1" />
-              {formatTimestamp(image.timestamp)}
-            </div>
-            
-            <div className="flex items-center">
-              <Settings className="size-3 mr-1" />
-              {image.settings.model}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    );
   };
 
   if (images.length === 0 && !currentGeneration) {
@@ -229,6 +82,12 @@ export function ImageGallery({
               <ImageCard 
                 image={currentGeneration} 
                 isCurrent={true}
+                onCopyImageUrl={onCopyImageUrl}
+                onDownloadImage={onDownloadImage}
+                onDeleteImage={onDeleteImage}
+                setSelectedImage={setSelectedImage}
+                handleImageError={handleImageError}
+                imageErrors={imageErrors}
               />
             )}
             
@@ -239,6 +98,12 @@ export function ImageGallery({
                 <ImageCard 
                   key={image.id} 
                   image={image}
+                  onCopyImageUrl={onCopyImageUrl}
+                  onDownloadImage={onDownloadImage}
+                  onDeleteImage={onDeleteImage}
+                  setSelectedImage={setSelectedImage}
+                  handleImageError={handleImageError}
+                  imageErrors={imageErrors}
                 />
               ))
             }
@@ -248,8 +113,13 @@ export function ImageGallery({
 
       {/* Image Preview Modal */}
       {selectedImage && (
-        <ImagePreviewModal image={selectedImage} />
+        <ImagePreviewModal 
+          image={selectedImage} 
+          setSelectedImage={setSelectedImage} 
+          handleImageError={handleImageError} 
+        />
       )}
     </>
   );
 } 
+
