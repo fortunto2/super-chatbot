@@ -8,7 +8,7 @@ import { useImageGenerator } from './hooks/use-image-generator';
 import { Separator } from '@/components/ui/separator';
 import { ImageIcon, Sparkles, Zap } from 'lucide-react';
 
-// AICODE-NOTE: Main page component for standalone image generator tool
+
 export default function ImageGeneratorPage() {
   const {
     generationStatus,

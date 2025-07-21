@@ -12,10 +12,6 @@ import { createVideoMediaSettings } from '@/lib/config/media-settings-factory';
 import { VIDEO_RESOLUTIONS, SHOT_SIZES, VIDEO_FRAME_RATES, DEFAULT_VIDEO_RESOLUTION, DEFAULT_VIDEO_DURATION, getModelCompatibleResolutions, getDefaultResolutionForModel } from '@/lib/config/video-constants';
 import { GenerationTypeEnum, GenerationSourceEnum } from '@/lib/api';
 
-// AICODE-NOTE: Now using unified VideoModel type from superduperai.ts
-function convertToVideoModel(sdModel: VideoModel): VideoModel {
-  return sdModel; // No conversion needed, already in correct format
-}
 
 interface CreateVideoDocumentParams {
   createDocument: any;
