@@ -47,7 +47,7 @@ export function ToolsNavigation() {
         <span className="text-muted-foreground">|</span>
         
         {TOOLS_CONFIG.map((tool) => {
-          const isActive = pathname.includes(tool.href);
+          const isActive = pathname === tool.href
           return (
             <Link key={tool.id} href={tool.href}>
               <Button 

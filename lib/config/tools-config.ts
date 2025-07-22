@@ -71,6 +71,23 @@ export const TOOLS_CONFIG: ToolConfig[] = [
     hoverBgColor: 'pink-200'
   },
   {
+    id: 'prompt-enhancer-veo3',
+    name: 'Prompt Enhancer Veo3',
+    description: 'Transform simple prompts into detailed, professional descriptions for better AI generation results',
+    shortDescription: 'AI Prompt Enhancer VEO3',
+    iconName: 'wand',
+    href: '/tools/prompt-enhancer-veo3',
+    category: 'enhancement',
+    features: [
+      { iconName: 'languages', label: 'Auto Translation' },
+      { iconName: 'sparkles', label: 'Smart Enhancement' }
+    ],
+    primaryColor: 'pink-600',
+    hoverColor: 'pink-600',
+    bgColor: 'pink-100',
+    hoverBgColor: 'pink-200'
+  },
+  {
     id: 'script-generator',
     name: 'Script Generator',
     description: 'Generate detailed scripts and scenarios in Markdown format using AI. Edit and refine your script with a powerful Markdown editor.',

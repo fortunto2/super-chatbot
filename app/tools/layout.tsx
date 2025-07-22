@@ -18,6 +18,10 @@ const TOOL_TITLES: Record<string, { title: string; description: string }> = {
     title: 'Prompt Enhancer',
     description: 'Enhance your prompts for better AI results. Get suggestions and improvements instantly.'
   },
+  '/tools/prompt-enhancer-veo3': {
+    title: 'Prompt Enhancer Veo3',
+    description: 'Enhance your prompts for better AI results. Get suggestions and improvements instantly.'
+  },
 };
 
 export default function ToolsLayout({ children }: { children: ReactNode }) {
