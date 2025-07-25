@@ -36,7 +36,7 @@ export function ToolsNavigation() {
       </div>
       
       {/* Tools navigation tabs */}
-      <div className="flex items-center gap-2 mb-4">
+      <div className="flex items-center gap-2 mb-4 flex-wrap">
         <Link href="/tools">
           <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground hover:text-foreground">
             <Home className="size-4" />
@@ -47,7 +47,7 @@ export function ToolsNavigation() {
         <span className="text-muted-foreground">|</span>
         
         {TOOLS_CONFIG.map((tool) => {
-          const isActive = pathname.includes(tool.href);
+          const isActive = pathname === tool.href
           return (
             <Link key={tool.id} href={tool.href}>
               <Button 
