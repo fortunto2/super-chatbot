@@ -72,6 +72,16 @@ See: [Migration Completion](./maintenance/changelog/production-migration-complet
 
 ## 🚀 Recent Major Updates
 
+### Guest-to-Auth Transition Fix (2025-01-14)
+
+- **Fixed infinite redirect loop** when users tried to transition from authenticated accounts to guest mode
+- **Direct guest mode access** after logout instead of forced Auth0 redirect
+- **Enhanced auto-login page** with `guest_mode` parameter support for explicit guest mode selection
+- **Improved user experience** with seamless transition between authentication modes
+- **Zero breaking changes** - all existing Auth0 flows preserved and backward compatible
+
+See: [Guest-to-Auth Transition Fix](./maintenance/changelog/fix-guest-to-auth-transition.md)
+
 ### Artifact Share Links (2025-01-15)
 
 - **Direct sharing capability** for all artifact types (image, text, video, spreadsheet)
