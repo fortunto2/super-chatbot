@@ -13,6 +13,7 @@ import { type VisibilityType, VisibilitySelector } from './visibility-selector';
 import type { Session } from 'next-auth';
 import { MessageCount } from './message-count';
 import { HeaderUserNav } from './header-user-nav';
+import { ToolsBalance } from '@/components/tools-balance';
 
 function PureChatHeader({
   chatId,
@@ -74,6 +75,8 @@ function PureChatHeader({
       )}
 
       <MessageCount className="order-1 md:order-4" />
+
+      <ToolsBalance variant="header" className="order-1 md:order-5" />
 
       <div className="flex-1" />
 
