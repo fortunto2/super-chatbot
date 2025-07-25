@@ -1,18 +1,55 @@
 import { type NextRequest, NextResponse } from 'next/server';
+import { auth } from '@/app/(auth)/auth';
 import { getSuperduperAIConfig } from '@/lib/config/superduperai';
 import { OpenAPI } from '@/lib/api/core/OpenAPI';
 import { generateImageWithStrategy, ImageGenerationParams, ImageToImageParams } from '@/lib/ai/api/image-generation';
+import { validateOperationBalance, deductOperationBalance } from '@/lib/utils/tools-balance';
 
 export async function POST(request: NextRequest) {
   try {
+    // Check authentication first
+    const session = await auth();
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const body = await request.json();
     
     console.log('🖼️ Image API: Processing image generation request');
     console.log('📦 Request parameters:', JSON.stringify(body, null, 2));
+
+    // Validate user balance before proceeding
+    const userId = session.user.id;
+    const generationType = body.generationType || 'text-to-image';
+    
+    // Determine cost multipliers based on request
+    const multipliers: string[] = [];
+    if (body.style?.id === 'high-quality') multipliers.push('high-quality');
+    if (body.style?.id === 'ultra-quality') multipliers.push('ultra-quality');
+
+    const balanceValidation = await validateOperationBalance(
+      userId, 
+      'image-generation', 
+      generationType, 
+      multipliers
+    );
+
+    if (!balanceValidation.valid) {
+      return NextResponse.json(
+        { 
+          success: false,
+          error: 'Insufficient balance',
+          details: balanceValidation.error,
+          requiredCredits: balanceValidation.cost
+        },
+        { status: 402 } // Payment Required
+      );
+    }
+
+    console.log(`💳 User ${userId} has sufficient balance for ${generationType} (${balanceValidation.cost} credits)`);
     
     const {
       chatId,
-      generationType = 'text-to-image',
     } = body;
     
     // Configure OpenAPI client for server-side usage
@@ -28,13 +65,34 @@ export async function POST(request: NextRequest) {
     const result = await generateImageWithStrategy(generationType, strategyParams);
     
     console.log('✅ Image generation result:', result);
+
+    // Deduct balance after successful generation
+    try {
+      await deductOperationBalance(
+        userId,
+        'image-generation',
+        generationType,
+        multipliers,
+        {
+          fileId: result.fileId,
+          projectId: result.projectId,
+          operationType: generationType,
+          timestamp: new Date().toISOString()
+        }
+      );
+      console.log(`💳 Balance deducted for user ${userId} after successful image generation`);
+    } catch (balanceError) {
+      console.error('⚠️ Failed to deduct balance after image generation:', balanceError);
+      // Continue with response - image was generated successfully
+    }
     
     const response = {
       success: true,
       fileId: result.fileId,
       projectId: result.projectId || chatId,
       url: result.url,
-      message: result.message
+      message: result.message,
+      creditsUsed: balanceValidation.cost
     };
     
     return NextResponse.json(response);

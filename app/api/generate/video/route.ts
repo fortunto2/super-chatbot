@@ -1,10 +1,18 @@
 import { type NextRequest, NextResponse } from 'next/server';
+import { auth } from '@/app/(auth)/auth';
 import { configureSuperduperAI } from '@/lib/config/superduperai';
 import { generateVideoHybrid } from '@/lib/ai/api/generate-video';
 import { IGenerationConfigRead } from '@/lib/api';
+import { validateOperationBalance, deductOperationBalance } from '@/lib/utils/tools-balance';
 
 export async function POST(request: NextRequest) {
   try {
+    // Check authentication first
+    const session = await auth();
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     // Configure OpenAPI client for server-side usage
     const { getSuperduperAIConfig } = await import('@/lib/config/superduperai');
     const config = getSuperduperAIConfig();
@@ -15,6 +23,46 @@ export async function POST(request: NextRequest) {
     // Parse request body
     const body = await request.json();
     console.log('🎬 Video API: Processing request:', JSON.stringify(body, null, 2));
+
+    // Validate user balance before proceeding
+    const userId = session.user.id;
+    const generationType = body.generationType || 'text-to-video';
+    
+    // Determine cost multipliers based on request
+    const multipliers: string[] = [];
+    const duration = body.duration || 5;
+    if (duration <= 5) multipliers.push('duration-5s');
+    else if (duration <= 10) multipliers.push('duration-10s');
+    else if (duration <= 15) multipliers.push('duration-15s');
+    else if (duration <= 30) multipliers.push('duration-30s');
+    
+    // Check resolution quality
+    if (body.resolution?.includes('HD') || body.resolution?.includes('720')) {
+      multipliers.push('hd-quality');
+    } else if (body.resolution?.includes('4K') || body.resolution?.includes('2160')) {
+      multipliers.push('4k-quality');
+    }
+
+    const balanceValidation = await validateOperationBalance(
+      userId, 
+      'video-generation', 
+      generationType, 
+      multipliers
+    );
+
+    if (!balanceValidation.valid) {
+      return NextResponse.json(
+        { 
+          success: false,
+          error: 'Insufficient balance',
+          details: balanceValidation.error,
+          requiredCredits: balanceValidation.cost
+        },
+        { status: 402 } // Payment Required
+      );
+    }
+
+    console.log(`💳 User ${userId} has sufficient balance for ${generationType} (${balanceValidation.cost} credits)`);
 
     // Convert string parameters to proper objects
     const modelObj = typeof body.model === 'string' 
@@ -62,9 +110,36 @@ export async function POST(request: NextRequest) {
     );
     
     console.log('✅ Video generation result:', result);
+
+    // Deduct balance after successful generation
+    try {
+      await deductOperationBalance(
+        userId,
+        'video-generation',
+        generationType,
+        multipliers,
+        {
+          fileId: result.fileId,
+          projectId: result.projectId,
+          operationType: generationType,
+          duration: duration,
+          resolution: body.resolution,
+          timestamp: new Date().toISOString()
+        }
+      );
+      console.log(`💳 Balance deducted for user ${userId} after successful video generation`);
+    } catch (balanceError) {
+      console.error('⚠️ Failed to deduct balance after video generation:', balanceError);
+      // Continue with response - video was generated successfully
+    }
     
     // Return standardized response
-    return NextResponse.json(result);
+    const response = {
+      ...result,
+      creditsUsed: balanceValidation.cost
+    };
+    
+    return NextResponse.json(response);
   } catch (error) {
     console.error('💥 Video API error:', error);
     

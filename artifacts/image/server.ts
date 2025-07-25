@@ -4,6 +4,7 @@ import { getStyles } from '@/lib/ai/api/get-styles';
 import type { MediaOption, MediaResolution } from '@/lib/types/media-settings';
 import type { ImageModel } from '@/lib/config/superduperai';
 import { getAvailableImageModels } from '@/lib/config/superduperai';
+import { validateOperationBalance, deductOperationBalance } from '@/lib/utils/tools-balance';
 
 // Import the same constants as in configure-image-generation
 const RESOLUTIONS: MediaResolution[] = [
@@ -34,7 +35,7 @@ const SHOT_SIZES: MediaOption[] = [
 
 export const imageDocumentHandler = createDocumentHandler<'image'>({
   kind: 'image',
-  onCreateDocument: async ({ id: chatId, title, dataStream }) => {
+  onCreateDocument: async ({ id: chatId, title, dataStream, session }) => {
     let draftContent = '';
     try {
       // Parse the title to extract image generation parameters
@@ -49,6 +50,40 @@ export const imageDocumentHandler = createDocumentHandler<'image'>({
         seed,
         batchSize
       } = params;
+
+      // Check user balance before proceeding
+      if (session?.user?.id) {
+        console.log('💳 Checking balance for image generation in chat...');
+        
+        // Determine operation type and multipliers
+        const operationType = 'text-to-image'; // Chat only supports text-to-image
+        const multipliers: string[] = [];
+        
+        // Check style for quality multipliers
+        if (style?.id?.includes('high-quality')) multipliers.push('high-quality');
+        if (style?.id?.includes('ultra-quality')) multipliers.push('ultra-quality');
+
+        const balanceValidation = await validateOperationBalance(
+          session.user.id,
+          'image-generation',
+          operationType,
+          multipliers
+        );
+
+        if (!balanceValidation.valid) {
+          console.error('💳 Insufficient balance for image generation');
+          
+          // Write error to datastream
+          dataStream.writeData({
+            type: 'error',
+            content: `Insufficient balance: ${balanceValidation.error}. Required: ${balanceValidation.cost} credits.`
+          });
+          
+          throw new Error(`Insufficient balance: ${balanceValidation.error}`);
+        }
+
+        console.log(`💳 Balance validated: ${balanceValidation.cost} credits will be deducted`);
+      }
 
       // Load dynamic models from SuperDuperAI API
       let availableModels: ImageModel[] = [];
@@ -117,6 +152,36 @@ export const imageDocumentHandler = createDocumentHandler<'image'>({
         timestamp: Date.now(),
         message: result.message || 'Image generation started, connecting to WebSocket...'
       });
+
+      // Deduct balance after successful generation start
+      if (session?.user?.id) {
+        try {
+          const operationType = 'text-to-image';
+          const multipliers: string[] = [];
+          
+          // Check style for quality multipliers
+          if (style?.id?.includes('high-quality')) multipliers.push('high-quality');
+          if (style?.id?.includes('ultra-quality')) multipliers.push('ultra-quality');
+
+          await deductOperationBalance(
+            session.user.id,
+            'image-generation',
+            operationType,
+            multipliers,
+            {
+              projectId: result.projectId,
+              fileId: result.fileId,
+              prompt: prompt.substring(0, 100),
+              operationType,
+              timestamp: new Date().toISOString()
+            }
+          );
+          console.log(`💳 Balance deducted for user ${session.user.id} after image generation start`);
+        } catch (balanceError) {
+          console.error('⚠️ Failed to deduct balance after image generation:', balanceError);
+          // Continue - image generation already started
+        }
+      }
 
     } catch (error: any) {
       console.error('🎨 ❌ IMAGE GENERATION ERROR:', error);

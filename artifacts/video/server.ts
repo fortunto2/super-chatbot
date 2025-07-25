@@ -6,6 +6,7 @@ import type { VideoModel } from '@/lib/config/superduperai';
 import { getAvailableVideoModels } from '@/lib/config/superduperai';
 import { SHOT_SIZES, VIDEO_FRAME_RATES, DEFAULT_VIDEO_RESOLUTION, DEFAULT_VIDEO_DURATION, getModelCompatibleResolutions } from '@/lib/config/video-constants';
 import { GenerationSourceEnum, GenerationTypeEnum } from '@/lib/api';
+import { validateOperationBalance, deductOperationBalance } from '@/lib/utils/tools-balance';
 
 function convertToVideoModel(sdModel: VideoModel): VideoModel {
   return sdModel;
@@ -13,7 +14,7 @@ function convertToVideoModel(sdModel: VideoModel): VideoModel {
 
 export const videoDocumentHandler = createDocumentHandler<'video'>({
   kind: 'video',
-  onCreateDocument: async ({ id: chatId, title, dataStream }) => {
+  onCreateDocument: async ({ id: chatId, title, dataStream, session }) => {
     let draftContent = '';
     try {
       // Parse the title to extract video generation parameters
@@ -40,8 +41,55 @@ export const videoDocumentHandler = createDocumentHandler<'video'>({
         shotSize = { id: 'long-shot', label: 'Long Shot' },
         frameRate = 30,
         duration = DEFAULT_VIDEO_DURATION,
-        seed
+        seed,
+        sourceImageId,
+        sourceImageUrl,
+        generationType = 'text-to-video'
       } = params;
+
+      // Check user balance before proceeding
+      if (session?.user?.id) {
+        console.log('💳 Checking balance for video generation in chat...');
+        
+        // Determine cost multipliers based on request
+        const multipliers: string[] = [];
+        
+        // Duration multipliers
+        if (duration <= 5) multipliers.push('duration-5s');
+        else if (duration <= 10) multipliers.push('duration-10s');
+        else if (duration <= 15) multipliers.push('duration-15s');
+        else if (duration <= 30) multipliers.push('duration-30s');
+        
+        // Quality multipliers
+        if (resolution?.label?.includes('4K') || resolution?.width >= 2160) {
+          multipliers.push('4k-quality');
+        } else {
+          multipliers.push('hd-quality'); // HD is default
+        }
+
+        const operationType = generationType === 'image-to-video' ? 'image-to-video' : 'text-to-video';
+
+        const balanceValidation = await validateOperationBalance(
+          session.user.id,
+          'video-generation',
+          operationType,
+          multipliers
+        );
+
+        if (!balanceValidation.valid) {
+          console.error('💳 Insufficient balance for video generation');
+          
+          // Write error to datastream
+          dataStream.writeData({
+            type: 'error',
+            content: `Insufficient balance: ${balanceValidation.error}. Required: ${balanceValidation.cost} credits.`
+          });
+          
+          throw new Error(`Insufficient balance: ${balanceValidation.error}`);
+        }
+
+        console.log(`💳 Balance validated: ${balanceValidation.cost} credits will be deducted`);
+      }
 
       // Load dynamic models from SuperDuperAI API
       let availableModels: VideoModel[] = [];
@@ -130,6 +178,49 @@ export const videoDocumentHandler = createDocumentHandler<'video'>({
         timestamp: Date.now(),
         message: result.message || 'Video generation started, connecting to WebSocket...'
       });
+
+      // Deduct balance after successful generation start
+      if (session?.user?.id) {
+        try {
+          // Determine cost multipliers based on request
+          const multipliers: string[] = [];
+          
+          // Duration multipliers
+          if (duration <= 5) multipliers.push('duration-5s');
+          else if (duration <= 10) multipliers.push('duration-10s');
+          else if (duration <= 15) multipliers.push('duration-15s');
+          else if (duration <= 30) multipliers.push('duration-30s');
+          
+          // Quality multipliers
+          if (resolution?.label?.includes('4K') || resolution?.width >= 2160) {
+            multipliers.push('4k-quality');
+          } else {
+            multipliers.push('hd-quality'); // HD is default
+          }
+
+          const operationType = generationType === 'image-to-video' ? 'image-to-video' : 'text-to-video';
+
+          await deductOperationBalance(
+            session.user.id,
+            'video-generation',
+            operationType,
+            multipliers,
+            {
+              projectId: result.projectId,
+              fileId: result.fileId,
+              prompt: prompt.substring(0, 100),
+              operationType,
+              duration,
+              resolution: resolution?.label,
+              timestamp: new Date().toISOString()
+            }
+          );
+          console.log(`💳 Balance deducted for user ${session.user.id} after video generation start`);
+        } catch (balanceError) {
+          console.error('⚠️ Failed to deduct balance after video generation:', balanceError);
+          // Continue - video generation already started
+        }
+      }
     } catch (error: any) {
       console.error('🎬 ❌ VIDEO GENERATION ERROR:', error);
       draftContent = JSON.stringify({
