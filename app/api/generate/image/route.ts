@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/app/(auth)/auth';
-import { getSuperduperAIConfig } from '@/lib/config/superduperai';
+import { getSuperduperAIConfigWithUserToken } from '@/lib/config/superduperai';
 import { OpenAPI } from '@/lib/api/core/OpenAPI';
 import { generateImageWithStrategy, ImageGenerationParams, ImageToImageParams } from '@/lib/ai/api/image-generation';
 import { validateOperationBalance, deductOperationBalance } from '@/lib/utils/tools-balance';
@@ -52,8 +52,9 @@ export async function POST(request: NextRequest) {
       chatId,
     } = body;
     
-    // Configure OpenAPI client for server-side usage
-    const config = getSuperduperAIConfig();
+    // Configure OpenAPI client with user token from session (with system token fallback)
+    console.log("SESSION USER", session)
+    const config = getSuperduperAIConfigWithUserToken(session);
     OpenAPI.BASE = config.url;
     OpenAPI.TOKEN = config.token;
     
@@ -62,7 +63,7 @@ export async function POST(request: NextRequest) {
     const strategyParams: ImageGenerationParams | ImageToImageParams = {...body}
    
     // Use OpenAPI client to generate image
-    const result = await generateImageWithStrategy(generationType, strategyParams);
+    const result = await generateImageWithStrategy(generationType, strategyParams, session);
     
     console.log('✅ Image generation result:', result);
 
@@ -92,7 +93,8 @@ export async function POST(request: NextRequest) {
       projectId: result.projectId || chatId,
       url: result.url,
       message: result.message,
-      creditsUsed: balanceValidation.cost
+      creditsUsed: balanceValidation.cost,
+      usingUserToken: config.isUserToken
     };
     
     return NextResponse.json(response);

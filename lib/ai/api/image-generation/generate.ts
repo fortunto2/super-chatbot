@@ -1,11 +1,12 @@
-import { API_ENDPOINTS, getSuperduperAIConfig } from "@/lib/config/superduperai";
+import { API_ENDPOINTS, getSuperduperAIConfig, getSuperduperAIConfigWithUserToken } from "@/lib/config/superduperai";
 import { ImageGenerationStrategyFactory } from "./strategy.factory";
 import type { ImageGenerationParams, ImageToImageParams, ImageGenerationResult } from "./strategy.interface";
 
 // Main generation function using strategy pattern
 export async function generateImageWithStrategy(
     generationType: string,
-    params: ImageGenerationParams | ImageToImageParams
+    params: ImageGenerationParams | ImageToImageParams,
+    session?: any
   ): Promise<ImageGenerationResult> {
     const factory = new ImageGenerationStrategyFactory();
     const strategy = factory.getStrategy(generationType);
@@ -27,7 +28,9 @@ export async function generateImageWithStrategy(
     }
   
     try {
-      const config = getSuperduperAIConfig();
+      // Use user token from session if available, fallback to system token
+      const config = session ? getSuperduperAIConfigWithUserToken(session) : getSuperduperAIConfig();
+      
       const payload = await strategy.generatePayload(params);
       // Use correct SuperDuperAI endpoint for image generation
       const endpoint = API_ENDPOINTS.GENERATE_IMAGE;

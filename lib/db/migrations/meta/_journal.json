@@ -64,6 +64,13 @@
       "when": 1753455698120,
       "tag": "0008_abandoned_excalibur",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1753701956681,
+      "tag": "0009_talented_mauler",
+      "breakpoints": true
     }
   ]
 }

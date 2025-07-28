@@ -454,3 +454,49 @@ export function createWSURL(path: string, config?: SuperduperAIConfig): string {
   const apiConfig = config || getSuperduperAIConfig();
   return `${apiConfig.wsURL}${path}`;
 } 
+
+/**
+ * Get SuperDuperAI token for user from Auth0 session with fallback to system token
+ * @param session - NextAuth session object
+ * @returns SuperDuperAI token (user token if available, system token as fallback)
+ */
+export function getSuperduperAITokenForUser(session: any): { token: string; isUserToken: boolean } {
+  console.log('session SUPERDUPERAI', {
+   session
+  });
+
+  // Try to get user's SuperDuperAI token from session
+  let userToken = session?.user?.superduperaiToken || session?.superduperaiToken;
+  
+  // For testing: use TEST_USER_SUPERDUPERAI_TOKEN if available
+  if (!userToken && process.env.TEST_USER_SUPERDUPERAI_TOKEN) {
+    userToken = process.env.TEST_USER_SUPERDUPERAI_TOKEN;
+    console.log('🔧 SuperDuperAI: Using TEST_USER_SUPERDUPERAI_TOKEN for testing');
+  }
+  
+  if (userToken && typeof userToken === 'string' && userToken.length > 10) {
+    console.log('🔧 SuperDuperAI: Using user token for user:', session?.user?.email, `(token length: ${userToken.length})`);
+    return { token: userToken, isUserToken: true };
+  }
+  
+  // Fallback to system token
+  const systemConfig = getSuperduperAIConfig();
+  console.log('🔧 SuperDuperAI: User has no token, using system token for user:', session?.user?.email || 'unknown');
+  return { token: systemConfig.token, isUserToken: false };
+}
+
+/**
+ * Get SuperDuperAI configuration with user token from session
+ * @param session - NextAuth session object  
+ * @returns SuperDuperAI configuration with user or system token
+ */
+export function getSuperduperAIConfigWithUserToken(session: any): SuperduperAIConfig & { isUserToken: boolean } {
+  const baseConfig = getSuperduperAIConfig();
+  const { token, isUserToken } = getSuperduperAITokenForUser(session);
+  
+  return {
+    ...baseConfig,
+    token,
+    isUserToken
+  };
+} 

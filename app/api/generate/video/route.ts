@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/app/(auth)/auth';
-import { configureSuperduperAI } from '@/lib/config/superduperai';
+import { getSuperduperAIConfigWithUserToken } from '@/lib/config/superduperai';
 import { generateVideoHybrid } from '@/lib/ai/api/generate-video';
 import { IGenerationConfigRead } from '@/lib/api';
 import { validateOperationBalance, deductOperationBalance } from '@/lib/utils/tools-balance';
@@ -12,13 +12,6 @@ export async function POST(request: NextRequest) {
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-
-    // Configure OpenAPI client for server-side usage
-    const { getSuperduperAIConfig } = await import('@/lib/config/superduperai');
-    const config = getSuperduperAIConfig();
-    const { OpenAPI } = await import('@/lib/api');
-    OpenAPI.BASE = config.url;
-    OpenAPI.TOKEN = config.token;
 
     // Parse request body
     const body = await request.json();
@@ -63,6 +56,12 @@ export async function POST(request: NextRequest) {
     }
 
     console.log(`💳 User ${userId} has sufficient balance for ${generationType} (${balanceValidation.cost} credits)`);
+
+    // Configure OpenAPI client with user token from session (with system token fallback)
+    const config = getSuperduperAIConfigWithUserToken(session);
+    const { OpenAPI } = await import('@/lib/api');
+    OpenAPI.BASE = config.url;
+    OpenAPI.TOKEN = config.token;
 
     // Convert string parameters to proper objects
     const modelObj = typeof body.model === 'string' 
@@ -136,7 +135,8 @@ export async function POST(request: NextRequest) {
     // Return standardized response
     const response = {
       ...result,
-      creditsUsed: balanceValidation.cost
+      creditsUsed: balanceValidation.cost,
+      usingUserToken: config.isUserToken
     };
     
     return NextResponse.json(response);

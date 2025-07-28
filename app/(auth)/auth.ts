@@ -127,6 +127,10 @@ export const {
       if (user) {
         token.id = user.id as string;
         token.type = user.type;
+        // Preserve superduperaiToken if it exists
+        if ((user as any).superduperaiToken) {
+          token.superduperaiToken = (user as any).superduperaiToken;
+        }
       }
 
       if (account && account.provider === 'auth0') {
@@ -135,6 +139,11 @@ export const {
         // Если ID отсутствует, генерируем его
         if (!token.id) {
           token.id = nanoid();
+        }
+
+        // Preserve any existing superduperaiToken from account
+        if (account.superduperaiToken) {
+          token.superduperaiToken = account.superduperaiToken;
         }
 
         // Логируем информацию для отладки
@@ -177,6 +186,16 @@ export const {
       if (session.user) {
         session.user.id = token.id;
         session.user.type = token.type;
+        // Pass superduperaiToken to session
+        if (token.superduperaiToken) {
+          (session as any).superduperaiToken = token.superduperaiToken;
+        }
+
+        // TEMPORARY: For testing - add test token from environment variable
+        if (process.env.TEST_USER_SUPERDUPERAI_TOKEN && !token.superduperaiToken) {
+          (session as any).superduperaiToken = process.env.TEST_USER_SUPERDUPERAI_TOKEN;
+          console.log('🧪 TESTING: Added test SuperDuperAI token to session for user:', session.user.email);
+        }
 
         // Дополнительная синхронизация пользователя OAuth с каждым запросом сессии
         if (token.email && token.type === 'regular') {
