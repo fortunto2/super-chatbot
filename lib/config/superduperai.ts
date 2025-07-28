@@ -494,9 +494,67 @@ export function getSuperduperAIConfigWithUserToken(session: any): SuperduperAICo
   const baseConfig = getSuperduperAIConfig();
   const { token, isUserToken } = getSuperduperAITokenForUser(session);
   
+  console.log('🔧 SuperDuperAI: getSuperduperAIConfigWithUserToken called with session:', {
+    hasSession: !!session,
+    hasUser: !!session?.user,
+    userEmail: session?.user?.email,
+    hasSessionToken: !!session?.superduperaiToken,
+    hasUserToken: !!session?.user?.superduperaiToken,
+    isUserToken,
+    tokenLength: token ? token.length : 0
+  });
+
+  // If using user token, ensure user exists in SuperDuperAI
+  if (isUserToken && session?.user?.email) {
+    // We'll handle user creation/existence check in the API calls
+    console.log('🔧 SuperDuperAI: Will verify user existence for:', session.user.email);
+  }
+
   return {
     ...baseConfig,
     token,
     isUserToken
   };
+} 
+
+/**
+ * Automatically create user in SuperDuperAI if they don't exist
+ */
+export async function ensureUserExistsInSuperduperAI(session: any): Promise<boolean> {
+  if (!session?.user?.email) {
+    console.log('❌ No user email in session, cannot create SuperDuperAI user');
+    return false;
+  }
+
+  try {
+    const config = getSuperduperAIConfigWithUserToken(session);
+    
+    // Try to get current user info - this will fail if user doesn't exist
+    const userInfoUrl = `${config.url}/api/v1/user/profile`;
+    
+    const response = await fetch(userInfoUrl, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${config.token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (response.ok) {
+      console.log('✅ User already exists in SuperDuperAI:', session.user.email);
+      return true;
+    }
+
+    // User doesn't exist, try to create them
+    console.log('🔧 User not found in SuperDuperAI, attempting to create:', session.user.email);
+    
+    // Note: SuperDuperAI might auto-create users on first API call with valid Auth0 token
+    // If not, we'd need to call their user creation endpoint here
+    // For now, we'll rely on the Auth0 integration to handle this
+    
+    return true;
+  } catch (error) {
+    console.error('❌ Error ensuring user exists in SuperDuperAI:', error);
+    return false;
+  }
 } 

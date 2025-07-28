@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/app/(auth)/auth';
-import { getSuperduperAIConfigWithUserToken } from '@/lib/config/superduperai';
+import { getSuperduperAIConfigWithUserToken, getSuperduperAIConfig } from '@/lib/config/superduperai';
 import { generateVideoHybrid } from '@/lib/ai/api/generate-video';
 import { IGenerationConfigRead } from '@/lib/api';
 import { validateOperationBalance, deductOperationBalance } from '@/lib/utils/tools-balance';
@@ -59,6 +59,38 @@ export async function POST(request: NextRequest) {
 
     // Configure OpenAPI client with user token from session (with system token fallback)
     const config = getSuperduperAIConfigWithUserToken(session);
+    
+    // If using user token, ensure user exists in SuperDuperAI
+    if (config.isUserToken && session?.user?.email) {
+      try {
+        // Try a simple API call to verify user exists
+        const testUrl = `${config.url}/api/v1/user/profile`;
+        const testResponse = await fetch(testUrl, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${config.token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (!testResponse.ok) {
+          console.log(`⚠️ User ${session.user.email} not found in SuperDuperAI (${testResponse.status}), falling back to system token`);
+          // Fall back to system token if user doesn't exist
+          const systemConfig = getSuperduperAIConfig();
+          config.isUserToken = false;
+          config.token = systemConfig.token;
+        } else {
+          console.log(`✅ User ${session.user.email} exists in SuperDuperAI, using user token`);
+        }
+      } catch (error) {
+        console.error('❌ Error checking user existence in SuperDuperAI:', error);
+        // Fall back to system token on error
+        const systemConfig = getSuperduperAIConfig();
+        config.isUserToken = false;
+        config.token = systemConfig.token;
+      }
+    }
+    
     const { OpenAPI } = await import('@/lib/api');
     OpenAPI.BASE = config.url;
     OpenAPI.TOKEN = config.token;

@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/app/(auth)/auth';
-import { getSuperduperAIConfigWithUserToken } from '@/lib/config/superduperai';
+import { getSuperduperAIConfigWithUserToken, getSuperduperAIConfig } from '@/lib/config/superduperai';
 import { OpenAPI } from '@/lib/api/core/OpenAPI';
 import { generateImageWithStrategy, ImageGenerationParams, ImageToImageParams } from '@/lib/ai/api/image-generation';
 import { validateOperationBalance, deductOperationBalance } from '@/lib/utils/tools-balance';
@@ -55,8 +55,47 @@ export async function POST(request: NextRequest) {
     // Configure OpenAPI client with user token from session (with system token fallback)
     console.log("SESSION USER", session)
     const config = getSuperduperAIConfigWithUserToken(session);
-    OpenAPI.BASE = config.url;
-    OpenAPI.TOKEN = config.token;
+    
+    // If using user token, ensure user exists in SuperDuperAI
+    if (config.isUserToken && session?.user?.email) {
+      console.log(`🔍 Checking if user ${session.user.email} exists in SuperDuperAI...`);
+      try {
+        // Try a simple API call to verify user exists
+        const testUrl = `${config.url}/api/v1/user/profile`;
+        console.log(`🔍 Testing SuperDuperAI endpoint: ${testUrl}`);
+        
+        const testResponse = await fetch(testUrl, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${config.token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        console.log(`🔍 SuperDuperAI user check response: ${testResponse.status} ${testResponse.statusText}`);
+        
+        if (!testResponse.ok) {
+          console.log(`⚠️ User ${session.user.email} not found in SuperDuperAI (${testResponse.status}), falling back to system token`);
+          // Fall back to system token
+          const systemConfig = getSuperduperAIConfig();
+          OpenAPI.BASE = systemConfig.url;
+          OpenAPI.TOKEN = systemConfig.token;
+          console.log('🔄 Switched to system token for SuperDuperAI');
+        } else {
+          console.log(`✅ User ${session.user.email} exists in SuperDuperAI, using user token`);
+        }
+      } catch (error) {
+        console.log(`❌ Error checking user existence in SuperDuperAI:`, error);
+        console.log(`🔄 Falling back to system token due to error`);
+        // Fall back to system token on error
+        const systemConfig = getSuperduperAIConfig();
+        OpenAPI.BASE = systemConfig.url;
+        OpenAPI.TOKEN = systemConfig.token;
+      }
+    } else {
+      OpenAPI.BASE = config.url;
+      OpenAPI.TOKEN = config.token;
+    }
     
     // Create image generation config using OpenAPI types
 
