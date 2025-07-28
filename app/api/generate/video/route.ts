@@ -105,7 +105,8 @@ export async function POST(request: NextRequest) {
       body.negativePrompt || '',
       body.sourceImageId,
       body.sourceImageUrl,
-      body.generationType || 'text-to-video'
+      body.generationType || 'text-to-video',
+      session // Pass session for user token
     );
     
     console.log('✅ Video generation result:', result);

@@ -142,7 +142,7 @@ export const videoDocumentHandler = createDocumentHandler<'video'>({
         duration,
         negativePrompt,
         seed
-      });
+      }, session); // Pass session for user token
 
       console.log("result", result);
 
@@ -268,7 +268,7 @@ export const videoDocumentHandler = createDocumentHandler<'video'>({
         duration,
         negativePrompt,
         seed
-      });
+      }); // NOTE: onUpdateDocument doesn't have access to session, using system token fallback
       if (!result.success) {
         draftContent = JSON.stringify({
           status: 'failed',

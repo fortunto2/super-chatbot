@@ -136,14 +136,58 @@ export const {
       if (account && account.provider === 'auth0') {
         token.type = 'regular';
 
+        // DEBUGGING: Log all available tokens from Auth0
+        console.log('🔍 AUTH0 DEBUG: Available tokens and account data:', {
+          // Account tokens
+          access_token: account.access_token ? `${account.access_token.substring(0, 20)}...` : 'none',
+          id_token: account.id_token ? `${account.id_token.substring(0, 20)}...` : 'none',
+          refresh_token: account.refresh_token ? `${account.refresh_token.substring(0, 20)}...` : 'none',
+          scope: account.scope,
+          token_type: account.token_type,
+          // User info
+          userSub: account.providerAccountId,
+          userEmail: token.email,
+          // Full account keys (without sensitive data)
+          accountKeys: Object.keys(account).filter(key => !key.includes('token') && !key.includes('secret'))
+        });
+
         // Если ID отсутствует, генерируем его
         if (!token.id) {
           token.id = nanoid();
         }
 
+        // Try to use Auth0 access_token for SuperDuperAI
+        if (account.access_token) {
+          console.log('🔧 AUTH0: Using Auth0 access_token as SuperDuperAI token');
+          token.superduperaiToken = account.access_token;
+        }
+
+        // Alternative: Extract SuperDuperAI token from JWT claims
+        if (account.id_token) {
+          try {
+            // Decode JWT to extract custom claims (without verification for simplicity)
+            const base64Url = account.id_token.split('.')[1];
+            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+            const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+              return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+            }).join(''));
+            
+            const payload = JSON.parse(jsonPayload);
+            
+            // Check for custom SuperDuperAI claim
+            if (payload['https://superduperai.co/token'] || payload.superduperai_token) {
+              const customToken = payload['https://superduperai.co/token'] || payload.superduperai_token;
+              console.log('🔧 AUTH0: Found SuperDuperAI token in JWT claims');
+              token.superduperaiToken = customToken;
+            }
+          } catch (error) {
+            console.warn('Failed to decode Auth0 id_token:', error);
+          }
+        }
+
         // Preserve any existing superduperaiToken from account
-        if (account.superduperaiToken) {
-          token.superduperaiToken = account.superduperaiToken;
+        if ((account as any).superduperaiToken) {
+          token.superduperaiToken = (account as any).superduperaiToken;
         }
 
         // Логируем информацию для отладки
@@ -189,12 +233,6 @@ export const {
         // Pass superduperaiToken to session
         if (token.superduperaiToken) {
           (session as any).superduperaiToken = token.superduperaiToken;
-        }
-
-        // TEMPORARY: For testing - add test token from environment variable
-        if (process.env.TEST_USER_SUPERDUPERAI_TOKEN && !token.superduperaiToken) {
-          (session as any).superduperaiToken = process.env.TEST_USER_SUPERDUPERAI_TOKEN;
-          console.log('🧪 TESTING: Added test SuperDuperAI token to session for user:', session.user.email);
         }
 
         // Дополнительная синхронизация пользователя OAuth с каждым запросом сессии
