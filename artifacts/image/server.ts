@@ -120,7 +120,7 @@ export const imageDocumentHandler = createDocumentHandler<'image'>({
         negativePrompt,
         seed,
         batchSize
-      });
+      }, session);
 
       // AICODE-DEBUG: API payload removed to reduce duplication
       // If needed for debugging, can be reconstructed from stored parameters
@@ -223,6 +223,7 @@ export const imageDocumentHandler = createDocumentHandler<'image'>({
         batchSize
       } = params;
       // Start image generation using new architecture (only text-to-image)
+      // NOTE: onUpdateDocument doesn't have access to session, so using system token fallback
       const result = await generateImageWithStrategy('text-to-image', {
         prompt,
         model,
