@@ -1,4 +1,4 @@
-import { API_ENDPOINTS, getSuperduperAIConfig } from "@/lib/config/superduperai";
+import { API_ENDPOINTS, getSuperduperAIConfig, getSuperduperAIConfigWithUserToken } from "@/lib/config/superduperai";
 import { ImageToVideoStrategy } from "./strategies/image-to-video";
 import { VideoGenerationStrategyFactory } from "./strategy.factory";
 import type { ImageToVideoParams, VideoGenerationParams, VideoGenerationResult } from "./strategy.interface";
@@ -6,7 +6,8 @@ import type { ImageToVideoParams, VideoGenerationParams, VideoGenerationResult }
 // Main generation function using strategy pattern with fallback mechanisms
 export async function generateVideoWithStrategy(
     generationType: string,
-    params: VideoGenerationParams | ImageToVideoParams
+    params: VideoGenerationParams | ImageToVideoParams,
+    session?: any // Added session parameter for user token
   ): Promise<VideoGenerationResult> {
     const factory = new VideoGenerationStrategyFactory();
     const strategy = factory.getStrategy(generationType);
@@ -42,7 +43,7 @@ export async function generateVideoWithStrategy(
         }
       }
   
-      const config = getSuperduperAIConfig();
+      const config = session ? getSuperduperAIConfigWithUserToken(session) : getSuperduperAIConfig();
   
       const payload = await strategy.generatePayload(finalParams);
       

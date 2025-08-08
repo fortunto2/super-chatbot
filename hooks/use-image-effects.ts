@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import type { UseChatHelpers } from '@ai-sdk/react';
+import { saveImageToChat, saveMediaToChat } from '@/lib/ai/chat/media';
 
 interface UseImageEffectsProps {
   imageUrl?: string;
@@ -25,123 +26,6 @@ const generateUUID = (): string => {
   });
 };
 
-// AICODE-NOTE: Function to check if image already exists in chat to prevent duplicates
-const checkImageExistsInChat = (
-  setMessages: UseChatHelpers['setMessages'],
-  imageUrl: string,
-): boolean => {
-  let imageExists = false;
-
-  setMessages((prevMessages) => {
-    // Check if any message already contains this image URL
-    imageExists = prevMessages.some((message) =>
-      message.experimental_attachments?.some(
-        (attachment) => attachment.url === imageUrl,
-      ),
-    );
-    return prevMessages; // Don't modify messages, just check
-  });
-
-  return imageExists;
-};
-
-// AICODE-NOTE: Function to save generated image as a permanent chat message with attachment
-const saveImageToChat = async (
-  chatId: string,
-  imageUrl: string,
-  prompt: string,
-  setMessages?: UseChatHelpers['setMessages'],
-) => {
-  if (!setMessages || !chatId) {
-    console.log(
-      '💾 ⚠️ Cannot save image to chat - missing setMessages or chatId',
-    );
-    return;
-  }
-
-  console.log('💾 Saving generated image to chat history...', {
-    chatId,
-    imageUrl: `${imageUrl.substring(0, 50)}...`,
-    prompt,
-  });
-
-  try {
-    // AICODE-NOTE: Check if image already exists in chat to prevent duplicates from clicks
-    const imageExists = checkImageExistsInChat(setMessages, imageUrl);
-    if (imageExists) {
-      console.log('💾 ⏭️ Image already exists in chat, skipping duplicate save');
-      return;
-    }
-
-    // Create image attachment for permanent storage in chat
-    const imageAttachment = {
-      name: prompt.length > 50 ? `${prompt.substring(0, 50)}...` : prompt, // Use prompt as name instead of generic filename
-      url: imageUrl,
-      contentType: 'image/webp',
-    };
-
-    // Create message with image attachment and valid UUID
-    const imageMessage = {
-      id: generateUUID(), // Use proper UUID instead of random string
-      role: 'assistant' as const,
-      content: `Generated image: "${prompt}"`,
-      parts: [
-        {
-          type: 'text' as const,
-          text: `Generated image: "${prompt}"`,
-        },
-      ],
-      experimental_attachments: [imageAttachment],
-      createdAt: new Date(),
-    };
-
-    // Add message to chat history
-    setMessages((prevMessages) => [...prevMessages, imageMessage]);
-
-    console.log('💾 ✅ Image added to chat history locally!');
-
-    // Save to database
-    try {
-      const response = await fetch('/api/save-message', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          chatId,
-          message: {
-            id: imageMessage.id,
-            role: imageMessage.role,
-            parts: imageMessage.parts,
-            attachments: imageMessage.experimental_attachments,
-            createdAt: imageMessage.createdAt,
-          },
-        }),
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text().catch(() => 'Unknown error');
-        throw new Error(
-          `Failed to save message: ${response.status} - ${errorText}`,
-        );
-      }
-
-      console.log('💾 ✅ Image saved to database successfully!');
-    } catch (dbError) {
-      console.warn(
-        '💾 ⚠️ Failed to save to database, but image is in chat locally:',
-        dbError,
-      );
-      // Don't throw - the image is already in chat locally
-    }
-
-    console.log(
-      '💾 📷 Image will remain accessible even after closing the artifact',
-    );
-  } catch (error) {
-    console.error('💾 ❌ Failed to save image to chat:', error);
-  }
-};
 
 export function useImageEffects({
   imageUrl,
@@ -196,7 +80,7 @@ export function useImageEffects({
 
       // Small delay to ensure artifact is updated first
       setTimeout(() => {
-        saveImageToChat(chatId, imageUrl, prompt, setMessages);
+        saveMediaToChat(chatId, imageUrl, prompt, setMessages, "image");
       }, 100);
     }
   }, [imageUrl, status, hasInitialized, chatId, setMessages, prompt]);

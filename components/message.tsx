@@ -135,7 +135,7 @@ const PurePreviewMessage = ({
                           onClick={() => {
                             setArtifact({
                               title: artifact.title || '',
-                              documentId: artifact.projectId,
+                              documentId: artifact.documentId,
                               kind: 'text',
                               content: artifact.content,
                               isVisible: true,

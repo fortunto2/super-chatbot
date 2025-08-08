@@ -50,6 +50,7 @@ interface ArtifactContent<M = any> {
   setMessages?: UseChatHelpers['setMessages'];
   setArtifact?: Dispatch<SetStateAction<UIArtifact>>;
   chatId?: string;
+  documentId?: string;
 }
 
 interface InitializeParameters<M = any> {

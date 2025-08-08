@@ -13,5 +13,37 @@
   "eslint.workingDirectories": [
     { "pattern": "app/*" },
     { "pattern": "packages/*" }
+  ],
+  "sqltools.connections": [
+    {
+      "pgOptions": {
+        "ssl": {
+          "rejectUnauthorized": true
+        }
+      },
+      "previewLimit": 50,
+      "server": "ep-green-glade-a49gpc57-pooler.us-east-1.aws.neon.tech",
+      "port": 5432,
+      "driver": "PostgreSQL",
+      "name": "neondb",
+      "database": "neondb",
+      "username": "neondb_owner",
+      "password": "npg_u78sbCLzfEoe"
+    },
+    {
+      "pgOptions": {
+        "ssl": {
+          "rejectUnauthorized": true
+        }
+      },
+      "previewLimit": 50,
+      "server": "ep-green-glade-a49gpc57-pooler.us-east-1.aws.neon.tech",
+      "port": 5432,
+      "driver": "PostgreSQL",
+      "database": "dev",
+      "name": "dev",
+      "username": "neondb_owner",
+      "password": "npg_u78sbCLzfEoe"
+    }
   ]
 }

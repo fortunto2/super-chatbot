@@ -2,6 +2,7 @@ import type { MediaOption, MediaResolution } from "@/lib/types/media-settings";
 import type { VideoModel } from '@/lib/config/superduperai';
 import { 
   getSuperduperAIConfig, 
+  getSuperduperAIConfigWithUserToken,
 } from '@/lib/config/superduperai';
 
 export interface VideoGenerationResult {
@@ -159,7 +160,8 @@ export const generateVideoHybrid = async (
   negativePrompt = "",
   sourceImageId?: string,
   sourceImageUrl?: string,
-  generationType: 'text-to-video' | 'image-to-video' = 'text-to-video'
+  generationType: 'text-to-video' | 'image-to-video' = 'text-to-video',
+  session?: any // Added session parameter for user token
 ): Promise<VideoGenerationResult> => {
 
   console.log(`🎬 Starting hybrid video generation:`, {
@@ -177,7 +179,8 @@ export const generateVideoHybrid = async (
 
   try {
     // Step 1: Make API call using original working format
-    const config = getSuperduperAIConfig();
+    // Use user token from session if available, fallback to system token
+    const config = session ? getSuperduperAIConfigWithUserToken(session) : getSuperduperAIConfig();
     const url = `${config.url}/api/v1/file/generate-video`;
     const headers = {
       'Authorization': `Bearer ${config.token}`,

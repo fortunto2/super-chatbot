@@ -107,6 +107,18 @@ export async function middleware(request: NextRequest) {
 
   const isGuest = guestRegex.test(token?.email ?? '');
 
+  // Если пользователь в гостевом режиме и явно пытается войти в аккаунт
+  // через auto-login, позволяем пройти дальше для Auth0 авторизации
+  if (token && isGuest && pathname === '/auto-login') {
+    return NextResponse.next();
+  }
+
+  // Если пользователь в гостевом режиме и пытается выйти из гостевого режима
+  // через signOut, позволяем пройти дальше
+  if (token && isGuest && pathname === '/api/auth/signout') {
+    return NextResponse.next();
+  }
+
   if (token && !isGuest && ['/auto-login', '/register'].includes(pathname)) {
     return NextResponse.redirect(new URL('/', request.url));
   }

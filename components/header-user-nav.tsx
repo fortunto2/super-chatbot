@@ -116,11 +116,14 @@ export function HeaderUserNav({ className }: HeaderUserNavProps) {
               }
 
               if (isGuest) {
-                router.push('/auto-login');
+                // Redirect to auto-login with force_logout parameter
+                // This will force logout from guest session in auto-login
+                router.push('/auto-login?force_logout=true');
               } else {
+                // Logout and redirect to guest mode instead of auto-login
                 signOut({
                   redirect: true,
-                  callbackUrl: '/auto-login',
+                  callbackUrl: '/api/auth/guest?redirectUrl=/',
                 });
               }
             }}

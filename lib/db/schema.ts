@@ -16,6 +16,7 @@ export const user = pgTable('User', {
   id: uuid('id').primaryKey().notNull().defaultRandom(),
   email: varchar('email', { length: 64 }).notNull(),
   password: varchar('password', { length: 64 }),
+  balance: integer('balance').notNull().default(100), // Default balance: 100 credits
 });
 
 export type User = InferSelectModel<typeof user>;
