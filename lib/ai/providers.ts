@@ -26,9 +26,10 @@ const customAzure = createAzure({
   },
 });
 
+// AICODE-NOTE: Updated default model from gpt-4.1 to gpt-5-chat for improved performance
 // Создаем модели Azure
 const mainModel = customAzure(
-  process.env.AZURE_GPT41_DEPLOYMENT_NAME || 'gpt-4.1',
+  process.env.AZURE_GPT5_DEPLOYMENT_NAME || 'gpt-5-chat',
 );
 const o4MiniModel = customAzure(
   process.env.AZURE_O4MINI_DEPLOYMENT_NAME || 'o4-mini',
