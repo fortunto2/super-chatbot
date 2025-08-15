@@ -42,6 +42,10 @@ Real examples from the codebase showing:
 ### [Implementation Plans Archive](./implementation-plans/)
 Approved implementation plans for reference and tracking.
 
+### [Task Plans](./tasks/)
+Individual task breakdowns for upcoming features. Each file contains a detailed
+plan for one specific task.
+
 ## 🎯 Quick Start for AI Agents
 
 ### Before Starting Any Feature:
